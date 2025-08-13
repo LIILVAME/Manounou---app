@@ -1,0 +1,206 @@
+{
+  "products": [
+    {
+      "id": "manounou_free",
+      "name": "Manounou Free",
+      "description": "Plan gratuit pour découvrir Manounou",
+      "metadata": {
+        "plan_type": "free",
+        "max_children": "1",
+        "max_documents": "3",
+        "max_events_per_day": "10"
+      },
+      "prices": [
+        {
+          "id": "price_free",
+          "currency": "eur",
+          "unit_amount": 0,
+          "recurring": {
+            "interval": "month"
+          },
+          "metadata": {
+            "plan": "free"
+          }
+        }
+      ]
+    },
+    {
+      "id": "manounou_starter",
+      "name": "Manounou Starter",
+      "description": "Plan idéal pour les petites familles",
+      "metadata": {
+        "plan_type": "starter",
+        "max_children": "3",
+        "max_documents": "20",
+        "max_events_per_day": "50"
+      },
+      "prices": [
+        {
+          "id": "price_starter_monthly",
+          "currency": "eur",
+          "unit_amount": 999,
+          "recurring": {
+            "interval": "month"
+          },
+          "metadata": {
+            "plan": "starter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "manounou_full",
+      "name": "Manounou Full",
+      "description": "Plan complet pour les familles nombreuses et nounous professionnelles",
+      "metadata": {
+        "plan_type": "full",
+        "max_children": "-1",
+        "max_documents": "-1",
+        "max_events_per_day": "-1"
+      },
+      "prices": [
+        {
+          "id": "price_full_monthly",
+          "currency": "eur",
+          "unit_amount": 1399,
+          "recurring": {
+            "interval": "month"
+          },
+          "metadata": {
+            "plan": "full"
+          }
+        }
+      ]
+    }
+  ],
+  "webhooks": {
+    "endpoint_url": "https://your-app-domain.com/api/webhooks/stripe",
+    "events": [
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "checkout.session.completed",
+      "invoice.payment_succeeded",
+      "invoice.payment_failed",
+      "customer.created",
+      "customer.updated"
+    ],
+    "description": "Webhook pour synchroniser les abonnements avec Supabase"
+  },
+  "checkout_configuration": {
+    "success_url": "https://your-app-domain.com/dashboard?session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://your-app-domain.com/pricing",
+    "mode": "subscription",
+    "billing_address_collection": "required",
+    "customer_creation": "always",
+    "payment_method_types": ["card", "sepa_debit"],
+    "locale": "auto"
+  },
+  "customer_portal_configuration": {
+    "business_profile": {
+      "headline": "Gérez votre abonnement Manounou",
+      "privacy_policy_url": "https://your-app-domain.com/legal/privacy",
+      "terms_of_service_url": "https://your-app-domain.com/legal/terms"
+    },
+    "features": {
+      "customer_update": {
+        "enabled": true,
+        "allowed_updates": ["email", "address"]
+      },
+      "invoice_history": {
+        "enabled": true
+      },
+      "payment_method_update": {
+        "enabled": true
+      },
+      "subscription_cancel": {
+        "enabled": true,
+        "mode": "at_period_end",
+        "cancellation_reason": {
+          "enabled": true,
+          "options": [
+            "too_expensive",
+            "missing_features",
+            "switched_service",
+            "unused",
+            "other"
+          ]
+        }
+      },
+      "subscription_pause": {
+        "enabled": false
+      },
+      "subscription_update": {
+        "enabled": true,
+        "default_allowed_updates": ["price"],
+        "proration_behavior": "create_prorations"
+      }
+    }
+  },
+  "webhook_handlers": {
+    "customer.subscription.created": {
+      "description": "Créer ou mettre à jour l'abonnement dans Supabase",
+      "actions": [
+        "Créer/mettre à jour la ligne dans subscriptions",
+        "Mettre à jour le plan dans profiles",
+        "Logger l'événement dans audit_logs"
+      ]
+    },
+    "customer.subscription.updated": {
+      "description": "Mettre à jour l'abonnement existant",
+      "actions": [
+        "Mettre à jour subscriptions.status",
+        "Mettre à jour profiles.plan et plan_status",
+        "Logger l'événement dans audit_logs"
+      ]
+    },
+    "customer.subscription.deleted": {
+      "description": "Annuler l'abonnement",
+      "actions": [
+        "Mettre à jour subscriptions.status = 'canceled'",
+        "Mettre à jour profiles.plan_status = 'canceled'",
+        "Logger l'événement dans audit_logs"
+      ]
+    },
+    "checkout.session.completed": {
+      "description": "Finaliser la création d'abonnement",
+      "actions": [
+        "Créer la ligne dans subscriptions si nécessaire",
+        "Mettre à jour profiles.plan",
+        "Envoyer email de confirmation",
+        "Logger l'événement dans audit_logs"
+      ]
+    }
+  },
+  "status_mapping": {
+    "stripe_to_app": {
+      "active": "active",
+      "past_due": "past_due",
+      "canceled": "canceled",
+      "incomplete": "incomplete",
+      "incomplete_expired": "canceled",
+      "trialing": "trialing",
+      "unpaid": "past_due"
+    }
+  },
+  "test_data": {
+    "test_cards": {
+      "success": "4242424242424242",
+      "decline": "4000000000000002",
+      "insufficient_funds": "4000000000009995",
+      "sepa_debit": "DE89370400440532013000"
+    },
+    "test_customers": [
+      {
+        "email": "parent_test@manounou.com",
+        "name": "Parent Test",
+        "plan": "starter"
+      },
+      {
+        "email": "nanny_test@manounou.com",
+        "name": "Nounou Test",
+        "plan": "free"
+      }
+    ]
+  }
+}

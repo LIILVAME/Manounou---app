@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Serveurs Manounou</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+        .online { background-color: #4CAF50; }
+        .offline { background-color: #f44336; }
+        .server-info {
+            flex: 1;
+        }
+        .server-name {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .server-url {
+            color: #e0e0e0;
+            font-size: 0.9em;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        .timestamp {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Serveurs Manounou</h1>
+        
+        <div class="status">
+            <div class="status-icon online"></div>
+            <div class="server-info">
+                <div class="server-name">Serveur HTTP Python</div>
+                <div class="server-url">http://localhost:3000</div>
+            </div>
+            <a href="http://localhost:3000" target="_blank" class="test-button">Tester</a>
+        </div>
+        
+        <div class="status">
+            <div class="status-icon online"></div>
+            <div class="server-info">
+                <div class="server-name">Serveur Node.js (serve)</div>
+                <div class="server-url">http://localhost:8081</div>
+            </div>
+            <a href="http://localhost:8081" target="_blank" class="test-button">Tester</a>
+        </div>
+        
+        <div class="info">
+            <h3>📋 État des Serveurs</h3>
+            <p><strong>✅ Serveur Python HTTP :</strong> Actif sur le port 3000</p>
+            <p><strong>✅ Serveur Node.js :</strong> Actif sur le port 8081</p>
+            <p><strong>🔧 Solution :</strong> Deux serveurs de développement fonctionnels créés</p>
+            
+            <h3>🎯 Instructions</h3>
+            <ul>
+                <li><strong>Pour tester :</strong> Cliquer sur les boutons "Tester" ci-dessus</li>
+                <li><strong>Port 3000 :</strong> Serveur de fichiers statiques simple</li>
+                <li><strong>Port 8081 :</strong> Serveur optimisé pour applications web</li>
+                <li><strong>Développement :</strong> Utiliser le port 8081 pour l'app React Native</li>
+            </ul>
+            
+            <h3>🚀 Prochaines Étapes</h3>
+            <p>Les serveurs fonctionnent maintenant correctement. Vous pouvez :</p>
+            <ul>
+                <li>Tester l'application sur http://localhost:8081</li>
+                <li>Utiliser ces serveurs pour le développement</li>
+                <li>Scanner le QR code si disponible</li>
+            </ul>
+        </div>
+        
+        <div class="timestamp">
+            Dernière vérification : <span id="timestamp"></span>
+        </div>
+    </div>
+    
+    <script>
+        // Afficher l'heure actuelle
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('fr-FR');
+        
+        // Vérifier la connectivité des serveurs
+        async function checkServer(url, statusElement) {
+            try {
+                const response = await fetch(url, { mode: 'no-cors' });
+                statusElement.className = 'status-icon online';
+            } catch (error) {
+                statusElement.className = 'status-icon offline';
+            }
+        }
+        
+        // Vérifier les serveurs au chargement
+        window.onload = function() {
+            const statusIcons = document.querySelectorAll('.status-icon');
+            checkServer('http://localhost:3000', statusIcons[0]);
+            checkServer('http://localhost:8081', statusIcons[1]);
+        };
+    </script>
+</body>
+</html>

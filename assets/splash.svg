@@ -1,0 +1,48 @@
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1284" height="2778" fill="url(#backgroundGradient)"/>
+  
+  <!-- Main Logo -->
+  <g transform="translate(342, 1000)">
+    <!-- Parent Figure -->
+    <circle cx="200" cy="150" r="80" fill="#FFFFFF" opacity="0.95"/>
+    <rect x="150" y="230" width="100" height="160" rx="50" fill="#FFFFFF" opacity="0.95"/>
+    
+    <!-- Child Figure 1 -->
+    <circle cx="350" cy="180" r="55" fill="#FEF3C7"/>
+    <rect x="315" y="235" width="70" height="120" rx="35" fill="#FEF3C7"/>
+    
+    <!-- Child Figure 2 -->
+    <circle cx="500" cy="180" r="55" fill="#DBEAFE"/>
+    <rect x="465" y="235" width="70" height="120" rx="35" fill="#DBEAFE"/>
+    
+    <!-- Heart Symbol -->
+    <path d="M400 450 C385 435, 355 435, 340 450 C325 435, 295 435, 280 450 C280 465, 295 480, 340 510 C385 480, 400 465, 400 450 Z" fill="#EF4444"/>
+  </g>
+  
+  <!-- App Name -->
+  <text x="642" y="1650" font-family="Arial, sans-serif" font-size="120" font-weight="bold" text-anchor="middle" fill="#FFFFFF">Manounou</text>
+  
+  <!-- Tagline -->
+  <text x="642" y="1750" font-family="Arial, sans-serif" font-size="40" text-anchor="middle" fill="#FFFFFF" opacity="0.8">Votre assistant de garde d'enfants</text>
+  
+  <!-- Loading Animation Dots -->
+  <g transform="translate(592, 2200)">
+    <circle cx="0" cy="0" r="15" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="50" cy="0" r="15" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <circle cx="100" cy="0" r="15" fill="#FFFFFF" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+  </g>
+</svg>

@@ -1,0 +1,218 @@
+{
+  "landing": {
+    "hero": {
+      "title": "Simplifiez la garde de vos enfants avec Manounou",
+      "subtitle": "L'application qui connecte parents et nounous pour une garde d'enfants organisée et sereine",
+      "cta": "Commencer gratuitement"
+    },
+    "features": {
+      "title": "Tout ce dont vous avez besoin",
+      "planning": {
+        "title": "Planning intelligent",
+        "description": "Organisez les activités, repas, siestes et vacances en un clic"
+      },
+      "documents": {
+        "title": "Documents centralisés",
+        "description": "Stockez et partagez tous les documents importants de vos enfants"
+      },
+      "notifications": {
+        "title": "Notifications en temps réel",
+        "description": "Restez informé des modifications de planning par email"
+      }
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "email": "Adresse email",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "signUp": "S'inscrire"
+    },
+    "register": {
+      "title": "Inscription",
+      "email": "Adresse email",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "Créer mon compte",
+      "hasAccount": "Déjà un compte ?",
+      "signIn": "Se connecter"
+    },
+    "errors": {
+      "emailRequired": "L'email est requis",
+      "emailInvalid": "Format d'email invalide",
+      "passwordRequired": "Le mot de passe est requis",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "loginFailed": "Email ou mot de passe incorrect",
+      "emailExists": "Cet email est déjà utilisé"
+    }
+  },
+  "onboarding": {
+    "role": {
+      "title": "Quel est votre rôle ?",
+      "subtitle": "Choisissez votre profil pour personnaliser votre expérience",
+      "parent": {
+        "title": "Parent",
+        "description": "Je cherche une nounou ou je gère la garde de mes enfants"
+      },
+      "nanny": {
+        "title": "Nounou",
+        "description": "Je garde des enfants et je souhaite organiser mon planning"
+      },
+      "continue": "Continuer"
+    },
+    "plan": {
+      "title": "Choisissez votre formule",
+      "subtitle": "Commencez gratuitement, évoluez selon vos besoins",
+      "continue": "Continuer"
+    }
+  },
+  "plans": {
+    "free": {
+      "name": "Gratuit",
+      "price": "0€",
+      "period": "/mois",
+      "description": "Parfait pour découvrir Manounou",
+      "features": [
+        "1 enfant",
+        "3 documents",
+        "10 événements/jour",
+        "Support email"
+      ]
+    },
+    "starter": {
+      "name": "Starter",
+      "price": "9,99€",
+      "period": "/mois",
+      "description": "Idéal pour les petites familles",
+      "features": [
+        "3 enfants",
+        "20 documents",
+        "50 événements/jour",
+        "Support prioritaire",
+        "Export planning"
+      ]
+    },
+    "full": {
+      "name": "Full",
+      "price": "13,99€",
+      "period": "/mois",
+      "description": "Pour les familles nombreuses et nounous pro",
+      "features": [
+        "Enfants illimités",
+        "Documents illimités",
+        "Événements illimités",
+        "Support prioritaire",
+        "Export avancé",
+        "Analytics détaillées"
+      ]
+    },
+    "cta": "Choisir cette formule",
+    "popular": "Populaire"
+  },
+  "dashboard": {
+    "welcome": "Bonjour {name}",
+    "todayEvents": "Événements du jour",
+    "quickActions": "Actions rapides",
+    "addChild": "Ajouter un enfant",
+    "addEvent": "Nouvel événement",
+    "uploadDocument": "Ajouter un document",
+    "noEvents": "Aucun événement prévu aujourd'hui"
+  },
+  "children": {
+    "title": "Mes enfants",
+    "add": "Ajouter un enfant",
+    "name": "Nom complet",
+    "birthDate": "Date de naissance",
+    "allergies": "Allergies",
+    "notes": "Notes",
+    "photo": "Photo",
+    "save": "Enregistrer",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet enfant ?",
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "birthDateRequired": "La date de naissance est requise",
+      "birthDateInvalid": "Date de naissance invalide"
+    }
+  },
+  "planning": {
+    "title": "Planning",
+    "dayView": "Vue jour",
+    "weekView": "Vue semaine",
+    "addEvent": "Nouvel événement",
+    "eventTypes": {
+      "activity": "Activité",
+      "meal": "Repas",
+      "nap": "Sieste",
+      "outing": "Sortie",
+      "vacation": "Vacances"
+    },
+    "eventForm": {
+      "title": "Titre",
+      "type": "Type",
+      "child": "Enfant",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "notes": "Notes",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Ajouter un document",
+    "name": "Nom du document",
+    "child": "Enfant concerné",
+    "file": "Fichier",
+    "uploadButton": "Télécharger",
+    "view": "Voir",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce document ?",
+    "noDocuments": "Aucun document ajouté"
+  },
+  "profile": {
+    "title": "Mon profil",
+    "displayName": "Nom d'affichage",
+    "email": "Email",
+    "language": "Langue",
+    "photo": "Photo de profil",
+    "plan": "Formule actuelle",
+    "save": "Enregistrer",
+    "changePassword": "Changer le mot de passe",
+    "logout": "Se déconnecter",
+    "upgradePlan": "Changer de formule"
+  },
+  "notifications": {
+    "planningUpdated": {
+      "subject": "Votre planning a été mis à jour",
+      "body": "Bonjour {name}, l'événement \"{title}\" a été modifié le {date}."
+    },
+    "documentAdded": {
+      "subject": "Nouveau document ajouté",
+      "body": "Un nouveau document \"{documentName}\" a été ajouté pour {childName}."
+    },
+    "vacationAdded": {
+      "subject": "Nouvelles vacances programmées",
+      "body": "Des vacances ont été ajoutées du {startDate} au {endDate}."
+    }
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "success": "Opération réussie",
+    "required": "Champ requis",
+    "optional": "Optionnel"
+  }
+}
