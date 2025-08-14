@@ -1,0 +1,121 @@
+{
+  "users": {
+    "description": "Table des utilisateurs (étend auth.users de Supabase)",
+    "fields": {
+      "id": "UUID PRIMARY KEY (référence auth.users)",
+      "email": "TEXT UNIQUE NOT NULL",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "profiles": {
+    "description": "Profils utilisateurs avec rôles et plans",
+    "fields": {
+      "user_id": "UUID PRIMARY KEY/FOREIGN KEY users(id)",
+      "role": "TEXT NOT NULL CHECK (parent|nanny|admin)",
+      "display_name": "TEXT NOT NULL",
+      "language": "TEXT NOT NULL DEFAULT 'fr' CHECK (fr|en)",
+      "photo_url": "TEXT NULLABLE",
+      "plan": "TEXT NOT NULL DEFAULT 'free' CHECK (free|starter|full)",
+      "plan_status": "TEXT NOT NULL DEFAULT 'active' CHECK (active|past_due|canceled)"
+    }
+  },
+  "children": {
+    "description": "Enfants gérés par les parents",
+    "fields": {
+      "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+      "parent_id": "UUID FOREIGN KEY users(id) NOT NULL",
+      "full_name": "TEXT NOT NULL",
+      "date_of_birth": "DATE NOT NULL",
+      "allergies": "TEXT NULLABLE",
+      "notes": "TEXT NULLABLE",
+      "photo_url": "TEXT NULLABLE",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "events": {
+    "description": "Événements du planning (activités, repas, siestes, sorties, vacances)",
+    "fields": {
+      "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+      "owner_id": "UUID FOREIGN KEY users(id) NOT NULL",
+      "child_id": "UUID FOREIGN KEY children(id) NULLABLE",
+      "type": "TEXT NOT NULL CHECK (activity|meal|nap|outing|vacation)",
+      "title": "TEXT NOT NULL",
+      "start_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "end_at": "TIMESTAMP WITH TIME ZONE NOT NULL",
+      "notes": "TEXT NULLABLE",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "documents": {
+    "description": "Documents liés aux enfants",
+    "fields": {
+      "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+      "owner_id": "UUID FOREIGN KEY users(id) NOT NULL",
+      "child_id": "UUID FOREIGN KEY children(id) NOT NULL",
+      "name": "TEXT NOT NULL",
+      "file_url": "TEXT NOT NULL",
+      "mime_type": "TEXT NOT NULL",
+      "file_size": "INTEGER NULLABLE",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "subscriptions": {
+    "description": "Abonnements Stripe des utilisateurs",
+    "fields": {
+      "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+      "user_id": "UUID FOREIGN KEY users(id) NOT NULL",
+      "stripe_customer_id": "TEXT UNIQUE NULLABLE",
+      "stripe_subscription_id": "TEXT UNIQUE NULLABLE",
+      "plan": "TEXT NOT NULL CHECK (free|starter|full)",
+      "status": "TEXT NOT NULL CHECK (active|past_due|canceled|incomplete|trialing)",
+      "current_period_start": "TIMESTAMP WITH TIME ZONE NULLABLE",
+      "current_period_end": "TIMESTAMP WITH TIME ZONE NULLABLE",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "audit_logs": {
+    "description": "Logs d'audit pour traçabilité",
+    "fields": {
+      "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+      "user_id": "UUID FOREIGN KEY users(id) NULLABLE",
+      "action": "TEXT NOT NULL",
+      "entity": "TEXT NOT NULL",
+      "entity_id": "UUID NULLABLE",
+      "meta": "JSONB NULLABLE",
+      "ip_address": "INET NULLABLE",
+      "user_agent": "TEXT NULLABLE",
+      "created_at": "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"
+    }
+  },
+  "relationships": {
+    "users_profiles": "1:1 - Un utilisateur a un profil",
+    "users_children": "1:N - Un parent peut avoir plusieurs enfants",
+    "users_events": "1:N - Un utilisateur peut créer plusieurs événements",
+    "children_events": "1:N - Un enfant peut avoir plusieurs événements",
+    "children_documents": "1:N - Un enfant peut avoir plusieurs documents",
+    "users_subscriptions": "1:1 - Un utilisateur a un abonnement",
+    "users_audit_logs": "1:N - Un utilisateur peut avoir plusieurs logs"
+  },
+  "indexes": [
+    "idx_profiles_user_id",
+    "idx_children_parent_id",
+    "idx_events_owner_id",
+    "idx_events_child_id",
+    "idx_events_start_at",
+    "idx_documents_owner_id",
+    "idx_documents_child_id",
+    "idx_subscriptions_user_id",
+    "idx_audit_logs_user_id",
+    "idx_audit_logs_created_at"
+  ],
+  "rls_policies": {
+    "description": "Row Level Security activée sur toutes les tables",
+    "users": "Utilisateurs peuvent voir/modifier leur propre profil",
+    "profiles": "Utilisateurs peuvent gérer leur propre profil",
+    "children": "Parents gèrent leurs enfants, nounous voient les enfants qu'elles gardent",
+    "events": "Utilisateurs gèrent leurs événements, parents voient les événements de leurs enfants",
+    "documents": "Utilisateurs gèrent leurs documents, parents voient les documents de leurs enfants",
+    "subscriptions": "Utilisateurs voient leur propre abonnement",
+    "audit_logs": "Utilisateurs voient leurs logs, admins voient tous les logs"
+  }
+}

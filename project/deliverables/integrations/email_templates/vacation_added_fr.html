@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacances ajoutées - Manounou</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #202124;
+            background-color: #F6F6FA;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background-color: #6C63FF;
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px;
+        }
+        .vacation-card {
+            background-color: #F6F6FA;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #6C63FF;
+        }
+        .vacation-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #202124;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .vacation-icon {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        .vacation-details {
+            color: #666;
+            font-size: 14px;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #6C63FF;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #F6F6FA;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #6C63FF;
+            text-decoration: none;
+        }
+        .highlight {
+            background-color: #FFF3CD;
+            border: 1px solid #FFEAA7;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏖️ Vacances programmées</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour <strong>{{display_name}}</strong>,</p>
+            
+            <p>{{#if is_confirmation}}Les vacances suivantes ont été confirmées{{else}}De nouvelles vacances ont été ajoutées{{/if}} au planning :</p>
+            
+            <div class="vacation-card">
+                <div class="vacation-title">
+                    <span class="vacation-icon">🏖️</span>
+                    {{vacation_title}}
+                </div>
+                <div class="vacation-details">
+                    <strong>Période :</strong> Du {{start_date}} au {{end_date}}<br>
+                    <strong>Durée :</strong> {{duration_days}} jour(s)<br>
+                    {{#if child_name}}<strong>Enfant concerné :</strong> {{child_name}}<br>{{/if}}
+                    <strong>Ajouté par :</strong> {{added_by}}<br>
+                    {{#if vacation_notes}}<strong>Notes :</strong> {{vacation_notes}}{{/if}}
+                </div>
+            </div>
+            
+            {{#if is_confirmation}}
+            <div class="highlight">
+                <p><strong>✅ Vacances confirmées</strong></p>
+                <p>Ces vacances sont maintenant officiellement programmées dans votre planning.</p>
+            </div>
+            {{else}}
+            <div class="highlight">
+                <p><strong>⏳ En attente de confirmation</strong></p>
+                <p>Ces vacances ont été proposées et sont en attente de validation par toutes les parties concernées.</p>
+            </div>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{app_url}}/planning" class="cta-button">Voir le planning</a>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                📅 <strong>Rappel :</strong> Pensez à organiser la garde de vos enfants pendant cette période si nécessaire.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Cet email a été envoyé par <strong>Manounou</strong></p>
+            <p>
+                <a href="{{app_url}}/profile">Gérer mes notifications</a> |
+                <a href="{{app_url}}/legal/privacy">Politique de confidentialité</a> |
+                <a href="mailto:support@manounou.com">Support</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                Manounou - L'application qui simplifie la garde d'enfants
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,293 @@
+{
+  "plans": {
+    "free": {
+      "name": "Manounou Free",
+      "price": {
+        "amount": 0,
+        "currency": "EUR",
+        "billing_period": "monthly"
+      },
+      "limits": {
+        "children": {
+          "max_count": 1,
+          "description": "Maximum 1 child profile"
+        },
+        "documents": {
+          "max_count": 3,
+          "max_size_mb": 5,
+          "allowed_types": ["pdf", "jpg", "jpeg", "png"],
+          "description": "Maximum 3 documents, 5MB each"
+        },
+        "events": {
+          "max_per_day": 10,
+          "max_per_month": 300,
+          "description": "Maximum 10 events per day"
+        },
+        "storage": {
+          "total_mb": 50,
+          "description": "50MB total storage for documents"
+        },
+        "features": {
+          "planning_views": ["day"],
+          "export_formats": [],
+          "email_notifications": true,
+          "push_notifications": false,
+          "advanced_analytics": false,
+          "priority_support": false,
+          "custom_tags": false,
+          "private_notes": false
+        }
+      },
+      "restrictions": {
+        "planning_history_days": 30,
+        "document_retention_days": 90,
+        "export_frequency_days": null,
+        "api_calls_per_hour": 100
+      }
+    },
+    "starter": {
+      "name": "Manounou Starter",
+      "price": {
+        "amount": 9.99,
+        "currency": "EUR",
+        "billing_period": "monthly"
+      },
+      "limits": {
+        "children": {
+          "max_count": 3,
+          "description": "Maximum 3 children profiles"
+        },
+        "documents": {
+          "max_count": 20,
+          "max_size_mb": 10,
+          "allowed_types": ["pdf", "jpg", "jpeg", "png", "doc", "docx"],
+          "description": "Maximum 20 documents, 10MB each"
+        },
+        "events": {
+          "max_per_day": 50,
+          "max_per_month": 1500,
+          "description": "Maximum 50 events per day"
+        },
+        "storage": {
+          "total_mb": 200,
+          "description": "200MB total storage for documents"
+        },
+        "features": {
+          "planning_views": ["day", "week"],
+          "export_formats": ["pdf"],
+          "email_notifications": true,
+          "push_notifications": true,
+          "advanced_analytics": false,
+          "priority_support": false,
+          "custom_tags": true,
+          "private_notes": false
+        }
+      },
+      "restrictions": {
+        "planning_history_days": 90,
+        "document_retention_days": 365,
+        "export_frequency_days": 7,
+        "api_calls_per_hour": 500
+      }
+    },
+    "full": {
+      "name": "Manounou Full",
+      "price": {
+        "amount": 13.99,
+        "currency": "EUR",
+        "billing_period": "monthly"
+      },
+      "limits": {
+        "children": {
+          "max_count": -1,
+          "description": "Unlimited children profiles"
+        },
+        "documents": {
+          "max_count": -1,
+          "max_size_mb": 25,
+          "allowed_types": ["pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"],
+          "description": "Unlimited documents, 25MB each"
+        },
+        "events": {
+          "max_per_day": -1,
+          "max_per_month": -1,
+          "description": "Unlimited events"
+        },
+        "storage": {
+          "total_mb": -1,
+          "description": "Unlimited storage for documents"
+        },
+        "features": {
+          "planning_views": ["day", "week", "month"],
+          "export_formats": ["pdf", "excel", "csv"],
+          "email_notifications": true,
+          "push_notifications": true,
+          "advanced_analytics": true,
+          "priority_support": true,
+          "custom_tags": true,
+          "private_notes": true
+        }
+      },
+      "restrictions": {
+        "planning_history_days": -1,
+        "document_retention_days": -1,
+        "export_frequency_days": 1,
+        "api_calls_per_hour": 2000
+      }
+    }
+  },
+  "role_permissions": {
+    "parent": {
+      "children": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "own"
+      },
+      "events": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "own_and_related"
+      },
+      "documents": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "own_and_related"
+      },
+      "planning": {
+        "view_modes": "all",
+        "export": true,
+        "share": true
+      }
+    },
+    "nanny": {
+      "children": {
+        "create": false,
+        "read": true,
+        "update": false,
+        "delete": false,
+        "scope": "assigned"
+      },
+      "events": {
+        "create": true,
+        "read": true,
+        "update": "own_slots_only",
+        "delete": "own_slots_only",
+        "scope": "assigned_children"
+      },
+      "documents": {
+        "create": false,
+        "read": true,
+        "update": false,
+        "delete": false,
+        "scope": "assigned_children"
+      },
+      "planning": {
+        "view_modes": ["day", "week"],
+        "export": false,
+        "share": false
+      }
+    },
+    "admin": {
+      "children": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "all"
+      },
+      "events": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "all"
+      },
+      "documents": {
+        "create": true,
+        "read": true,
+        "update": true,
+        "delete": true,
+        "scope": "all"
+      },
+      "planning": {
+        "view_modes": "all",
+        "export": true,
+        "share": true
+      }
+    }
+  },
+  "upgrade_prompts": {
+    "children_limit_reached": {
+      "fr": {
+        "title": "Limite d'enfants atteinte",
+        "message": "Vous avez atteint la limite de {current_limit} enfant(s) pour votre plan {current_plan}. Passez au plan {suggested_plan} pour ajouter plus d'enfants.",
+        "cta": "Voir les plans"
+      },
+      "en": {
+        "title": "Children limit reached",
+        "message": "You have reached the limit of {current_limit} child(ren) for your {current_plan} plan. Upgrade to {suggested_plan} to add more children.",
+        "cta": "View plans"
+      }
+    },
+    "documents_limit_reached": {
+      "fr": {
+        "title": "Limite de documents atteinte",
+        "message": "Vous avez atteint la limite de {current_limit} documents pour votre plan {current_plan}. Passez au plan {suggested_plan} pour télécharger plus de documents.",
+        "cta": "Voir les plans"
+      },
+      "en": {
+        "title": "Documents limit reached",
+        "message": "You have reached the limit of {current_limit} documents for your {current_plan} plan. Upgrade to {suggested_plan} to upload more documents.",
+        "cta": "View plans"
+      }
+    },
+    "events_limit_reached": {
+      "fr": {
+        "title": "Limite d'événements atteinte",
+        "message": "Vous avez atteint la limite de {current_limit} événements par jour pour votre plan {current_plan}. Passez au plan {suggested_plan} pour créer plus d'événements.",
+        "cta": "Voir les plans"
+      },
+      "en": {
+        "title": "Events limit reached",
+        "message": "You have reached the limit of {current_limit} events per day for your {current_plan} plan. Upgrade to {suggested_plan} to create more events.",
+        "cta": "View plans"
+      }
+    },
+    "storage_limit_reached": {
+      "fr": {
+        "title": "Limite de stockage atteinte",
+        "message": "Vous avez atteint la limite de stockage de {current_limit}MB pour votre plan {current_plan}. Passez au plan {suggested_plan} pour plus d'espace.",
+        "cta": "Voir les plans"
+      },
+      "en": {
+        "title": "Storage limit reached",
+        "message": "You have reached the storage limit of {current_limit}MB for your {current_plan} plan. Upgrade to {suggested_plan} for more space.",
+        "cta": "View plans"
+      }
+    }
+  },
+  "enforcement_rules": {
+    "hard_limits": [
+      "children.max_count",
+      "documents.max_count",
+      "events.max_per_day",
+      "storage.total_mb"
+    ],
+    "soft_limits": [
+      "events.max_per_month"
+    ],
+    "grace_period_days": 3,
+    "downgrade_behavior": {
+      "children": "hide_excess",
+      "documents": "read_only_excess",
+      "events": "prevent_new_creation",
+      "features": "disable_immediately"
+    }
+  }
+}

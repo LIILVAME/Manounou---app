@@ -1,0 +1,218 @@
+{
+  "landing": {
+    "hero": {
+      "title": "Simplify childcare with Manounou",
+      "subtitle": "The app that connects parents and nannies for organized and peaceful childcare",
+      "cta": "Start for free"
+    },
+    "features": {
+      "title": "Everything you need",
+      "planning": {
+        "title": "Smart scheduling",
+        "description": "Organize activities, meals, naps and vacations with one click"
+      },
+      "documents": {
+        "title": "Centralized documents",
+        "description": "Store and share all your children's important documents"
+      },
+      "notifications": {
+        "title": "Real-time notifications",
+        "description": "Stay informed of schedule changes via email"
+      }
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign In",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up"
+    },
+    "register": {
+      "title": "Sign Up",
+      "email": "Email address",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In"
+    },
+    "errors": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "passwordRequired": "Password is required",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordMismatch": "Passwords don't match",
+      "loginFailed": "Invalid email or password",
+      "emailExists": "This email is already in use"
+    }
+  },
+  "onboarding": {
+    "role": {
+      "title": "What's your role?",
+      "subtitle": "Choose your profile to personalize your experience",
+      "parent": {
+        "title": "Parent",
+        "description": "I'm looking for a nanny or managing my children's care"
+      },
+      "nanny": {
+        "title": "Nanny",
+        "description": "I take care of children and want to organize my schedule"
+      },
+      "continue": "Continue"
+    },
+    "plan": {
+      "title": "Choose your plan",
+      "subtitle": "Start for free, upgrade as you grow",
+      "continue": "Continue"
+    }
+  },
+  "plans": {
+    "free": {
+      "name": "Free",
+      "price": "€0",
+      "period": "/month",
+      "description": "Perfect to discover Manounou",
+      "features": [
+        "1 child",
+        "3 documents",
+        "10 events/day",
+        "Email support"
+      ]
+    },
+    "starter": {
+      "name": "Starter",
+      "price": "€9.99",
+      "period": "/month",
+      "description": "Ideal for small families",
+      "features": [
+        "3 children",
+        "20 documents",
+        "50 events/day",
+        "Priority support",
+        "Schedule export"
+      ]
+    },
+    "full": {
+      "name": "Full",
+      "price": "€13.99",
+      "period": "/month",
+      "description": "For large families and professional nannies",
+      "features": [
+        "Unlimited children",
+        "Unlimited documents",
+        "Unlimited events",
+        "Priority support",
+        "Advanced export",
+        "Detailed analytics"
+      ]
+    },
+    "cta": "Choose this plan",
+    "popular": "Popular"
+  },
+  "dashboard": {
+    "welcome": "Hello {name}",
+    "todayEvents": "Today's events",
+    "quickActions": "Quick actions",
+    "addChild": "Add child",
+    "addEvent": "New event",
+    "uploadDocument": "Add document",
+    "noEvents": "No events scheduled for today"
+  },
+  "children": {
+    "title": "My children",
+    "add": "Add child",
+    "name": "Full name",
+    "birthDate": "Birth date",
+    "allergies": "Allergies",
+    "notes": "Notes",
+    "photo": "Photo",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this child?",
+    "errors": {
+      "nameRequired": "Name is required",
+      "birthDateRequired": "Birth date is required",
+      "birthDateInvalid": "Invalid birth date"
+    }
+  },
+  "planning": {
+    "title": "Schedule",
+    "dayView": "Day view",
+    "weekView": "Week view",
+    "addEvent": "New event",
+    "eventTypes": {
+      "activity": "Activity",
+      "meal": "Meal",
+      "nap": "Nap",
+      "outing": "Outing",
+      "vacation": "Vacation"
+    },
+    "eventForm": {
+      "title": "Title",
+      "type": "Type",
+      "child": "Child",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "notes": "Notes",
+      "save": "Save",
+      "cancel": "Cancel"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Add document",
+    "name": "Document name",
+    "child": "Related child",
+    "file": "File",
+    "uploadButton": "Upload",
+    "view": "View",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this document?",
+    "noDocuments": "No documents added"
+  },
+  "profile": {
+    "title": "My profile",
+    "displayName": "Display name",
+    "email": "Email",
+    "language": "Language",
+    "photo": "Profile photo",
+    "plan": "Current plan",
+    "save": "Save",
+    "changePassword": "Change password",
+    "logout": "Sign out",
+    "upgradePlan": "Change plan"
+  },
+  "notifications": {
+    "planningUpdated": {
+      "subject": "Your schedule has been updated",
+      "body": "Hello {name}, the event \"{title}\" was modified on {date}."
+    },
+    "documentAdded": {
+      "subject": "New document added",
+      "body": "A new document \"{documentName}\" has been added for {childName}."
+    },
+    "vacationAdded": {
+      "subject": "New vacation scheduled",
+      "body": "Vacation has been added from {startDate} to {endDate}."
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Operation successful",
+    "required": "Required field",
+    "optional": "Optional"
+  }
+}
