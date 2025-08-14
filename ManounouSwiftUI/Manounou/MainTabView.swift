@@ -11,6 +11,253 @@ import Supabase
 import UserNotifications
 import Network
 
+// MARK: - Performance & Cache Management System
+
+struct CacheConfiguration {
+    let maxMemorySize: Int // en MB
+    let defaultTTL: TimeInterval // Time To Live en secondes
+    let maxItems: Int
+    
+    static let `default` = CacheConfiguration(
+        maxMemorySize: 50, // 50MB
+        defaultTTL: 300, // 5 minutes
+        maxItems: 1000
+    )
+    
+    static let aggressive = CacheConfiguration(
+        maxMemorySize: 100, // 100MB
+        defaultTTL: 600, // 10 minutes
+        maxItems: 2000
+    )
+}
+
+struct CacheEntry<T> {
+    let data: T
+    let timestamp: Date
+    let ttl: TimeInterval
+    let size: Int // taille estimée en bytes
+    
+    var isExpired: Bool {
+        Date().timeIntervalSince(timestamp) > ttl
+    }
+}
+
+class CacheManager: ObservableObject {
+    @Published var cacheHitRate: Double = 0.0
+    @Published var currentMemoryUsage: Int = 0 // en bytes
+    
+    private var cache: [String: Any] = [:]
+    private var cacheMetadata: [String: (timestamp: Date, ttl: TimeInterval, size: Int)] = [:]
+    private let configuration: CacheConfiguration
+    private let queue = DispatchQueue(label: "CacheManager", attributes: .concurrent)
+    
+    // Statistiques
+    private var hitCount = 0
+    private var missCount = 0
+    
+    init(configuration: CacheConfiguration = .default) {
+        self.configuration = configuration
+        startCleanupTimer()
+    }
+    
+    func set<T>(_ key: String, value: T, ttl: TimeInterval? = nil) {
+        queue.async(flags: .barrier) {
+            let actualTTL = ttl ?? self.configuration.defaultTTL
+            let estimatedSize = self.estimateSize(of: value)
+            
+            // Vérifier si on dépasse la limite mémoire
+            if self.currentMemoryUsage + estimatedSize > self.configuration.maxMemorySize * 1024 * 1024 {
+                self.evictLRU()
+            }
+            
+            self.cache[key] = value
+            self.cacheMetadata[key] = (Date(), actualTTL, estimatedSize)
+            self.currentMemoryUsage += estimatedSize
+            
+            print("📦 Cache SET: \(key) (\(estimatedSize) bytes, TTL: \(actualTTL)s)")
+        }
+    }
+    
+    func get<T>(_ key: String, type: T.Type) -> T? {
+        return queue.sync {
+            guard let metadata = cacheMetadata[key] else {
+                missCount += 1
+                updateHitRate()
+                return nil
+            }
+            
+            // Vérifier expiration
+            if Date().timeIntervalSince(metadata.timestamp) > metadata.ttl {
+                remove(key)
+                missCount += 1
+                updateHitRate()
+                return nil
+            }
+            
+            hitCount += 1
+            updateHitRate()
+            print("🎯 Cache HIT: \(key)")
+            return cache[key] as? T
+        }
+    }
+    
+    func remove(_ key: String) {
+        queue.async(flags: .barrier) {
+            if let metadata = self.cacheMetadata[key] {
+                self.currentMemoryUsage -= metadata.size
+                self.cache.removeValue(forKey: key)
+                self.cacheMetadata.removeValue(forKey: key)
+                print("🗑️ Cache REMOVE: \(key)")
+            }
+        }
+    }
+    
+    func clear() {
+        queue.async(flags: .barrier) {
+            self.cache.removeAll()
+            self.cacheMetadata.removeAll()
+            self.currentMemoryUsage = 0
+            print("🧹 Cache CLEARED")
+        }
+    }
+    
+    private func evictLRU() {
+        // Supprimer les entrées les plus anciennes
+        let sortedKeys = cacheMetadata.sorted { $0.value.timestamp < $1.value.timestamp }
+        let keysToRemove = sortedKeys.prefix(max(1, sortedKeys.count / 4)).map { $0.key }
+        
+        for key in keysToRemove {
+            remove(key)
+        }
+        
+        print("♻️ Cache LRU eviction: \(keysToRemove.count) items removed")
+    }
+    
+    private func estimateSize<T>(of value: T) -> Int {
+        // Estimation basique de la taille
+        if let data = value as? Data {
+            return data.count
+        } else if let string = value as? String {
+            return string.utf8.count
+        } else if let array = value as? [Any] {
+            return array.count * 100 // estimation
+        } else {
+            return 64 // taille par défaut
+        }
+    }
+    
+    private func updateHitRate() {
+        let total = hitCount + missCount
+        if total > 0 {
+            DispatchQueue.main.async {
+                self.cacheHitRate = Double(self.hitCount) / Double(total)
+            }
+        }
+    }
+    
+    private func startCleanupTimer() {
+        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+            self.cleanupExpiredEntries()
+        }
+    }
+    
+    private func cleanupExpiredEntries() {
+        queue.async(flags: .barrier) {
+            let now = Date()
+            let expiredKeys = self.cacheMetadata.compactMap { key, metadata in
+                now.timeIntervalSince(metadata.timestamp) > metadata.ttl ? key : nil
+            }
+            
+            for key in expiredKeys {
+                self.remove(key)
+            }
+            
+            if !expiredKeys.isEmpty {
+                print("🕐 Cache cleanup: \(expiredKeys.count) expired entries removed")
+            }
+        }
+    }
+}
+
+class MemoryManager: ObservableObject {
+    @Published var memoryUsage: Double = 0.0 // en MB
+    @Published var memoryWarning = false
+    
+    private let warningThreshold: Double = 100.0 // 100MB
+    private let criticalThreshold: Double = 200.0 // 200MB
+    
+    init() {
+        startMemoryMonitoring()
+        setupMemoryWarningNotification()
+    }
+    
+    private func startMemoryMonitoring() {
+        Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
+            self.updateMemoryUsage()
+        }
+    }
+    
+    private func updateMemoryUsage() {
+        let usage = getMemoryUsage()
+        DispatchQueue.main.async {
+            self.memoryUsage = usage
+            self.memoryWarning = usage > self.warningThreshold
+            
+            if usage > self.criticalThreshold {
+                self.handleCriticalMemory()
+            }
+        }
+    }
+    
+    private func getMemoryUsage() -> Double {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_,
+                         task_flavor_t(MACH_TASK_BASIC_INFO),
+                         $0,
+                         &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            return Double(info.resident_size) / 1024.0 / 1024.0 // Convert to MB
+        }
+        return 0.0
+    }
+    
+    private func setupMemoryWarningNotification() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.handleMemoryWarning()
+        }
+    }
+    
+    private func handleMemoryWarning() {
+        print("⚠️ Memory warning received - cleaning up")
+        // Notifier les autres composants pour qu'ils libèrent de la mémoire
+        NotificationCenter.default.post(name: .memoryCleanupRequired, object: nil)
+    }
+    
+    private func handleCriticalMemory() {
+        print("🚨 Critical memory usage: \(memoryUsage)MB")
+        handleMemoryWarning()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+}
+
+extension Notification.Name {
+    static let memoryCleanupRequired = Notification.Name("memoryCleanupRequired")
+}
+
 // MARK: - Error Management System
 
 enum AppError: LocalizedError, Equatable {
@@ -666,8 +913,9 @@ enum DocumentType: String, CaseIterable, Codable {
 class ChildrenService {
     private let supabase: SupabaseClient
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager?
     
-    init(errorManager: ErrorManager? = nil) {
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
@@ -677,6 +925,7 @@ class ChildrenService {
         } else {
             self.errorManager = ErrorManager()
         }
+        self.cacheManager = cacheManager
     }
     
     func fetchChildren() async throws -> [Child] {
@@ -771,8 +1020,9 @@ class ChildrenService {
 class EventsService {
     private let supabase: SupabaseClient
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager?
     
-    init(errorManager: ErrorManager? = nil) {
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
@@ -782,6 +1032,7 @@ class EventsService {
         } else {
             self.errorManager = ErrorManager()
         }
+        self.cacheManager = cacheManager
     }
     
     func fetchEvents() async throws -> [Event] {
@@ -889,8 +1140,9 @@ class EventsService {
 class DocumentsService {
     private let supabase: SupabaseClient
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager?
     
-    init(errorManager: ErrorManager? = nil) {
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
@@ -900,6 +1152,7 @@ class DocumentsService {
         } else {
             self.errorManager = ErrorManager()
         }
+        self.cacheManager = cacheManager
     }
     
     func fetchDocuments() async throws -> [Document] {
@@ -970,25 +1223,59 @@ class ChildrenViewModel: ObservableObject {
     
     private let service: ChildrenService
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager
     
-    init(errorManager: ErrorManager? = nil) {
-        let manager = errorManager ?? ErrorManager()
-        self.errorManager = manager
-        self.service = ChildrenService(errorManager: manager)
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
+        let errorMgr = errorManager ?? ErrorManager()
+        let cacheMgr = cacheManager ?? CacheManager()
+        self.errorManager = errorMgr
+        self.cacheManager = cacheMgr
+        self.service = ChildrenService(errorManager: errorMgr, cacheManager: cacheMgr)
+        
+        // Observer les notifications de nettoyage mémoire
+        NotificationCenter.default.addObserver(
+            forName: .memoryCleanupRequired,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.handleMemoryCleanup()
+        }
     }
     
     func loadChildren() async {
+        // Vérifier d'abord le cache
+        let cacheKey = "children_list"
+        if let cachedChildren = cacheManager.get(cacheKey, type: [Child].self) {
+            children = cachedChildren
+            print("📦 Children loaded from cache")
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
         do {
             children = try await service.fetchChildren()
+            // Mettre en cache pour 5 minutes
+            cacheManager.set(cacheKey, value: children, ttl: 300)
         } catch {
             errorManager.handleError(error, context: "ChildrenViewModel.loadChildren")
             errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
         }
         
         isLoading = false
+    }
+    
+    private func handleMemoryCleanup() {
+        // Libérer les ressources non essentielles
+        if !isLoading {
+            // Garder seulement les données essentielles
+            print("🧹 ChildrenViewModel: Memory cleanup performed")
+        }
+    }
+    
+    private func invalidateCache() {
+        cacheManager.remove("children_list")
     }
     
     func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async {
@@ -1003,7 +1290,8 @@ class ChildrenViewModel: ObservableObject {
                 gender: gender
             )
             
-            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            // Invalider le cache et recharger
+            invalidateCache()
             await loadChildren()
             showingAddChild = false
         } catch {
@@ -1026,7 +1314,8 @@ class ChildrenViewModel: ObservableObject {
                 gender: gender
             )
             
-            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            // Invalider le cache et recharger
+            invalidateCache()
             await loadChildren()
             showingEditChild = false
             childToEdit = nil
@@ -1043,6 +1332,7 @@ class ChildrenViewModel: ObservableObject {
         
         do {
             try await service.deleteChild(child)
+            invalidateCache()
             children.removeAll { $0.id == child.id }
         } catch {
             errorMessage = "Erreur lors de la suppression: \(error.localizedDescription)"
@@ -1082,11 +1372,23 @@ class EventsViewModel: ObservableObject {
     
     private let service: EventsService
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager
     
-    init(errorManager: ErrorManager? = nil) {
-        let manager = errorManager ?? ErrorManager()
-        self.errorManager = manager
-        self.service = EventsService(errorManager: manager)
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
+        let errorMgr = errorManager ?? ErrorManager()
+        let cacheMgr = cacheManager ?? CacheManager()
+        self.errorManager = errorMgr
+        self.cacheManager = cacheMgr
+        self.service = EventsService(errorManager: errorMgr, cacheManager: cacheMgr)
+        
+        // Observer les notifications de nettoyage mémoire
+        NotificationCenter.default.addObserver(
+            forName: .memoryCleanupRequired,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.handleMemoryCleanup()
+        }
     }
     
     // Propriétés calculées pour les événements filtrés
@@ -1101,11 +1403,22 @@ class EventsViewModel: ObservableObject {
     }
     
     func loadEvents() async {
+        // Vérifier d'abord le cache
+        let cacheKey = "events_list"
+        if let cachedEvents = cacheManager.get(cacheKey, type: [Event].self) {
+            events = cachedEvents
+            applyFilters()
+            print("📦 Events loaded from cache")
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
         do {
             events = try await service.fetchEvents()
+            // Mettre en cache pour 3 minutes (les événements changent plus souvent)
+            cacheManager.set(cacheKey, value: events, ttl: 180)
             print("✅ \(events.count) événement(s) chargé(s)")
             applyFilters() // Appliquer les filtres après le chargement
             isLoading = false
@@ -1120,6 +1433,25 @@ class EventsViewModel: ObservableObject {
             }
             isLoading = false
         }
+    }
+    
+    private func handleMemoryCleanup() {
+        // Libérer les ressources non essentielles
+        if !isLoading {
+            // Garder seulement les événements récents
+            let recentEvents = events.filter { event in
+                abs(event.startDate.timeIntervalSinceNow) < 86400 * 7 // 7 jours
+            }
+            if recentEvents.count < events.count {
+                events = recentEvents
+                applyFilters()
+                print("🧹 EventsViewModel: Cleaned up old events")
+            }
+        }
+    }
+    
+    private func invalidateCache() {
+        cacheManager.remove("events_list")
     }
     
     // MARK: - Recherche et Filtres
@@ -1268,25 +1600,58 @@ class DocumentsViewModel: ObservableObject {
     
     private let service: DocumentsService
     private let errorManager: ErrorManager
+    private let cacheManager: CacheManager
     
-    init(errorManager: ErrorManager? = nil) {
-        let manager = errorManager ?? ErrorManager()
-        self.errorManager = manager
-        self.service = DocumentsService(errorManager: manager)
+    init(errorManager: ErrorManager? = nil, cacheManager: CacheManager? = nil) {
+        let errorMgr = errorManager ?? ErrorManager()
+        let cacheMgr = cacheManager ?? CacheManager()
+        self.errorManager = errorMgr
+        self.cacheManager = cacheMgr
+        self.service = DocumentsService(errorManager: errorMgr, cacheManager: cacheMgr)
+        
+        // Observer les notifications de nettoyage mémoire
+        NotificationCenter.default.addObserver(
+            forName: .memoryCleanupRequired,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.handleMemoryCleanup()
+        }
     }
     
     func loadDocuments() async {
+        // Vérifier d'abord le cache
+        let cacheKey = "documents_list"
+        if let cachedDocuments = cacheManager.get(cacheKey, type: [Document].self) {
+            documents = cachedDocuments
+            print("📦 Documents loaded from cache")
+            return
+        }
+        
         isLoading = true
         errorMessage = nil
         
         do {
             documents = try await service.fetchDocuments()
+            // Mettre en cache pour 10 minutes (les documents changent moins souvent)
+            cacheManager.set(cacheKey, value: documents, ttl: 600)
             isLoading = false
         } catch {
             errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
             print("❌ Erreur loadDocuments: \(error)")
             isLoading = false
         }
+    }
+    
+    private func handleMemoryCleanup() {
+        // Libérer les ressources non essentielles
+        if !isLoading {
+            print("🧹 DocumentsViewModel: Memory cleanup performed")
+        }
+    }
+    
+    private func invalidateCache() {
+        cacheManager.remove("documents_list")
     }
     
     func addDocument(title: String, description: String?, documentType: DocumentType, fileName: String?, childId: UUID?) async {
@@ -1382,18 +1747,34 @@ struct MainTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var selectedTab = 0
     @StateObject private var errorManager = ErrorManager()
+    @StateObject private var cacheManager = CacheManager()
+    @StateObject private var memoryManager = MemoryManager()
     @StateObject private var childrenViewModel: ChildrenViewModel
     @StateObject private var eventsViewModel: EventsViewModel
     @StateObject private var documentsViewModel: DocumentsViewModel
     @StateObject private var notificationManager = NotificationManager()
     
     init() {
-        // Créer une instance partagée d'ErrorManager
+        // Créer des instances partagées des managers
         let sharedErrorManager = ErrorManager()
+        let sharedCacheManager = CacheManager()
+        let sharedMemoryManager = MemoryManager()
+        
         self._errorManager = StateObject(wrappedValue: sharedErrorManager)
-        self._childrenViewModel = StateObject(wrappedValue: ChildrenViewModel(errorManager: sharedErrorManager))
-        self._eventsViewModel = StateObject(wrappedValue: EventsViewModel(errorManager: sharedErrorManager))
-        self._documentsViewModel = StateObject(wrappedValue: DocumentsViewModel(errorManager: sharedErrorManager))
+        self._cacheManager = StateObject(wrappedValue: sharedCacheManager)
+        self._memoryManager = StateObject(wrappedValue: sharedMemoryManager)
+        self._childrenViewModel = StateObject(wrappedValue: ChildrenViewModel(
+            errorManager: sharedErrorManager,
+            cacheManager: sharedCacheManager
+        ))
+        self._eventsViewModel = StateObject(wrappedValue: EventsViewModel(
+            errorManager: sharedErrorManager,
+            cacheManager: sharedCacheManager
+        ))
+        self._documentsViewModel = StateObject(wrappedValue: DocumentsViewModel(
+            errorManager: sharedErrorManager,
+            cacheManager: sharedCacheManager
+        ))
     }
     
     var body: some View {
@@ -1441,7 +1822,9 @@ struct MainTabView: View {
             
             // Paramètres
             SettingsView()
-                .environmentObject(notificationManager)
+                            .environmentObject(notificationManager)
+                            .environmentObject(cacheManager)
+                            .environmentObject(memoryManager)
                 .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "gearshape.fill")
@@ -3595,6 +3978,8 @@ class NotificationManager: ObservableObject {
 struct SettingsView: View {
     @EnvironmentObject var notificationManager: NotificationManager
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var cacheManager: CacheManager
+    @EnvironmentObject var memoryManager: MemoryManager
     @State private var showingNotificationSettings = false
     
     var body: some View {
@@ -3648,6 +4033,61 @@ struct SettingsView: View {
                             }
                         }
                     }
+                }
+                
+                // Section Performance
+                Section("Performance") {
+                    HStack {
+                        Image(systemName: "speedometer")
+                            .foregroundColor(.green)
+                            .frame(width: 30)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Cache")
+                                .font(.headline)
+                            Text("Taux de réussite: \(String(format: "%.1f", cacheManager.cacheHitRate * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Text("\(cacheManager.currentMemoryUsage / 1024 / 1024) MB")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    HStack {
+                        Image(systemName: "memorychip")
+                            .foregroundColor(memoryManager.memoryWarning ? .red : .blue)
+                            .frame(width: 30)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Mémoire")
+                                .font(.headline)
+                            Text("Utilisation: \(String(format: "%.1f", memoryManager.memoryUsage)) MB")
+                                .font(.caption)
+                                .foregroundColor(memoryManager.memoryWarning ? .red : .secondary)
+                        }
+                        Spacer()
+                        if memoryManager.memoryWarning {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    
+                    Button(action: {
+                        cacheManager.clear()
+                        NotificationCenter.default.post(name: .memoryCleanupRequired, object: nil)
+                    }) {
+                        HStack {
+                            Image(systemName: "trash.fill")
+                                .foregroundColor(.red)
+                                .frame(width: 30)
+                            Text("Vider le cache")
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
                 
                 // Section Compte
