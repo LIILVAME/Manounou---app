@@ -1059,6 +1059,9 @@ struct HomeView: View {
     @EnvironmentObject var eventsViewModel: EventsViewModel
     @State private var showingAddDocument = false
     @State private var showingInviteFamily = false
+    @State private var isRefreshing = false
+    @State private var showingToast = false
+    @State private var toastMessage = ""
     
     var body: some View {
         NavigationView {
@@ -1095,6 +1098,9 @@ struct HomeView: View {
                             icon: "plus.circle.fill",
                             color: .blue
                         ) {
+                            // Haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
                             childrenViewModel.showAddChild()
                         }
                         
@@ -1103,6 +1109,9 @@ struct HomeView: View {
                             icon: "doc.badge.plus",
                             color: .green
                         ) {
+                            // Haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
                             showingAddDocument = true
                         }
                         
@@ -1111,6 +1120,9 @@ struct HomeView: View {
                             icon: "calendar.badge.plus",
                             color: .orange
                         ) {
+                            // Haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
                             eventsViewModel.showAddEvent()
                         }
                         
@@ -1119,6 +1131,9 @@ struct HomeView: View {
                             icon: "person.2.fill",
                             color: .purple
                         ) {
+                            // Haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
                             showingInviteFamily = true
                         }
                     }
@@ -1216,6 +1231,9 @@ struct HomeView: View {
                 }
                 .padding(.top)
             }
+            .refreshable {
+                await refreshData()
+            }
             .navigationTitle("")
             .navigationBarHidden(true)
         }
@@ -1255,6 +1273,51 @@ struct HomeView: View {
             // Load data when the view appears
             await childrenViewModel.loadChildren()
             await eventsViewModel.loadEvents()
+        }
+        .overlay(
+            // Toast message
+            VStack {
+                Spacer()
+                if showingToast {
+                    Text(toastMessage)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.green)
+                        .cornerRadius(8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation {
+                                    showingToast = false
+                                }
+                            }
+                        }
+                }
+            }
+            .padding(.bottom, 100)
+        )
+    }
+    
+    // MARK: - Functions
+    private func refreshData() async {
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Refresh data
+        await childrenViewModel.loadChildren()
+        await eventsViewModel.loadEvents()
+        
+        // Show success toast
+        showToast("Données mises à jour")
+    }
+    
+    private func showToast(_ message: String) {
+        toastMessage = message
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showingToast = true
         }
     }
 }
