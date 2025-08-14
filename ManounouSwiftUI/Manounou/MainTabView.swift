@@ -1,0 +1,2908 @@
+//
+//  MainTabView.swift
+//  Manounou
+//
+//  Created by Assistant on 2025-01-13.
+//
+
+import SwiftUI
+import Foundation
+import Supabase
+
+// MARK: - Child Model
+struct Child: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let firstName: String
+    let lastName: String
+    let dateOfBirth: Date
+    let gender: String?
+    let createdAt: Date
+    let updatedAt: Date
+    
+    var fullName: String {
+        "\(firstName) \(lastName)"
+    }
+    
+    var age: Int {
+        Calendar.current.dateComponents([.year], from: dateOfBirth, to: Date()).year ?? 0
+    }
+    
+    var ageText: String {
+        let age = self.age
+        return age <= 1 ? "\(age) an" : "\(age) ans"
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parentId = "parent_id"
+        case firstName = "first_name"
+        case lastName = "last_name"
+        case dateOfBirth = "date_of_birth"
+        case gender
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+    
+    // Décodeur personnalisé pour gérer les dates Supabase
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        parentId = try container.decode(UUID.self, forKey: .parentId)
+        firstName = try container.decode(String.self, forKey: .firstName)
+        lastName = try container.decode(String.self, forKey: .lastName)
+        gender = try container.decodeIfPresent(String.self, forKey: .gender)
+        
+        // Décodage personnalisé des dates
+        dateOfBirth = try Self.decodeDate(from: container, forKey: .dateOfBirth)
+        createdAt = try Self.decodeDate(from: container, forKey: .createdAt)
+        updatedAt = try Self.decodeDate(from: container, forKey: .updatedAt)
+    }
+    
+    private static func decodeDate(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Date {
+        // Essayer d'abord le décodage standard
+        if let date = try? container.decode(Date.self, forKey: key) {
+            return date
+        }
+        
+        // Si ça échoue, essayer avec une chaîne
+        let dateString = try container.decode(String.self, forKey: key)
+        
+        let formatters = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS+00:00",
+            "yyyy-MM-dd'T'HH:mm:ss+00:00",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd"
+        ]
+        
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        for format in formatters {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+        }
+        
+        throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Cannot decode date string \(dateString)")
+    }
+}
+
+struct CreateChildRequest: Codable {
+    let parentId: UUID
+    let firstName: String
+    let lastName: String
+    let dateOfBirth: Date
+    let gender: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case parentId = "parent_id"
+        case firstName = "first_name"
+        case lastName = "last_name"
+        case dateOfBirth = "date_of_birth"
+        case gender
+    }
+}
+
+enum Gender: String, CaseIterable {
+    case male = "male"
+    case female = "female"
+    case other = "other"
+    
+    var displayName: String {
+        switch self {
+        case .male: return "Garçon"
+        case .female: return "Fille"
+        case .other: return "Autre"
+        }
+    }
+}
+
+// MARK: - Event Model
+struct Event: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let eventType: EventType
+    let startDate: Date
+    let endDate: Date?
+    let childId: UUID?
+    let createdAt: Date
+    let updatedAt: Date
+    
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: startDate)
+    }
+    
+    var isToday: Bool {
+        Calendar.current.isDateInToday(startDate)
+    }
+    
+    var isUpcoming: Bool {
+        startDate > Date()
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parentId = "parent_id"
+        case title
+        case description
+        case eventType = "event_type"
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case childId = "child_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+    
+    // Décodeur personnalisé pour gérer les dates Supabase
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        parentId = try container.decode(UUID.self, forKey: .parentId)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        eventType = try container.decode(EventType.self, forKey: .eventType)
+        childId = try container.decodeIfPresent(UUID.self, forKey: .childId)
+        
+        // Décodage personnalisé des dates
+        startDate = try Self.decodeDate(from: container, forKey: .startDate)
+        endDate = try container.decodeIfPresent(Date.self, forKey: .endDate)
+        createdAt = try Self.decodeDate(from: container, forKey: .createdAt)
+        updatedAt = try Self.decodeDate(from: container, forKey: .updatedAt)
+    }
+    
+    private static func decodeDate(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Date {
+        // Essayer d'abord le décodage standard
+        if let date = try? container.decode(Date.self, forKey: key) {
+            return date
+        }
+        
+        // Si ça échoue, essayer avec une chaîne
+        let dateString = try container.decode(String.self, forKey: key)
+        
+        let formatters = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS+00:00",
+            "yyyy-MM-dd'T'HH:mm:ss+00:00",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd"
+        ]
+        
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        for format in formatters {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+        }
+        
+        throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Cannot decode date string \(dateString)")
+    }
+}
+
+struct CreateEventRequest: Codable {
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let eventType: EventType
+    let startDate: Date
+    let endDate: Date?
+    let childId: UUID?
+    
+    enum CodingKeys: String, CodingKey {
+        case parentId = "parent_id"
+        case title
+        case description
+        case eventType = "event_type"
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case childId = "child_id"
+    }
+}
+
+enum EventType: String, CaseIterable, Codable {
+    case medical = "medical"
+    case school = "school"
+    case activity = "activity"
+    case family = "family"
+    case other = "other"
+    
+    var displayName: String {
+        switch self {
+        case .medical: return "Médical"
+        case .school: return "École"
+        case .activity: return "Activité"
+        case .family: return "Famille"
+        case .other: return "Autre"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .medical: return "cross.fill"
+        case .school: return "book.fill"
+        case .activity: return "figure.run"
+        case .family: return "house.fill"
+        case .other: return "calendar"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .medical: return .red
+        case .school: return .blue
+        case .activity: return .green
+        case .family: return .purple
+        case .other: return .gray
+        }
+    }
+}
+
+// MARK: - Document Model
+
+struct Document: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let documentType: DocumentType
+    let fileName: String?
+    let fileUrl: String?
+    let childId: UUID?
+    let createdAt: Date
+    let updatedAt: Date
+    
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: createdAt)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parentId = "parent_id"
+        case title
+        case description
+        case documentType = "document_type"
+        case fileName = "file_name"
+        case fileUrl = "file_url"
+        case childId = "child_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        parentId = try container.decode(UUID.self, forKey: .parentId)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        documentType = try container.decode(DocumentType.self, forKey: .documentType)
+        fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
+        fileUrl = try container.decodeIfPresent(String.self, forKey: .fileUrl)
+        childId = try container.decodeIfPresent(UUID.self, forKey: .childId)
+        createdAt = try Self.decodeDate(from: container, forKey: .createdAt)
+        updatedAt = try Self.decodeDate(from: container, forKey: .updatedAt)
+    }
+    
+    private static func decodeDate(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Date {
+        if let dateString = try? container.decode(String.self, forKey: key) {
+            let formatter = ISO8601DateFormatter()
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            let formatter2 = DateFormatter()
+            formatter2.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS+00:00"
+            if let date = formatter2.date(from: dateString) {
+                return date
+            }
+            
+            formatter2.dateFormat = "yyyy-MM-dd'T'HH:mm:ss+00:00"
+            if let date = formatter2.date(from: dateString) {
+                return date
+            }
+        }
+        
+        throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Date string does not match expected format")
+    }
+}
+
+struct CreateDocumentRequest: Codable {
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let documentType: DocumentType
+    let fileName: String?
+    let childId: UUID?
+    
+    enum CodingKeys: String, CodingKey {
+        case parentId = "parent_id"
+        case title
+        case description
+        case documentType = "document_type"
+        case fileName = "file_name"
+        case childId = "child_id"
+    }
+}
+
+enum DocumentType: String, CaseIterable, Codable {
+    case medical = "medical"
+    case school = "school"
+    case identity = "identity"
+    case insurance = "insurance"
+    case vaccination = "vaccination"
+    case other = "other"
+    
+    var displayName: String {
+        switch self {
+        case .medical: return "Médical"
+        case .school: return "Scolaire"
+        case .identity: return "Identité"
+        case .insurance: return "Assurance"
+        case .vaccination: return "Vaccination"
+        case .other: return "Autre"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .medical: return "cross.fill"
+        case .school: return "book.fill"
+        case .identity: return "person.text.rectangle.fill"
+        case .insurance: return "shield.fill"
+        case .vaccination: return "syringe.fill"
+        case .other: return "doc.fill"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .medical: return .red
+        case .school: return .blue
+        case .identity: return .purple
+        case .insurance: return .green
+        case .vaccination: return .orange
+        case .other: return .gray
+        }
+    }
+}
+
+// MARK: - Children Service
+class ChildrenService {
+    private let supabase: SupabaseClient
+    
+    init() {
+        self.supabase = SupabaseClient(
+            supabaseURL: AppConfig.Supabase.apiURL,
+            supabaseKey: AppConfig.Supabase.anonKey
+        )
+    }
+    
+    func fetchChildren() async throws -> [Child] {
+        print("📥 Récupération des enfants...")
+        
+        let response: [Child] = try await supabase
+            .from("children")
+            .select()
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+        
+        print("✅ \(response.count) enfant(s) récupéré(s)")
+        return response
+    }
+    
+    func createChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async throws -> Child {
+        print("📝 Création d'un enfant: \(firstName) \(lastName)")
+        
+        let userId = try await supabase.auth.session.user.id
+        
+        let createRequest = CreateChildRequest(
+            parentId: userId,
+            firstName: firstName,
+            lastName: lastName,
+            dateOfBirth: dateOfBirth,
+            gender: gender
+        )
+        
+        let response: [Child] = try await supabase
+            .from("children")
+            .insert(createRequest)
+            .select()
+            .execute()
+            .value
+        
+        guard let child = response.first else {
+            throw NSError(domain: "ChildrenService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Impossible de créer l'enfant"])
+        }
+        
+        print("✅ Enfant créé avec succès: \(child.fullName)")
+        return child
+    }
+    
+    func updateChild(_ child: Child, firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async throws -> Child {
+        print("📝 Mise à jour de l'enfant: \(child.fullName)")
+        
+        let updateRequest = CreateChildRequest(
+            parentId: child.parentId,
+            firstName: firstName,
+            lastName: lastName,
+            dateOfBirth: dateOfBirth,
+            gender: gender
+        )
+        
+        let response: [Child] = try await supabase
+            .from("children")
+            .update(updateRequest)
+            .eq("id", value: child.id)
+            .select()
+            .execute()
+            .value
+        
+        guard let updatedChild = response.first else {
+            throw NSError(domain: "ChildrenService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Impossible de mettre à jour l'enfant"])
+        }
+        
+        print("✅ Enfant mis à jour avec succès: \(updatedChild.fullName)")
+        return updatedChild
+    }
+    
+    func deleteChild(_ child: Child) async throws {
+        print("🗑️ Suppression de l'enfant: \(child.fullName)")
+        
+        try await supabase
+            .from("children")
+            .delete()
+            .eq("id", value: child.id.uuidString)
+            .execute()
+        
+        print("✅ Enfant supprimé avec succès")
+    }
+}
+
+// MARK: - Events Service
+class EventsService {
+    private let supabase: SupabaseClient
+    
+    init() {
+        self.supabase = SupabaseClient(
+            supabaseURL: AppConfig.Supabase.apiURL,
+            supabaseKey: AppConfig.Supabase.anonKey
+        )
+    }
+    
+    func fetchEvents() async throws -> [Event] {
+        print("📅 Récupération des événements depuis Supabase")
+        
+        let response: [Event] = try await supabase
+            .from("events")
+            .select()
+            .order("start_date", ascending: true)
+            .execute()
+            .value
+        
+        print("✅ \(response.count) événement(s) récupéré(s)")
+        return response
+    }
+    
+    func createEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?) async throws -> Event {
+        print("📅 Création d'un nouvel événement: \(title)")
+        
+        guard let currentUser = try? await supabase.auth.user() else {
+            throw NSError(domain: "EventsService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Utilisateur non connecté"])
+        }
+        
+        let createRequest = CreateEventRequest(
+            parentId: currentUser.id,
+            title: title,
+            description: description,
+            eventType: eventType,
+            startDate: startDate,
+            endDate: endDate,
+            childId: childId
+        )
+        
+        let response: [Event] = try await supabase
+            .from("events")
+            .insert(createRequest)
+            .select()
+            .execute()
+            .value
+        
+        guard let newEvent = response.first else {
+            throw NSError(domain: "EventsService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Impossible de créer l'événement"])
+        }
+        
+        print("✅ Événement créé avec succès: \(newEvent.title)")
+        return newEvent
+    }
+    
+    func updateEvent(_ event: Event, title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?) async throws -> Event {
+        print("📝 Mise à jour de l'événement: \(event.title)")
+        
+        let updateRequest = CreateEventRequest(
+            parentId: event.parentId,
+            title: title,
+            description: description,
+            eventType: eventType,
+            startDate: startDate,
+            endDate: endDate,
+            childId: childId
+        )
+        
+        let response: [Event] = try await supabase
+            .from("events")
+            .update(updateRequest)
+            .eq("id", value: event.id)
+            .select()
+            .execute()
+            .value
+        
+        guard let updatedEvent = response.first else {
+            throw NSError(domain: "EventsService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Impossible de mettre à jour l'événement"])
+        }
+        
+        print("✅ Événement mis à jour avec succès: \(updatedEvent.title)")
+        return updatedEvent
+    }
+    
+    func deleteEvent(_ event: Event) async throws {
+        print("🗑️ Suppression de l'événement: \(event.title)")
+        
+        try await supabase
+            .from("events")
+            .delete()
+            .eq("id", value: event.id)
+            .execute()
+        
+        print("✅ Événement supprimé avec succès")
+    }
+}
+
+// MARK: - Documents Service
+
+class DocumentsService {
+    private let supabase: SupabaseClient
+    
+    init() {
+        self.supabase = SupabaseClient(
+            supabaseURL: AppConfig.Supabase.apiURL,
+            supabaseKey: AppConfig.Supabase.anonKey
+        )
+    }
+    
+    func fetchDocuments() async throws -> [Document] {
+        print("📄 Chargement des documents...")
+        
+        // Retourner une liste vide temporairement jusqu'à ce que la table soit créée
+        print("⚠️ Table documents pas encore créée - retour liste vide")
+        return []
+    }
+    
+    func createDocument(title: String, description: String?, documentType: DocumentType, fileName: String?, childId: UUID?) async throws -> Document {
+        print("📄 Création du document: \(title)")
+        
+        // Temporaire : simuler la création d'un document
+        print("⚠️ Table documents pas encore créée - simulation")
+        throw NSError(domain: "DocumentsService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Table documents pas encore créée. Veuillez créer la table dans Supabase."])
+    }
+    
+    func updateDocument(_ document: Document, title: String, description: String?, documentType: DocumentType, fileName: String?, childId: UUID?) async throws -> Document {
+        print("📄 Mise à jour du document: \(document.title)")
+        
+        let updateData: [String: AnyJSON] = [
+            "title": AnyJSON.string(title),
+            "description": description.map(AnyJSON.string) ?? AnyJSON.null,
+            "document_type": AnyJSON.string(documentType.rawValue),
+            "file_name": fileName.map(AnyJSON.string) ?? AnyJSON.null,
+            "child_id": childId.map { AnyJSON.string($0.uuidString) } ?? AnyJSON.null
+        ]
+        
+        let response: [Document] = try await supabase
+            .from("documents")
+            .update(updateData)
+            .eq("id", value: document.id)
+            .select()
+            .execute()
+            .value
+        
+        guard let updatedDocument = response.first else {
+            throw NSError(domain: "DocumentsService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Erreur lors de la mise à jour du document"])
+        }
+        
+        print("✅ Document mis à jour avec succès: \(updatedDocument.title)")
+        return updatedDocument
+    }
+    
+    func deleteDocument(_ document: Document) async throws {
+        print("🗑️ Suppression du document: \(document.title)")
+        
+        try await supabase
+            .from("documents")
+            .delete()
+            .eq("id", value: document.id)
+            .execute()
+        
+        print("✅ Document supprimé avec succès")
+    }
+}
+
+// MARK: - Children ViewModel
+@MainActor
+class ChildrenViewModel: ObservableObject {
+    @Published var children: [Child] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var showingAddChild = false
+    @Published var showingEditChild = false
+    @Published var childToEdit: Child?
+    
+    private let service = ChildrenService()
+    
+    func loadChildren() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            children = try await service.fetchChildren()
+        } catch {
+            errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
+            print("❌ Erreur loadChildren: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            _ = try await service.createChild(
+                firstName: firstName,
+                lastName: lastName,
+                dateOfBirth: dateOfBirth,
+                gender: gender
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadChildren()
+            showingAddChild = false
+        } catch {
+            errorMessage = "Erreur lors de l'ajout: \(error.localizedDescription)"
+            print("❌ Erreur addChild: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func updateChild(_ child: Child, firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            _ = try await service.updateChild(
+                child,
+                firstName: firstName,
+                lastName: lastName,
+                dateOfBirth: dateOfBirth,
+                gender: gender
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadChildren()
+            showingEditChild = false
+            childToEdit = nil
+        } catch {
+            errorMessage = "Erreur lors de la modification: \(error.localizedDescription)"
+            print("❌ Erreur updateChild: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func deleteChild(_ child: Child) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await service.deleteChild(child)
+            children.removeAll { $0.id == child.id }
+        } catch {
+            errorMessage = "Erreur lors de la suppression: \(error.localizedDescription)"
+            print("❌ Erreur deleteChild: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    func showAddChild() {
+        showingAddChild = true
+    }
+    
+    func showEditChild(_ child: Child) {
+        childToEdit = child
+        showingEditChild = true
+    }
+    
+    func dismissError() {
+        errorMessage = nil
+    }
+}
+
+// MARK: - Events ViewModel
+@MainActor
+class EventsViewModel: ObservableObject {
+    @Published var events: [Event] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var showingAddEvent = false
+    @Published var showingEditEvent = false
+    @Published var eventToEdit: Event?
+    
+    private let service = EventsService()
+    
+    func loadEvents() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            events = try await service.fetchEvents()
+            isLoading = false
+        } catch {
+            errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
+            print("❌ Erreur loadEvents: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func addEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let newEvent = try await service.createEvent(
+                title: title,
+                description: description,
+                eventType: eventType,
+                startDate: startDate,
+                endDate: endDate,
+                childId: childId
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadEvents()
+            showingAddEvent = false
+        } catch {
+            errorMessage = "Erreur lors de l'ajout: \(error.localizedDescription)"
+            print("❌ Erreur addEvent: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func updateEvent(_ event: Event, title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let updatedEvent = try await service.updateEvent(
+                event,
+                title: title,
+                description: description,
+                eventType: eventType,
+                startDate: startDate,
+                endDate: endDate,
+                childId: childId
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadEvents()
+            showingEditEvent = false
+            eventToEdit = nil
+        } catch {
+            errorMessage = "Erreur lors de la modification: \(error.localizedDescription)"
+            print("❌ Erreur updateEvent: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func deleteEvent(_ event: Event) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await service.deleteEvent(event)
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadEvents()
+        } catch {
+            errorMessage = "Erreur lors de la suppression: \(error.localizedDescription)"
+            print("❌ Erreur deleteEvent: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func showAddEvent() {
+        showingAddEvent = true
+    }
+    
+    func showEditEvent(_ event: Event) {
+        eventToEdit = event
+        showingEditEvent = true
+    }
+    
+    func dismissError() {
+        errorMessage = nil
+    }
+    
+    var upcomingEvents: [Event] {
+        events.filter { $0.isUpcoming }.prefix(3).map { $0 }
+    }
+    
+    var todayEvents: [Event] {
+        events.filter { $0.isToday }
+    }
+}
+
+// MARK: - Documents ViewModel
+
+@MainActor
+class DocumentsViewModel: ObservableObject {
+    @Published var documents: [Document] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var showingAddDocument = false
+    @Published var showingEditDocument = false
+    @Published var documentToEdit: Document?
+    
+    private let service = DocumentsService()
+    
+    func loadDocuments() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            documents = try await service.fetchDocuments()
+            isLoading = false
+        } catch {
+            errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
+            print("❌ Erreur loadDocuments: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func addDocument(title: String, description: String?, documentType: DocumentType, fileName: String?, childId: UUID?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            _ = try await service.createDocument(
+                title: title,
+                description: description,
+                documentType: documentType,
+                fileName: fileName,
+                childId: childId
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadDocuments()
+            showingAddDocument = false
+        } catch {
+            errorMessage = "Erreur lors de l'ajout: \(error.localizedDescription)"
+            print("❌ Erreur addDocument: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func updateDocument(_ document: Document, title: String, description: String?, documentType: DocumentType, fileName: String?, childId: UUID?) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            _ = try await service.updateDocument(
+                document,
+                title: title,
+                description: description,
+                documentType: documentType,
+                fileName: fileName,
+                childId: childId
+            )
+            
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadDocuments()
+            showingEditDocument = false
+            documentToEdit = nil
+        } catch {
+            errorMessage = "Erreur lors de la mise à jour: \(error.localizedDescription)"
+            print("❌ Erreur updateDocument: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func deleteDocument(_ document: Document) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await service.deleteDocument(document)
+            // Recharger la liste complète depuis Supabase pour assurer la synchronisation
+            await loadDocuments()
+        } catch {
+            errorMessage = "Erreur lors de la suppression: \(error.localizedDescription)"
+            print("❌ Erreur deleteDocument: \(error)")
+            isLoading = false
+        }
+    }
+    
+    func showAddDocument() {
+        showingAddDocument = true
+    }
+    
+    func showEditDocument(_ document: Document) {
+        documentToEdit = document
+        showingEditDocument = true
+    }
+    
+    func dismissError() {
+        errorMessage = nil
+    }
+    
+    var medicalDocuments: [Document] {
+        documents.filter { $0.documentType == .medical }
+    }
+    
+    var schoolDocuments: [Document] {
+        documents.filter { $0.documentType == .school }
+    }
+    
+    var identityDocuments: [Document] {
+        documents.filter { $0.documentType == .identity }
+    }
+}
+
+struct MainTabView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var selectedTab = 0
+    @StateObject private var childrenViewModel = ChildrenViewModel()
+    @StateObject private var eventsViewModel = EventsViewModel()
+    @StateObject private var documentsViewModel = DocumentsViewModel()
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            // Home Tab
+            HomeView()
+                .environmentObject(childrenViewModel)
+                .environmentObject(eventsViewModel)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Accueil")
+                }
+                .tag(0)
+            
+            // Children Tab
+            ChildrenView()
+                .environmentObject(childrenViewModel)
+                .tabItem {
+                    Image(systemName: "figure.2.and.child.holdinghands")
+                    Text("Enfants")
+                }
+                .tag(1)
+            
+            // Calendar Tab
+            CalendarView()
+                .environmentObject(eventsViewModel)
+                .environmentObject(childrenViewModel)
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Calendrier")
+                }
+                .tag(2)
+            
+            // Documents Tab
+            DocumentsView()
+                .environmentObject(documentsViewModel)
+                .environmentObject(childrenViewModel)
+                .tabItem {
+                    Image(systemName: "doc.fill")
+                    Text("Documents")
+                }
+                .tag(3)
+            
+            // Profil
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("Profil")
+                }
+                .tag(4)
+        }
+        .accentColor(.pink)
+    }
+}
+
+// MARK: - Home View
+struct HomeView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    @EnvironmentObject var eventsViewModel: EventsViewModel
+    @State private var showingAddDocument = false
+    @State private var showingInviteFamily = false
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Bonjour \(authManager.userProfile?.firstName ?? "Utilisateur") !")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                Text("Bienvenue dans votre carnet de famille")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {}) {
+                                Image(systemName: "bell")
+                                    .font(.title2)
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Quick Actions
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                        QuickActionCard(
+                            title: "Ajouter un enfant",
+                            icon: "plus.circle.fill",
+                            color: .blue
+                        ) {
+                            childrenViewModel.showAddChild()
+                        }
+                        
+                        QuickActionCard(
+                            title: "Nouveau document",
+                            icon: "doc.badge.plus",
+                            color: .green
+                        ) {
+                            showingAddDocument = true
+                        }
+                        
+                        QuickActionCard(
+                            title: "Ajouter un événement",
+                            icon: "calendar.badge.plus",
+                            color: .orange
+                        ) {
+                            eventsViewModel.showAddEvent()
+                        }
+                        
+                        QuickActionCard(
+                            title: "Inviter la famille",
+                            icon: "person.2.fill",
+                            color: .purple
+                        ) {
+                            showingInviteFamily = true
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Family Overview
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Votre famille")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        
+                        HStack(spacing: 16) {
+                            // Children Count Card
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "figure.2.and.child.holdinghands")
+                                        .font(.title2)
+                                        .foregroundColor(.blue)
+                                    
+                                    Spacer()
+                                }
+                                
+                                Text("\(childrenViewModel.children.count)")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                
+                                Text(childrenViewModel.children.count <= 1 ? "enfant" : "enfants")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(12)
+                            
+                            // Events Count Card
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "calendar")
+                                        .font(.title2)
+                                        .foregroundColor(.orange)
+                                    
+                                    Spacer()
+                                }
+                                
+                                Text("\(eventsViewModel.upcomingEvents.count)")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                
+                                Text("à venir")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Upcoming Events
+                    if !eventsViewModel.upcomingEvents.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Prochains événements")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                
+                                Spacer()
+                                
+                                Button("Voir tout") {
+                                    // Switch to calendar tab
+                                }
+                                .font(.footnote)
+                                .foregroundColor(.pink)
+                            }
+                            .padding(.horizontal)
+                            
+                            VStack(spacing: 12) {
+                                ForEach(eventsViewModel.upcomingEvents) { event in
+                                    UpcomingEventRow(event: event)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    
+                    Spacer(minLength: 100)
+                }
+                .padding(.top)
+            }
+            .navigationTitle("")
+            .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $childrenViewModel.showingAddChild) {
+            AddChildView { firstName, lastName, dateOfBirth, gender in
+                Task {
+                    await childrenViewModel.addChild(
+                        firstName: firstName,
+                        lastName: lastName,
+                        dateOfBirth: dateOfBirth,
+                        gender: gender
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddDocument) {
+            AddDocumentView()
+        }
+        .sheet(isPresented: $eventsViewModel.showingAddEvent) {
+            AddEventView { title, description, eventType, startDate, endDate, childId in
+                Task {
+                    await eventsViewModel.addEvent(
+                        title: title,
+                        description: description,
+                        eventType: eventType,
+                        startDate: startDate,
+                        endDate: endDate,
+                        childId: childId
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $showingInviteFamily) {
+            InviteFamilyView()
+        }
+        .task {
+            // Load data when the view appears
+            await childrenViewModel.loadChildren()
+            await eventsViewModel.loadEvents()
+        }
+    }
+}
+
+// MARK: - Upcoming Event Row
+struct UpcomingEventRow: View {
+    let event: Event
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Event Type Icon
+            Circle()
+                .fill(event.eventType.color.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: event.eventType.icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(event.eventType.color)
+                }
+            
+            // Event Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                
+                Text(event.formattedDate)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                if event.isToday {
+                    Text("Aujourd'hui")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.2))
+                        .foregroundColor(.orange)
+                        .cornerRadius(4)
+                }
+            }
+            
+            Spacer()
+            
+            // Arrow
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Quick Action Card
+struct QuickActionCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 32))
+                    .foregroundColor(color)
+                
+                Text(title)
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+            .background(Color(.systemGray6))
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Activity Row
+struct ActivityRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+                .frame(width: 24, height: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Placeholder Views
+struct ChildrenView: View {
+    @EnvironmentObject var viewModel: ChildrenViewModel
+    
+    var body: some View {
+        NavigationView {
+            Group {
+                if viewModel.children.isEmpty && !viewModel.isLoading {
+                    // Empty state
+                    VStack(spacing: 30) {
+                        Image(systemName: "figure.2.and.child.holdinghands")
+                            .font(.system(size: 60))
+                            .foregroundColor(.pink)
+                        
+                        Text("Aucun enfant")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("Ajoutez votre premier enfant pour commencer")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        Button(action: viewModel.showAddChild) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Ajouter un enfant")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.pink)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.top, 40)
+                } else {
+                    // Children list
+                    List {
+                        ForEach(viewModel.children) { child in
+                            ChildRow(
+                                child: child,
+                                onEdit: {
+                                    viewModel.showEditChild(child)
+                                },
+                                onDelete: {
+                                    Task {
+                                        await viewModel.deleteChild(child)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .refreshable {
+                        await viewModel.loadChildren()
+                    }
+                }
+            }
+            .navigationTitle("Enfants")
+            .toolbar {
+                if !viewModel.children.isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: viewModel.showAddChild) {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
+            }
+            .overlay {
+                if viewModel.isLoading {
+                    ProgressView("Chargement...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showingAddChild) {
+            AddChildView { firstName, lastName, dateOfBirth, gender in
+                Task {
+                    await viewModel.addChild(
+                        firstName: firstName,
+                        lastName: lastName,
+                        dateOfBirth: dateOfBirth,
+                        gender: gender
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showingEditChild) {
+            if let childToEdit = viewModel.childToEdit {
+                EditChildView(child: childToEdit) { firstName, lastName, dateOfBirth, gender in
+                    Task {
+                        await viewModel.updateChild(
+                            childToEdit,
+                            firstName: firstName,
+                            lastName: lastName,
+                            dateOfBirth: dateOfBirth,
+                            gender: gender
+                        )
+                    }
+                }
+            }
+        }
+        .alert("Erreur", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") {
+                viewModel.dismissError()
+            }
+        } message: {
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+            }
+        }
+        .task {
+            await viewModel.loadChildren()
+        }
+    }
+}
+
+struct CalendarView: View {
+    @EnvironmentObject var eventsViewModel: EventsViewModel
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    
+    var body: some View {
+        NavigationView {
+            Group {
+                if eventsViewModel.events.isEmpty && !eventsViewModel.isLoading {
+                    // Empty state
+                    VStack(spacing: 30) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 60))
+                            .foregroundColor(.pink)
+                        
+                        Text("Aucun événement")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("Ajoutez votre premier événement pour commencer")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        Button(action: eventsViewModel.showAddEvent) {
+                            HStack {
+                                Image(systemName: "calendar.badge.plus")
+                                Text("Ajouter un événement")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.pink)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.top, 40)
+                } else {
+                    // Events list
+                    List {
+                        ForEach(eventsViewModel.events) { event in
+                            EventRow(
+                                event: event,
+                                onEdit: {
+                                    eventsViewModel.showEditEvent(event)
+                                },
+                                onDelete: {
+                                    Task {
+                                        await eventsViewModel.deleteEvent(event)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .refreshable {
+                        await eventsViewModel.loadEvents()
+                    }
+                }
+            }
+            .navigationTitle("Calendrier")
+            .toolbar {
+                if !eventsViewModel.events.isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: eventsViewModel.showAddEvent) {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
+            }
+            .overlay {
+                if eventsViewModel.isLoading {
+                    ProgressView("Chargement...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+            .task {
+                await eventsViewModel.loadEvents()
+            }
+        }
+        .sheet(isPresented: $eventsViewModel.showingAddEvent) {
+            AddEventView { title, description, eventType, startDate, endDate, childId in
+                Task {
+                    await eventsViewModel.addEvent(
+                        title: title,
+                        description: description,
+                        eventType: eventType,
+                        startDate: startDate,
+                        endDate: endDate,
+                        childId: childId
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $eventsViewModel.showingEditEvent) {
+            if let eventToEdit = eventsViewModel.eventToEdit {
+                EditEventView(event: eventToEdit) { title, description, eventType, startDate, endDate, childId in
+                    Task {
+                        await eventsViewModel.updateEvent(
+                            eventToEdit,
+                            title: title,
+                            description: description,
+                            eventType: eventType,
+                            startDate: startDate,
+                            endDate: endDate,
+                            childId: childId
+                        )
+                    }
+                }
+            }
+        }
+        .alert("Erreur", isPresented: .constant(eventsViewModel.errorMessage != nil)) {
+            Button("OK") {
+                eventsViewModel.dismissError()
+            }
+        } message: {
+            Text(eventsViewModel.errorMessage ?? "")
+        }
+    }
+}
+
+struct DocumentsView: View {
+    @EnvironmentObject var documentsViewModel: DocumentsViewModel
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if documentsViewModel.isLoading {
+                    ProgressView("Chargement des documents...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if documentsViewModel.documents.isEmpty {
+                    // État vide
+                    VStack(spacing: 30) {
+                        Image(systemName: "doc.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.pink)
+                        
+                        Text("Aucun document")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Text("Stockez vos documents importants\npour votre famille")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        Button(action: {
+                            documentsViewModel.showAddDocument()
+                        }) {
+                            HStack {
+                                Image(systemName: "doc.badge.plus")
+                                Text("Ajouter un document")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.pink)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                        
+                        Spacer()
+                    }
+                    .padding(.top, 40)
+                } else {
+                    // Liste des documents
+                    List {
+                        ForEach(documentsViewModel.documents) { document in
+                            DocumentRow(
+                                document: document,
+                                onEdit: {
+                                    documentsViewModel.showEditDocument(document)
+                                },
+                                onDelete: {
+                                    Task {
+                                        await documentsViewModel.deleteDocument(document)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .listStyle(PlainListStyle())
+                }
+                
+                if let errorMessage = documentsViewModel.errorMessage {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                        .onTapGesture {
+                            documentsViewModel.dismissError()
+                        }
+                }
+            }
+            .navigationTitle("Documents")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        documentsViewModel.showAddDocument()
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $documentsViewModel.showingAddDocument) {
+            AddDocumentView { title, description, documentType, fileName, childId in
+                Task {
+                    await documentsViewModel.addDocument(
+                        title: title,
+                        description: description,
+                        documentType: documentType,
+                        fileName: fileName,
+                        childId: childId
+                    )
+                }
+            }
+            .environmentObject(childrenViewModel)
+        }
+        .sheet(isPresented: $documentsViewModel.showingEditDocument) {
+            if let document = documentsViewModel.documentToEdit {
+                EditDocumentView(
+                    document: document,
+                    onSave: { title, description, documentType, fileName, childId in
+                        Task {
+                            await documentsViewModel.updateDocument(
+                                document,
+                                title: title,
+                                description: description,
+                                documentType: documentType,
+                                fileName: fileName,
+                                childId: childId
+                            )
+                        }
+                    }
+                )
+                .environmentObject(childrenViewModel)
+            }
+        }
+        .task {
+            await documentsViewModel.loadDocuments()
+        }
+    }
+}
+
+struct ProfileView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var showingPersonalInfo = false
+    @State private var showingNotifications = false
+    @State private var showingPrivacy = false
+    @State private var showingHelp = false
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 30) {
+                // Profile Header
+                VStack(spacing: 16) {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.pink)
+                    
+                    Text(authManager.currentUser?.email ?? "Utilisateur")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text("Mon Profil")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Profile Options
+                VStack(spacing: 16) {
+                    ProfileOption(icon: "person.fill", title: "Informations personnelles") {
+                        showingPersonalInfo = true
+                    }
+                    ProfileOption(icon: "bell.fill", title: "Notifications") {
+                        showingNotifications = true
+                    }
+                    ProfileOption(icon: "lock.fill", title: "Confidentialité") {
+                        showingPrivacy = true
+                    }
+                    ProfileOption(icon: "questionmark.circle.fill", title: "Aide") {
+                        showingHelp = true
+                    }
+                }
+                
+                Spacer()
+                
+                // Sign Out Button
+                Button(action: {
+                    Task {
+                        await authManager.signOut()
+                    }
+                }) {
+                    Text("Se déconnecter")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+            }
+            .padding(.top, 40)
+            .navigationTitle("")
+            .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $showingPersonalInfo) {
+            PersonalInfoView()
+        }
+        .sheet(isPresented: $showingNotifications) {
+            NotificationsView()
+        }
+        .sheet(isPresented: $showingPrivacy) {
+            PrivacyView()
+        }
+        .sheet(isPresented: $showingHelp) {
+            HelpView()
+        }
+    }
+}
+
+struct ProfileOption: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(.pink)
+                    .frame(width: 24)
+                
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            .padding(.horizontal)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Modal Views (placeholder supprimé - implémentation complète plus bas)
+
+// MARK: - Document Row
+
+struct DocumentRow: View {
+    let document: Document
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icône du type de document
+            Circle()
+                .fill(document.documentType.color.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay {
+                    Image(systemName: document.documentType.icon)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(document.documentType.color)
+                }
+            
+            // Informations du document
+            VStack(alignment: .leading, spacing: 4) {
+                Text(document.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                if let description = document.description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                
+                HStack {
+                    Text(document.documentType.displayName)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(document.documentType.color.opacity(0.2))
+                        .foregroundColor(document.documentType.color)
+                        .cornerRadius(8)
+                    
+                    Text(document.formattedDate)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Menu d'actions
+            Menu {
+                Button("Modifier", action: onEdit)
+                Button("Supprimer", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Add Document View
+
+struct AddDocumentView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    @State private var title = ""
+    @State private var description = ""
+    @State private var selectedDocumentType: DocumentType = .other
+    @State private var fileName = ""
+    @State private var selectedChildId: UUID?
+    @State private var isLoading = false
+    
+    let onSave: (String, String?, DocumentType, String?, UUID?) -> Void
+    
+    init(onSave: @escaping (String, String?, DocumentType, String?, UUID?) -> Void = { _, _, _, _, _ in }) {
+        self.onSave = onSave
+    }
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations du document") {
+                    TextField("Titre", text: $title)
+                        .textContentType(.none)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Type", selection: $selectedDocumentType) {
+                        ForEach(DocumentType.allCases, id: \.self) { documentType in
+                            HStack {
+                                Image(systemName: documentType.icon)
+                                    .foregroundColor(documentType.color)
+                                Text(documentType.displayName)
+                            }
+                            .tag(documentType)
+                        }
+                    }
+                }
+                
+                Section("Fichier") {
+                    TextField("Nom du fichier (optionnel)", text: $fileName)
+                        .textContentType(.none)
+                }
+                
+                if !childrenViewModel.children.isEmpty {
+                    Section("Enfant associé") {
+                        Picker("Enfant", selection: $selectedChildId) {
+                            Text("Aucun enfant").tag(nil as UUID?)
+                            ForEach(childrenViewModel.children, id: \.id) { child in
+                                Text(child.fullName).tag(child.id as UUID?)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Nouveau document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Ajouter") {
+                        saveDocument()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Ajout en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+        .task {
+            await childrenViewModel.loadChildren()
+        }
+    }
+    
+    private func saveDocument() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.isEmpty ? nil : description.trimmingCharacters(in: .whitespaces),
+            selectedDocumentType,
+            fileName.isEmpty ? nil : fileName.trimmingCharacters(in: .whitespaces),
+            selectedChildId
+        )
+        
+        // Le loading sera géré par le ViewModel
+        isLoading = false
+        dismiss()
+    }
+}
+
+// MARK: - Edit Document View
+
+struct EditDocumentView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    @State private var title: String
+    @State private var description: String
+    @State private var selectedDocumentType: DocumentType
+    @State private var fileName: String
+    @State private var selectedChildId: UUID?
+    @State private var isLoading = false
+    
+    let document: Document
+    let onSave: (String, String?, DocumentType, String?, UUID?) -> Void
+    
+    init(document: Document, onSave: @escaping (String, String?, DocumentType, String?, UUID?) -> Void) {
+        self.document = document
+        self.onSave = onSave
+        self._title = State(initialValue: document.title)
+        self._description = State(initialValue: document.description ?? "")
+        self._selectedDocumentType = State(initialValue: document.documentType)
+        self._fileName = State(initialValue: document.fileName ?? "")
+        self._selectedChildId = State(initialValue: document.childId)
+    }
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations du document") {
+                    TextField("Titre", text: $title)
+                        .textContentType(.none)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Type", selection: $selectedDocumentType) {
+                        ForEach(DocumentType.allCases, id: \.self) { documentType in
+                            HStack {
+                                Image(systemName: documentType.icon)
+                                    .foregroundColor(documentType.color)
+                                Text(documentType.displayName)
+                            }
+                            .tag(documentType)
+                        }
+                    }
+                }
+                
+                Section("Fichier") {
+                    TextField("Nom du fichier (optionnel)", text: $fileName)
+                        .textContentType(.none)
+                }
+                
+                if !childrenViewModel.children.isEmpty {
+                    Section("Enfant associé") {
+                        Picker("Enfant", selection: $selectedChildId) {
+                            Text("Aucun enfant").tag(nil as UUID?)
+                            ForEach(childrenViewModel.children, id: \.id) { child in
+                                Text(child.fullName).tag(child.id as UUID?)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Modifier le document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Enregistrer") {
+                        saveDocument()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Modification en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+        .task {
+            await childrenViewModel.loadChildren()
+        }
+    }
+    
+    private func saveDocument() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.isEmpty ? nil : description.trimmingCharacters(in: .whitespaces),
+            selectedDocumentType,
+            fileName.isEmpty ? nil : fileName.trimmingCharacters(in: .whitespaces),
+            selectedChildId
+        )
+        
+        // Le loading sera géré par le ViewModel
+        isLoading = false
+        dismiss()
+    }
+}
+
+struct InviteFamilyView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Inviter la famille")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Fonctionnalité en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Inviter")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PersonalInfoView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authManager: AuthManager
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var successMessage: String?
+    
+    var isFormValid: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations personnelles") {
+                    TextField("Prénom", text: $firstName)
+                        .textContentType(.givenName)
+                    
+                    TextField("Nom", text: $lastName)
+                        .textContentType(.familyName)
+                }
+                
+                Section("Compte") {
+                    HStack {
+                        Text("Email")
+                        Spacer()
+                        Text(authManager.currentUser?.email ?? "N/A")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                if let errorMessage = errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+                
+                if let successMessage = successMessage {
+                    Section {
+                        Text(successMessage)
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Profil")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Enregistrer") {
+                        saveProfile()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Enregistrement...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+        .onAppear {
+            loadCurrentProfile()
+        }
+    }
+    
+    private func loadCurrentProfile() {
+        if let profile = authManager.userProfile {
+            firstName = profile.firstName
+            lastName = profile.lastName
+        }
+    }
+    
+    private func saveProfile() {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        
+        Task {
+            do {
+                try await authManager.updateUserProfile(
+                    firstName: firstName.trimmingCharacters(in: .whitespaces),
+                    lastName: lastName.trimmingCharacters(in: .whitespaces)
+                )
+                
+                await MainActor.run {
+                    successMessage = "Profil mis à jour avec succès !"
+                    isLoading = false
+                    
+                    // Fermer la vue après 1 seconde
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        dismiss()
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Erreur lors de la mise à jour : \(error.localizedDescription)"
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+struct NotificationsView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Notifications")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Fonctionnalité en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PrivacyView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Confidentialité")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Fonctionnalité en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Confidentialité")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Aide")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("Fonctionnalité en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Aide")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Child Row View
+struct ChildRow: View {
+    let child: Child
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Avatar
+            Circle()
+                .fill(Color.pink.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay {
+                    Text(String(child.firstName.prefix(1)))
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.pink)
+                }
+            
+            // Child Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(child.fullName)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Text(child.ageText)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                if let gender = child.gender {
+                    Text(Gender(rawValue: gender)?.displayName ?? gender)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Actions
+            Menu {
+                Button("Modifier", action: onEdit)
+                Button("Supprimer", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Add Child View
+struct AddChildView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var dateOfBirth = Date()
+    @State private var selectedGender: Gender? = nil
+    @State private var isLoading = false
+    
+    let onSave: (String, String, Date, String?) -> Void
+    
+    init(onSave: @escaping (String, String, Date, String?) -> Void = { _, _, _, _ in }) {
+        self.onSave = onSave
+    }
+    
+    var isFormValid: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations de l'enfant") {
+                    TextField("Prénom", text: $firstName)
+                        .textContentType(.givenName)
+                    
+                    TextField("Nom", text: $lastName)
+                        .textContentType(.familyName)
+                    
+                    DatePicker(
+                        "Date de naissance",
+                        selection: $dateOfBirth,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    
+                    Picker("Genre", selection: $selectedGender) {
+                        Text("Non spécifié").tag(nil as Gender?)
+                        ForEach(Gender.allCases, id: \.self) { gender in
+                            Text(gender.displayName).tag(gender as Gender?)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Nouvel enfant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Ajouter") {
+                        saveChild()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Ajout en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveChild() {
+        isLoading = true
+        
+        onSave(
+            firstName.trimmingCharacters(in: .whitespaces),
+            lastName.trimmingCharacters(in: .whitespaces),
+            dateOfBirth,
+            selectedGender?.rawValue
+        )
+        
+        // Note: isLoading sera géré par le ViewModel après l'opération async
+        dismiss()
+    }
+}
+
+// MARK: - Edit Child View
+struct EditChildView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var firstName: String
+    @State private var lastName: String
+    @State private var dateOfBirth: Date
+    @State private var selectedGender: Gender?
+    @State private var isLoading = false
+    
+    let child: Child
+    let onSave: (String, String, Date, String?) -> Void
+    
+    init(child: Child, onSave: @escaping (String, String, Date, String?) -> Void) {
+        self.child = child
+        self.onSave = onSave
+        self._firstName = State(initialValue: child.firstName)
+        self._lastName = State(initialValue: child.lastName)
+        self._dateOfBirth = State(initialValue: child.dateOfBirth)
+        self._selectedGender = State(initialValue: child.gender.flatMap { Gender(rawValue: $0) })
+    }
+    
+    var isFormValid: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations de l'enfant") {
+                    TextField("Prénom", text: $firstName)
+                        .textContentType(.givenName)
+                    
+                    TextField("Nom", text: $lastName)
+                        .textContentType(.familyName)
+                    
+                    DatePicker(
+                        "Date de naissance",
+                        selection: $dateOfBirth,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    
+                    Picker("Genre", selection: $selectedGender) {
+                        Text("Non spécifié").tag(nil as Gender?)
+                        ForEach(Gender.allCases, id: \.self) { gender in
+                            Text(gender.displayName).tag(gender as Gender?)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Modifier l'enfant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Enregistrer") {
+                        saveChild()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Modification en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveChild() {
+        isLoading = true
+        
+        onSave(
+            firstName.trimmingCharacters(in: .whitespaces),
+            lastName.trimmingCharacters(in: .whitespaces),
+            dateOfBirth,
+            selectedGender?.rawValue
+        )
+        
+        // Note: isLoading sera géré par le ViewModel après l'opération async
+        dismiss()
+    }
+}
+
+// MARK: - Event Row View
+struct EventRow: View {
+    let event: Event
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Event Type Icon
+            Circle()
+                .fill(event.eventType.color.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay {
+                    Image(systemName: event.eventType.icon)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(event.eventType.color)
+                }
+            
+            // Event Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Text(event.formattedDate)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    Text(event.eventType.displayName)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(event.eventType.color.opacity(0.2))
+                        .foregroundColor(event.eventType.color)
+                        .cornerRadius(8)
+                    
+                    if event.isToday {
+                        Text("Aujourd'hui")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.2))
+                            .foregroundColor(.orange)
+                            .cornerRadius(8)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Actions
+            Menu {
+                Button("Modifier", action: onEdit)
+                Button("Supprimer", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Add Event View
+struct AddEventView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var description = ""
+    @State private var selectedEventType: EventType = .other
+    @State private var startDate = Date()
+    @State private var endDate: Date?
+    @State private var hasEndDate = false
+    @State private var selectedChildId: UUID?
+    @State private var isLoading = false
+    
+    let onSave: (String, String?, EventType, Date, Date?, UUID?) -> Void
+    
+    init(onSave: @escaping (String, String?, EventType, Date, Date?, UUID?) -> Void = { _, _, _, _, _, _ in }) {
+        self.onSave = onSave
+    }
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations de l'événement") {
+                    TextField("Titre", text: $title)
+                        .textContentType(.none)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Type", selection: $selectedEventType) {
+                        ForEach(EventType.allCases, id: \.self) { eventType in
+                            HStack {
+                                Image(systemName: eventType.icon)
+                                    .foregroundColor(eventType.color)
+                                Text(eventType.displayName)
+                            }
+                            .tag(eventType)
+                        }
+                    }
+                }
+                
+                Section("Date et heure") {
+                    DatePicker(
+                        "Début",
+                        selection: $startDate,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    
+                    Toggle("Date de fin", isOn: $hasEndDate)
+                    
+                    if hasEndDate {
+                        DatePicker(
+                            "Fin",
+                            selection: Binding(
+                                get: { endDate ?? startDate.addingTimeInterval(3600) },
+                                set: { endDate = $0 }
+                            ),
+                            in: startDate...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Nouvel événement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Ajouter") {
+                        saveEvent()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Ajout en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveEvent() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.isEmpty ? nil : description.trimmingCharacters(in: .whitespaces),
+            selectedEventType,
+            startDate,
+            hasEndDate ? endDate : nil,
+            selectedChildId
+        )
+        
+        // Note: isLoading sera géré par le ViewModel après l'opération async
+        dismiss()
+    }
+}
+
+// MARK: - Edit Event View
+struct EditEventView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var description: String
+    @State private var selectedEventType: EventType
+    @State private var startDate: Date
+    @State private var endDate: Date?
+    @State private var hasEndDate: Bool
+    @State private var selectedChildId: UUID?
+    @State private var isLoading = false
+    
+    let event: Event
+    let onSave: (String, String?, EventType, Date, Date?, UUID?) -> Void
+    
+    init(event: Event, onSave: @escaping (String, String?, EventType, Date, Date?, UUID?) -> Void) {
+        self.event = event
+        self.onSave = onSave
+        self._title = State(initialValue: event.title)
+        self._description = State(initialValue: event.description ?? "")
+        self._selectedEventType = State(initialValue: event.eventType)
+        self._startDate = State(initialValue: event.startDate)
+        self._endDate = State(initialValue: event.endDate)
+        self._hasEndDate = State(initialValue: event.endDate != nil)
+        self._selectedChildId = State(initialValue: event.childId)
+    }
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations de l'événement") {
+                    TextField("Titre", text: $title)
+                        .textContentType(.none)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Type", selection: $selectedEventType) {
+                        ForEach(EventType.allCases, id: \.self) { eventType in
+                            HStack {
+                                Image(systemName: eventType.icon)
+                                    .foregroundColor(eventType.color)
+                                Text(eventType.displayName)
+                            }
+                            .tag(eventType)
+                        }
+                    }
+                }
+                
+                Section("Date et heure") {
+                    DatePicker(
+                        "Début",
+                        selection: $startDate,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    
+                    Toggle("Date de fin", isOn: $hasEndDate)
+                    
+                    if hasEndDate {
+                        DatePicker(
+                            "Fin",
+                            selection: Binding(
+                                get: { endDate ?? startDate.addingTimeInterval(3600) },
+                                set: { endDate = $0 }
+                            ),
+                            in: startDate...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Modifier l'événement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Enregistrer") {
+                        saveEvent()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Modification en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveEvent() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.isEmpty ? nil : description.trimmingCharacters(in: .whitespaces),
+            selectedEventType,
+            startDate,
+            hasEndDate ? endDate : nil,
+            selectedChildId
+        )
+        
+        // Note: isLoading sera géré par le ViewModel après l'opération async
+        dismiss()
+    }
+}
+
+#Preview {
+    MainTabView()
+        .environmentObject(AuthManager())
+}
