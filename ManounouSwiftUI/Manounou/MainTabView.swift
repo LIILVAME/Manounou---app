@@ -1063,66 +1063,66 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: ManounouSpacing.xl) {
-                    // Header avec design Manounou
-                    VStack(spacing: ManounouSpacing.sm) {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text("Bonjour \(authManager.userProfile?.firstName ?? "Utilisateur") !")
-                                    .font(ManounouTypography.semibold(ManounouTypography.xxl))
-                                    .foregroundColor(ManounouColors.textPrimary)
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
                                 
                                 Text("Bienvenue dans votre carnet de famille")
-                                    .font(ManounouTypography.base)
-                                    .foregroundColor(ManounouColors.textSecondary)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                             }
                             
                             Spacer()
                             
                             Button(action: {}) {
                                 Image(systemName: "bell")
-                                    .font(ManounouTypography.xxl)
-                                    .foregroundColor(ManounouColors.primary)
+                                    .font(.title2)
+                                    .foregroundColor(.primary)
                             }
                         }
-                        .padding(.horizontal, ManounouSpacing.lg)
+                        .padding(.horizontal)
                     }
                     
-                    // Quick Actions avec design Manounou
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: ManounouSpacing.lg) {
-                        ManounouQuickActionCard(
+                    // Quick Actions
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                        QuickActionCard(
                             title: "Ajouter un enfant",
                             icon: "plus.circle.fill",
-                            color: ManounouColors.primary
+                            color: .blue
                         ) {
                             childrenViewModel.showAddChild()
                         }
                         
-                        ManounouQuickActionCard(
+                        QuickActionCard(
                             title: "Nouveau document",
                             icon: "doc.badge.plus",
-                            color: ManounouColors.success
+                            color: .green
                         ) {
                             showingAddDocument = true
                         }
                         
-                        ManounouQuickActionCard(
+                        QuickActionCard(
                             title: "Ajouter un événement",
                             icon: "calendar.badge.plus",
-                            color: ManounouColors.warning
+                            color: .orange
                         ) {
                             eventsViewModel.showAddEvent()
                         }
                         
-                        ManounouQuickActionCard(
+                        QuickActionCard(
                             title: "Inviter la famille",
                             icon: "person.2.fill",
-                            color: ManounouColors.info
+                            color: .purple
                         ) {
                             showingInviteFamily = true
                         }
                     }
-                    .padding(.horizontal, ManounouSpacing.lg)
+                    .padding(.horizontal)
                     
                     // Family Overview
                     VStack(alignment: .leading, spacing: 16) {
@@ -1311,8 +1311,34 @@ struct UpcomingEventRow: View {
     }
 }
 
-// MARK: - Quick Action Card avec design Manounou
-// Remplacé par ManounouQuickActionCard du DesignSystem.swift
+// MARK: - Quick Action Card
+struct QuickActionCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 32))
+                    .foregroundColor(color)
+                
+                Text(title)
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+            .background(Color(.systemGray6))
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
 
 // MARK: - Activity Row
 struct ActivityRow: View {

@@ -22,20 +22,22 @@ struct AuthenticationView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 30) {
-                    // Header avec logo Manounou
-                    VStack(spacing: ManounouSpacing.lg) {
-                        ManounouLogo(size: 100)
+                    // Header
+                    VStack(spacing: 16) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.pink)
                         
                         Text("Manounou")
-                            .font(ManounouTypography.bold(ManounouTypography.hero))
-                            .foregroundColor(ManounouColors.textPrimary)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
                         
-                        Text("Simplifiez la garde")
-                            .font(ManounouTypography.medium(ManounouTypography.lg))
-                            .foregroundColor(ManounouColors.primary)
+                        Text("Votre carnet de famille numérique")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    .padding(.top, ManounouSpacing.xxxl)
+                    .padding(.top, 40)
                     
                     // Form
                     VStack(spacing: 20) {
@@ -45,7 +47,7 @@ struct AuthenticationView: View {
                             signInForm
                         }
                         
-                        // Action Button avec style Manounou
+                        // Action Button
                         Button(action: handleAuthentication) {
                             HStack {
                                 if authManager.isLoading {
@@ -54,28 +56,34 @@ struct AuthenticationView: View {
                                         .scaleEffect(0.8)
                                 } else {
                                     Text(isSignUp ? "Créer mon compte" : "Se connecter")
+                                        .fontWeight(.semibold)
                                 }
                             }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.pink)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
-                        .buttonStyle(ManounouPrimaryButtonStyle(isDisabled: authManager.isLoading || !isFormValid))
                         .disabled(authManager.isLoading || !isFormValid)
                         
-                        // Toggle Sign In/Up avec style Manounou
+                        // Toggle Sign In/Up
                         Button(action: { isSignUp.toggle() }) {
                             Text(isSignUp ? "Déjà un compte ? Se connecter" : "Pas de compte ? S'inscrire")
+                                .foregroundColor(.pink)
+                                .fontWeight(.medium)
                         }
-                        .buttonStyle(ManounouTertiaryButtonStyle())
                         
-                        // Forgot Password avec style Manounou
+                        // Forgot Password
                         if !isSignUp {
                             Button("Mot de passe oublié ?") {
                                 showingForgotPassword = true
                             }
-                            .font(ManounouTypography.sm)
-                            .foregroundColor(ManounouColors.textSecondary)
+                            .foregroundColor(.secondary)
+                            .font(.footnote)
                         }
                     }
-                    .padding(.horizontal, ManounouSpacing.xl)
+                    .padding(.horizontal, 32)
                     
                     Spacer(minLength: 40)
                 }
@@ -96,56 +104,49 @@ struct AuthenticationView: View {
     
     // MARK: - Sign In Form
     private var signInForm: some View {
-        VStack(spacing: ManounouSpacing.lg) {
-            ManounouTextField(
+        VStack(spacing: 16) {
+            CustomTextField(
                 title: "Email",
                 text: $email,
-                keyboardType: .emailAddress,
-                isRequired: true
+                keyboardType: .emailAddress
             )
             
-            ManounouSecureField(
+            CustomSecureField(
                 title: "Mot de passe",
-                text: $password,
-                isRequired: true
+                text: $password
             )
         }
     }
     
     // MARK: - Sign Up Form
     private var signUpForm: some View {
-        VStack(spacing: ManounouSpacing.lg) {
-            HStack(spacing: ManounouSpacing.md) {
-                ManounouTextField(
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
+                CustomTextField(
                     title: "Prénom",
-                    text: $firstName,
-                    isRequired: true
+                    text: $firstName
                 )
                 
-                ManounouTextField(
+                CustomTextField(
                     title: "Nom",
-                    text: $lastName,
-                    isRequired: true
+                    text: $lastName
                 )
             }
             
-            ManounouTextField(
+            CustomTextField(
                 title: "Email",
                 text: $email,
-                keyboardType: .emailAddress,
-                isRequired: true
+                keyboardType: .emailAddress
             )
             
-            ManounouSecureField(
+            CustomSecureField(
                 title: "Mot de passe",
-                text: $password,
-                isRequired: true
+                text: $password
             )
             
-            ManounouSecureField(
+            CustomSecureField(
                 title: "Confirmer le mot de passe",
-                text: $confirmPassword,
-                isRequired: true
+                text: $confirmPassword
             )
         }
     }
@@ -195,9 +196,45 @@ struct AuthenticationView: View {
     }
 }
 
-// MARK: - Composants remplacés par le système de design Manounou
-// Les composants CustomTextField et CustomSecureField ont été remplacés
-// par ManounouTextField et ManounouSecureField du DesignSystem.swift
+// MARK: - Custom Text Field
+struct CustomTextField: View {
+    let title: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            
+            TextField("", text: $text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .keyboardType(keyboardType)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+        }
+    }
+}
+
+// MARK: - Custom Secure Field
+struct CustomSecureField: View {
+    let title: String
+    @Binding var text: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+            
+            SecureField("", text: $text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+        }
+    }
+}
 
 // MARK: - Forgot Password View
 struct ForgotPasswordView: View {
@@ -209,28 +246,27 @@ struct ForgotPasswordView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: ManounouSpacing.xl) {
-                VStack(spacing: ManounouSpacing.lg) {
+            VStack(spacing: 30) {
+                VStack(spacing: 16) {
                     Image(systemName: "lock.rotation")
                         .font(.system(size: 60))
-                        .foregroundColor(ManounouColors.primary)
+                        .foregroundColor(.pink)
                     
                     Text("Réinitialiser le mot de passe")
-                        .font(ManounouTypography.bold(ManounouTypography.xxl))
-                        .foregroundColor(ManounouColors.textPrimary)
+                        .font(.title2)
+                        .fontWeight(.bold)
                     
                     Text("Entrez votre email pour recevoir un lien de réinitialisation")
-                        .font(ManounouTypography.base)
-                        .foregroundColor(ManounouColors.textSecondary)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
                 
-                VStack(spacing: ManounouSpacing.lg) {
-                    ManounouTextField(
+                VStack(spacing: 20) {
+                    CustomTextField(
                         title: "Email",
                         text: $email,
-                        keyboardType: .emailAddress,
-                        isRequired: true
+                        keyboardType: .emailAddress
                     )
                     
                     Button(action: resetPassword) {
@@ -241,17 +277,22 @@ struct ForgotPasswordView: View {
                                     .scaleEffect(0.8)
                             } else {
                                 Text("Envoyer le lien")
+                                    .fontWeight(.semibold)
                             }
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(email.isEmpty ? Color.gray : Color.pink)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                     }
-                    .buttonStyle(ManounouPrimaryButtonStyle(isDisabled: email.isEmpty || isLoading))
                     .disabled(email.isEmpty || isLoading)
                 }
-                .padding(.horizontal, ManounouSpacing.xl)
+                .padding(.horizontal, 32)
                 
                 Spacer()
             }
-            .padding(.top, ManounouSpacing.xxxl)
+            .padding(.top, 40)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
