@@ -21,146 +21,127 @@ struct AuthenticationView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Gradient Background
+                // Full gradient background
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color.purple.opacity(0.3),
-                        Color.pink.opacity(0.2),
-                        Color.white
+                        Color(red: 0.7, green: 0.4, blue: 0.9),
+                        Color(red: 0.9, green: 0.6, blue: 0.8),
+                        Color(red: 1.0, green: 0.8, blue: 0.9)
                     ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Top curved background
-                        VStack {
-                            Spacer()
-                        }
-                        .frame(height: geometry.size.height * 0.4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 0)
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.purple.opacity(0.8),
-                                            Color.pink.opacity(0.6)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                        
-                        // White content area
-                        VStack(spacing: 30) {
-                            // Header
-                            VStack(spacing: 16) {
-                                Text(isSignUp ? "Create account" : "Login")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.black)
-                                
-                                if !isSignUp {
-                                    HStack {
-                                        Text("Don't have an account?")
-                                            .foregroundColor(.gray)
-                                        Button("sign up") {
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                isSignUp = true
-                                            }
-                                        }
-                                        .foregroundColor(.purple)
-                                        .fontWeight(.medium)
-                                    }
-                                    .font(.subheadline)
-                                } else {
-                                    HStack {
-                                        Text("Already have an account?")
-                                            .foregroundColor(.gray)
-                                        Button("sign in") {
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                isSignUp = false
-                                            }
-                                        }
-                                        .foregroundColor(.purple)
-                                        .fontWeight(.medium)
-                                    }
-                                    .font(.subheadline)
-                                }
-                            }
-                            .padding(.top, -20)
+                VStack {
+                    Spacer()
                     
-                            // Form
-                            VStack(spacing: 20) {
-                                if isSignUp {
-                                    signUpForm
-                                } else {
-                                    signInForm
-                                }
-                                
-                                // Action Button
-                                Button(action: handleAuthentication) {
-                                    HStack {
-                                        if authManager.isLoading {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                                .scaleEffect(0.8)
-                                        } else {
-                                            Text(isSignUp ? "Sign up" : "Login")
-                                                .fontWeight(.semibold)
-                                            Image(systemName: "arrow.right")
-                                                .font(.system(size: 16, weight: .semibold))
+                    // White content card
+                    VStack(spacing: 30) {
+                        // Header
+                        VStack(spacing: 16) {
+                            Text(isSignUp ? "Create account" : "Login")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(.black)
+                            
+                            if !isSignUp {
+                                HStack {
+                                    Text("Don't have an account?")
+                                        .foregroundColor(.gray)
+                                    Button("sign up") {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            isSignUp = true
                                         }
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 56)
-                                    .background(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                Color.purple,
-                                                Color.pink
-                                            ]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .foregroundColor(.white)
-                                    .cornerRadius(28)
-                                }
-                                .disabled(authManager.isLoading || !isFormValid)
-                                
-                                // Forgot Password
-                                if !isSignUp {
-                                    Button("FORGOT?") {
-                                        showingForgotPassword = true
                                     }
                                     .foregroundColor(.purple)
-                                    .font(.footnote)
                                     .fontWeight(.medium)
                                 }
-                                
-                                // Social Login (placeholder)
-                                if !isSignUp {
-                                    HStack(spacing: 20) {
-                                        SocialLoginButton(icon: "apple.logo", color: .black)
-                                        SocialLoginButton(icon: "f.circle.fill", color: .blue)
-                                        SocialLoginButton(icon: "g.circle.fill", color: .red)
-                                        SocialLoginButton(icon: "message.circle.fill", color: .blue)
+                                .font(.subheadline)
+                            } else {
+                                HStack {
+                                    Text("Already have an account?")
+                                        .foregroundColor(.gray)
+                                    Button("sign in") {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            isSignUp = false
+                                        }
                                     }
-                                    .padding(.top, 20)
+                                    .foregroundColor(.purple)
+                                    .fontWeight(.medium)
                                 }
+                                .font(.subheadline)
                             }
-                            .padding(.horizontal, 32)
-                            
-                            Spacer(minLength: 40)
                         }
-                        .background(Color.white)
-                        .cornerRadius(30, corners: [.topLeft, .topRight])
-                        .padding(.top, -30)
+                        .padding(.top, 30)
+                
+                        // Form
+                        VStack(spacing: 20) {
+                            if isSignUp {
+                                signUpForm
+                            } else {
+                                signInForm
+                            }
+                            
+                            // Action Button
+                            Button(action: handleAuthentication) {
+                                HStack {
+                                    if authManager.isLoading {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Text(isSignUp ? "Sign up" : "Login")
+                                            .fontWeight(.semibold)
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 16, weight: .semibold))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.purple,
+                                            Color.pink
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .foregroundColor(.white)
+                                .cornerRadius(28)
+                            }
+                            .disabled(authManager.isLoading || !isFormValid)
+                            
+                            // Forgot Password
+                            if !isSignUp {
+                                Button("FORGOT?") {
+                                    showingForgotPassword = true
+                                }
+                                .foregroundColor(.purple)
+                                .font(.footnote)
+                                .fontWeight(.medium)
+                            }
+                            
+                            // Social Login
+                            if !isSignUp {
+                                HStack(spacing: 20) {
+                                    SocialLoginButton(icon: "apple.logo", color: .black)
+                                    SocialLoginButton(icon: "f.circle.fill", color: .blue)
+                                    SocialLoginButton(icon: "g.circle.fill", color: .red)
+                                    SocialLoginButton(icon: "message.circle.fill", color: .blue)
+                                }
+                                .padding(.top, 20)
+                            }
+                        }
                     }
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 40)
+                    .background(Color.white)
+                    .cornerRadius(30, corners: [.topLeft, .topRight])
+                    
+                    Spacer(minLength: 0)
                 }
             }
         }
@@ -195,32 +176,20 @@ struct AuthenticationView: View {
     // MARK: - Sign Up Form
     private var signUpForm: some View {
         VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                CustomTextField(
-                    title: "Prénom",
-                    text: $firstName
-                )
-                
-                CustomTextField(
-                    title: "Nom",
-                    text: $lastName
-                )
-            }
+            CustomTextField(
+                title: "Name",
+                text: $firstName
+            )
             
             CustomTextField(
-                title: "Email",
+                title: "Email or phone",
                 text: $email,
                 keyboardType: .emailAddress
             )
             
             CustomSecureField(
-                title: "Mot de passe",
+                title: "Password",
                 text: $password
-            )
-            
-            CustomSecureField(
-                title: "Confirmer le mot de passe",
-                text: $confirmPassword
             )
         }
     }
@@ -229,16 +198,14 @@ struct AuthenticationView: View {
     private var isFormValid: Bool {
         if isSignUp {
             return !firstName.isEmpty &&
-                   !lastName.isEmpty &&
                    !email.isEmpty &&
-                   password.count >= 6 &&
-                   password == confirmPassword
+                   password.count >= 6
         } else {
             return !email.isEmpty && !password.isEmpty
         }
     }
     
-    // MARK: - Actions
+    // MARK: - Authentication Handler
     private func handleAuthentication() {
         Task {
             if isSignUp {
@@ -249,14 +216,10 @@ struct AuthenticationView: View {
                     lastName: lastName
                 )
             } else {
-                await authManager.signIn(email: email, password: password)
-            }
-            
-            // Vider les champs après tentative d'authentification
-            await MainActor.run {
-                if authManager.isAuthenticated {
-                    clearFields()
-                }
+                await authManager.signIn(
+                    email: email,
+                    password: password
+                )
             }
         }
     }
@@ -396,18 +359,15 @@ struct ForgotPasswordView: View {
     
     private func resetPassword() {
         isLoading = true
-        
         Task {
             await authManager.resetPassword(email: email)
-            
-            await MainActor.run {
-                isLoading = false
-                showingSuccess = true
-            }
+            isLoading = false
+            showingSuccess = true
         }
     }
 }
 
+// MARK: - Social Login Button
 struct SocialLoginButton: View {
     let icon: String
     let color: Color
@@ -425,6 +385,7 @@ struct SocialLoginButton: View {
     }
 }
 
+// MARK: - Rounded Corner Shape
 struct RoundedCorner: Shape {
     var radius: CGFloat = .infinity
     var corners: UIRectCorner = .allCorners
@@ -439,12 +400,14 @@ struct RoundedCorner: Shape {
     }
 }
 
+// MARK: - View Extension
 extension View {
     func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
         clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
 
+// MARK: - Preview
 #Preview {
     AuthenticationView()
         .environmentObject(AuthManager())
