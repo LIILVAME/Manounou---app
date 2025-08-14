@@ -72,7 +72,10 @@ class CacheManager: ObservableObject {
             
             self.cache[key] = value
             self.cacheMetadata[key] = (Date(), actualTTL, estimatedSize)
-            self.currentMemoryUsage += estimatedSize
+            
+            DispatchQueue.main.async {
+                self.currentMemoryUsage += estimatedSize
+            }
             
             print("📦 Cache SET: \(key) (\(estimatedSize) bytes, TTL: \(actualTTL)s)")
         }
@@ -104,9 +107,14 @@ class CacheManager: ObservableObject {
     func remove(_ key: String) {
         queue.async(flags: .barrier) {
             if let metadata = self.cacheMetadata[key] {
-                self.currentMemoryUsage -= metadata.size
+                let sizeToRemove = metadata.size
                 self.cache.removeValue(forKey: key)
                 self.cacheMetadata.removeValue(forKey: key)
+                
+                DispatchQueue.main.async {
+                    self.currentMemoryUsage -= sizeToRemove
+                }
+                
                 print("🗑️ Cache REMOVE: \(key)")
             }
         }
@@ -116,7 +124,10 @@ class CacheManager: ObservableObject {
         queue.async(flags: .barrier) {
             self.cache.removeAll()
             self.cacheMetadata.removeAll()
-            self.currentMemoryUsage = 0
+            
+            DispatchQueue.main.async {
+                self.currentMemoryUsage = 0
+            }
             print("🧹 Cache CLEARED")
         }
     }
@@ -1758,6 +1769,7 @@ class DocumentsViewModel: ObservableObject {
 struct MainTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var selectedTab = 0
+    @State private var showingErrorAlert = false
     @StateObject private var errorManager = ErrorManager()
     @StateObject private var cacheManager = CacheManager()
     @StateObject private var memoryManager = MemoryManager()
@@ -1846,7 +1858,10 @@ struct MainTabView: View {
         }
         .accentColor(.pink)
         .environmentObject(errorManager)
-        .alert("Erreur", isPresented: $errorManager.isShowingError) {
+        .onReceive(errorManager.$isShowingError) { isShowing in
+            showingErrorAlert = isShowing
+        }
+        .alert("Erreur", isPresented: $showingErrorAlert) {
             if let error = errorManager.currentError, error.isRetryable {
                 Button("Réessayer") {
                     // Le retry sera géré par les ViewModels
