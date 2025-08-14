@@ -509,6 +509,18 @@ class EventsService {
     func fetchEvents() async throws -> [Event] {
         print("📅 Récupération des événements depuis Supabase")
         
+        // Vérifier la session d'authentification
+        do {
+            let session = try await supabase.auth.session
+            if session.accessToken.isEmpty {
+                throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Utilisateur non authentifié"])
+            }
+            print("🔐 Session valide, récupération des événements...")
+        } catch {
+            print("❌ Erreur de session: \(error)")
+            throw error
+        }
+        
         let response: [Event] = try await supabase
             .from("events")
             .select()
@@ -781,10 +793,17 @@ class EventsViewModel: ObservableObject {
         
         do {
             events = try await service.fetchEvents()
+            print("✅ \(events.count) événement(s) chargé(s)")
             isLoading = false
         } catch {
-            errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
-            print("❌ Erreur loadEvents: \(error)")
+            // Gestion spécifique de l'erreur "cancelled"
+            if let nsError = error as NSError?, nsError.code == -999 {
+                errorMessage = "Connexion annulée. Vérifiez votre authentification."
+                print("❌ Erreur loadEvents (cancelled): Problème d'authentification ou de connexion")
+            } else {
+                errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
+                print("❌ Erreur loadEvents: \(error)")
+            }
             isLoading = false
         }
     }
