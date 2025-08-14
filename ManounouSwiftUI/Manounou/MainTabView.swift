@@ -233,8 +233,10 @@ class MemoryManager: ObservableObject {
             forName: UIApplication.didReceiveMemoryWarningNotification,
             object: nil,
             queue: .main
-        ) { _ in
-            self.handleMemoryWarning()
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.handleMemoryWarning()
+            }
         }
     }
     
@@ -398,14 +400,18 @@ class ErrorManager: ObservableObject {
         
         // Afficher l'erreur seulement si elle est significative
         if appError.severity != .low {
-            currentError = appError
-            isShowingError = true
+            DispatchQueue.main.async {
+                self.currentError = appError
+                self.isShowingError = true
+            }
         }
     }
     
     func clearError() {
-        currentError = nil
-        isShowingError = false
+        DispatchQueue.main.async {
+            self.currentError = nil
+            self.isShowingError = false
+        }
     }
     
     private func mapToAppError(_ error: Error) -> AppError {
@@ -1237,8 +1243,10 @@ class ChildrenViewModel: ObservableObject {
             forName: .memoryCleanupRequired,
             object: nil,
             queue: .main
-        ) { _ in
-            self.handleMemoryCleanup()
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.handleMemoryCleanup()
+            }
         }
     }
     
@@ -1386,9 +1394,11 @@ class EventsViewModel: ObservableObject {
             forName: .memoryCleanupRequired,
             object: nil,
             queue: .main
-        ) { _ in
-            self.handleMemoryCleanup()
-        }
+        ) { [weak self] _ in
+             DispatchQueue.main.async {
+                 self?.handleMemoryCleanup()
+             }
+         }
     }
     
     // Propriétés calculées pour les événements filtrés
@@ -1614,9 +1624,11 @@ class DocumentsViewModel: ObservableObject {
             forName: .memoryCleanupRequired,
             object: nil,
             queue: .main
-        ) { _ in
-            self.handleMemoryCleanup()
-        }
+        ) { [weak self] _ in
+             DispatchQueue.main.async {
+                 self?.handleMemoryCleanup()
+             }
+         }
     }
     
     func loadDocuments() async {
@@ -1755,7 +1767,7 @@ struct MainTabView: View {
     @StateObject private var notificationManager = NotificationManager()
     
     init() {
-        // Créer des instances partagées des managers
+        // Créer des instances partagées des managers sur le main actor
         let sharedErrorManager = ErrorManager()
         let sharedCacheManager = CacheManager()
         let sharedMemoryManager = MemoryManager()
