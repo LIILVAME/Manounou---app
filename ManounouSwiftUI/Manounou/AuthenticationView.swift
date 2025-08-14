@@ -19,131 +19,68 @@ struct AuthenticationView: View {
     @State private var showingForgotPassword = false
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Full gradient background
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.7, green: 0.4, blue: 0.9),
-                        Color(red: 0.9, green: 0.6, blue: 0.8),
-                        Color(red: 1.0, green: 0.8, blue: 0.9)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-                
-                VStack {
-                    Spacer()
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 30) {
+                    // Header avec logo Manounou
+                    VStack(spacing: ManounouSpacing.lg) {
+                        ManounouLogo(size: 100)
+                        
+                        Text("Manounou")
+                            .font(ManounouTypography.bold(ManounouTypography.hero))
+                            .foregroundColor(ManounouColors.textPrimary)
+                        
+                        Text("Simplifiez la garde")
+                            .font(ManounouTypography.medium(ManounouTypography.lg))
+                            .foregroundColor(ManounouColors.primary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, ManounouSpacing.xxxl)
                     
-                    // White content card
-                    VStack(spacing: 30) {
-                        // Header
-                        VStack(spacing: 16) {
-                            Text(isSignUp ? "Create account" : "Login")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .foregroundColor(.black)
-                            
-                            if !isSignUp {
-                                HStack {
-                                    Text("Don't have an account?")
-                                        .foregroundColor(.gray)
-                                    Button("sign up") {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            isSignUp = true
-                                        }
-                                    }
-                                    .foregroundColor(.purple)
-                                    .fontWeight(.medium)
+                    // Form
+                    VStack(spacing: 20) {
+                        if isSignUp {
+                            signUpForm
+                        } else {
+                            signInForm
+                        }
+                        
+                        // Action Button avec style Manounou
+                        Button(action: handleAuthentication) {
+                            HStack {
+                                if authManager.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Text(isSignUp ? "Créer mon compte" : "Se connecter")
                                 }
-                                .font(.subheadline)
-                            } else {
-                                HStack {
-                                    Text("Already have an account?")
-                                        .foregroundColor(.gray)
-                                    Button("sign in") {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            isSignUp = false
-                                        }
-                                    }
-                                    .foregroundColor(.purple)
-                                    .fontWeight(.medium)
-                                }
-                                .font(.subheadline)
                             }
                         }
-                        .padding(.top, 30)
-                
-                        // Form
-                        VStack(spacing: 20) {
-                            if isSignUp {
-                                signUpForm
-                            } else {
-                                signInForm
+                        .buttonStyle(ManounouPrimaryButtonStyle(isDisabled: authManager.isLoading || !isFormValid))
+                        .disabled(authManager.isLoading || !isFormValid)
+                        
+                        // Toggle Sign In/Up avec style Manounou
+                        Button(action: { isSignUp.toggle() }) {
+                            Text(isSignUp ? "Déjà un compte ? Se connecter" : "Pas de compte ? S'inscrire")
+                        }
+                        .buttonStyle(ManounouTertiaryButtonStyle())
+                        
+                        // Forgot Password avec style Manounou
+                        if !isSignUp {
+                            Button("Mot de passe oublié ?") {
+                                showingForgotPassword = true
                             }
-                            
-                            // Action Button
-                            Button(action: handleAuthentication) {
-                                HStack {
-                                    if authManager.isLoading {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Text(isSignUp ? "Sign up" : "Login")
-                                            .fontWeight(.semibold)
-                                        Image(systemName: "arrow.right")
-                                            .font(.system(size: 16, weight: .semibold))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.purple,
-                                            Color.pink
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .foregroundColor(.white)
-                                .cornerRadius(28)
-                            }
-                            .disabled(authManager.isLoading || !isFormValid)
-                            
-                            // Forgot Password
-                            if !isSignUp {
-                                Button("FORGOT?") {
-                                    showingForgotPassword = true
-                                }
-                                .foregroundColor(.purple)
-                                .font(.footnote)
-                                .fontWeight(.medium)
-                            }
-                            
-                            // Social Login
-                            if !isSignUp {
-                                HStack(spacing: 20) {
-                                    SocialLoginButton(icon: "apple.logo", color: .black)
-                                    SocialLoginButton(icon: "f.circle.fill", color: .blue)
-                                    SocialLoginButton(icon: "g.circle.fill", color: .red)
-                                    SocialLoginButton(icon: "message.circle.fill", color: .blue)
-                                }
-                                .padding(.top, 20)
-                            }
+                            .font(ManounouTypography.sm)
+                            .foregroundColor(ManounouColors.textSecondary)
                         }
                     }
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 40)
-                    .background(Color.white)
-                    .cornerRadius(30, corners: [.topLeft, .topRight])
+                    .padding(.horizontal, ManounouSpacing.xl)
                     
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 40)
                 }
             }
+            .navigationBarHidden(true)
         }
         .alert("Erreur", isPresented: .constant(authManager.errorMessage != nil)) {
             Button("OK") {
@@ -159,37 +96,56 @@ struct AuthenticationView: View {
     
     // MARK: - Sign In Form
     private var signInForm: some View {
-        VStack(spacing: 16) {
-            CustomTextField(
+        VStack(spacing: ManounouSpacing.lg) {
+            ManounouTextField(
                 title: "Email",
                 text: $email,
-                keyboardType: .emailAddress
+                keyboardType: .emailAddress,
+                isRequired: true
             )
             
-            CustomSecureField(
+            ManounouSecureField(
                 title: "Mot de passe",
-                text: $password
+                text: $password,
+                isRequired: true
             )
         }
     }
     
     // MARK: - Sign Up Form
     private var signUpForm: some View {
-        VStack(spacing: 16) {
-            CustomTextField(
-                title: "Name",
-                text: $firstName
-            )
+        VStack(spacing: ManounouSpacing.lg) {
+            HStack(spacing: ManounouSpacing.md) {
+                ManounouTextField(
+                    title: "Prénom",
+                    text: $firstName,
+                    isRequired: true
+                )
+                
+                ManounouTextField(
+                    title: "Nom",
+                    text: $lastName,
+                    isRequired: true
+                )
+            }
             
-            CustomTextField(
-                title: "Email or phone",
+            ManounouTextField(
+                title: "Email",
                 text: $email,
-                keyboardType: .emailAddress
+                keyboardType: .emailAddress,
+                isRequired: true
             )
             
-            CustomSecureField(
-                title: "Password",
-                text: $password
+            ManounouSecureField(
+                title: "Mot de passe",
+                text: $password,
+                isRequired: true
+            )
+            
+            ManounouSecureField(
+                title: "Confirmer le mot de passe",
+                text: $confirmPassword,
+                isRequired: true
             )
         }
     }
@@ -198,14 +154,16 @@ struct AuthenticationView: View {
     private var isFormValid: Bool {
         if isSignUp {
             return !firstName.isEmpty &&
+                   !lastName.isEmpty &&
                    !email.isEmpty &&
-                   password.count >= 6
+                   password.count >= 6 &&
+                   password == confirmPassword
         } else {
             return !email.isEmpty && !password.isEmpty
         }
     }
     
-    // MARK: - Authentication Handler
+    // MARK: - Actions
     private func handleAuthentication() {
         Task {
             if isSignUp {
@@ -216,10 +174,14 @@ struct AuthenticationView: View {
                     lastName: lastName
                 )
             } else {
-                await authManager.signIn(
-                    email: email,
-                    password: password
-                )
+                await authManager.signIn(email: email, password: password)
+            }
+            
+            // Vider les champs après tentative d'authentification
+            await MainActor.run {
+                if authManager.isAuthenticated {
+                    clearFields()
+                }
             }
         }
     }
@@ -233,53 +195,9 @@ struct AuthenticationView: View {
     }
 }
 
-// MARK: - Custom Text Field
-struct CustomTextField: View {
-    let title: String
-    @Binding var text: String
-    var keyboardType: UIKeyboardType = .default
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField(title, text: $text)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.gray.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 25)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                )
-                .keyboardType(keyboardType)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
-        }
-    }
-}
-
-// MARK: - Custom Secure Field
-struct CustomSecureField: View {
-    let title: String
-    @Binding var text: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SecureField(title, text: $text)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.gray.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 25)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                )
-        }
-    }
-}
+// MARK: - Composants remplacés par le système de design Manounou
+// Les composants CustomTextField et CustomSecureField ont été remplacés
+// par ManounouTextField et ManounouSecureField du DesignSystem.swift
 
 // MARK: - Forgot Password View
 struct ForgotPasswordView: View {
@@ -291,27 +209,28 @@ struct ForgotPasswordView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                VStack(spacing: 16) {
+            VStack(spacing: ManounouSpacing.xl) {
+                VStack(spacing: ManounouSpacing.lg) {
                     Image(systemName: "lock.rotation")
                         .font(.system(size: 60))
-                        .foregroundColor(.pink)
+                        .foregroundColor(ManounouColors.primary)
                     
                     Text("Réinitialiser le mot de passe")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                        .font(ManounouTypography.bold(ManounouTypography.xxl))
+                        .foregroundColor(ManounouColors.textPrimary)
                     
                     Text("Entrez votre email pour recevoir un lien de réinitialisation")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(ManounouTypography.base)
+                        .foregroundColor(ManounouColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 
-                VStack(spacing: 20) {
-                    CustomTextField(
+                VStack(spacing: ManounouSpacing.lg) {
+                    ManounouTextField(
                         title: "Email",
                         text: $email,
-                        keyboardType: .emailAddress
+                        keyboardType: .emailAddress,
+                        isRequired: true
                     )
                     
                     Button(action: resetPassword) {
@@ -322,22 +241,17 @@ struct ForgotPasswordView: View {
                                     .scaleEffect(0.8)
                             } else {
                                 Text("Envoyer le lien")
-                                    .fontWeight(.semibold)
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(email.isEmpty ? Color.gray : Color.pink)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
                     }
+                    .buttonStyle(ManounouPrimaryButtonStyle(isDisabled: email.isEmpty || isLoading))
                     .disabled(email.isEmpty || isLoading)
                 }
-                .padding(.horizontal, 32)
+                .padding(.horizontal, ManounouSpacing.xl)
                 
                 Spacer()
             }
-            .padding(.top, 40)
+            .padding(.top, ManounouSpacing.xxxl)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -359,55 +273,18 @@ struct ForgotPasswordView: View {
     
     private func resetPassword() {
         isLoading = true
+        
         Task {
             await authManager.resetPassword(email: email)
-            isLoading = false
-            showingSuccess = true
+            
+            await MainActor.run {
+                isLoading = false
+                showingSuccess = true
+            }
         }
     }
 }
 
-// MARK: - Social Login Button
-struct SocialLoginButton: View {
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        Button(action: {}) {
-            Image(systemName: icon)
-                .font(.system(size: 24))
-                .foregroundColor(color)
-                .frame(width: 50, height: 50)
-                .background(Color.white)
-                .clipShape(Circle())
-                .shadow(color: .gray.opacity(0.3), radius: 3, x: 0, y: 2)
-        }
-    }
-}
-
-// MARK: - Rounded Corner Shape
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
-
-// MARK: - View Extension
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-// MARK: - Preview
 #Preview {
     AuthenticationView()
         .environmentObject(AuthManager())

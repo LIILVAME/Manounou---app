@@ -40,15 +40,13 @@ struct ContentView: View {
     }
 }
 
-// MARK: - LoadingView
+// MARK: - LoadingView avec design Manounou
 struct LoadingView: View {
     @State private var isAnimating = false
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.pink)
+        VStack(spacing: ManounouSpacing.lg) {
+            ManounouLogo(size: 80)
                 .scaleEffect(isAnimating ? 1.2 : 1.0)
                 .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: isAnimating)
                 .onAppear {
@@ -56,20 +54,20 @@ struct LoadingView: View {
                 }
             
             Text("Manounou")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .font(ManounouTypography.bold(ManounouTypography.hero))
+                .foregroundColor(ManounouColors.textPrimary)
             
-            Text("Votre carnet de famille numérique")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            Text("Simplifiez la garde")
+                .font(ManounouTypography.medium(ManounouTypography.lg))
+                .foregroundColor(ManounouColors.primary)
             
             ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: ManounouColors.primary))
                 .scaleEffect(1.2)
-                .padding(.top)
+                .padding(.top, ManounouSpacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(ManounouColors.background)
     }
 }
 

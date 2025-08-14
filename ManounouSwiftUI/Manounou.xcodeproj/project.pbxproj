@@ -12,17 +12,19 @@
 		1A2B3C4D5E6F7894 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7895 /* AuthenticationView.swift */; };
 		1A2B3C4D5E6F7896 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7897 /* MainTabView.swift */; };
 		1A2B3C4D5E6F7898 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7899 /* Config.swift */; };
-		1A2B3C4D5E6F789A /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1A2B3C4D5E6F789B /* Supabase */; };
+		1A2B3C4D5E6F789A /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789B /* DesignSystem.swift */; };
+		1A2B3C4D5E6F789C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1A2B3C4D5E6F789D /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		1A2B3C4D5E6F789C /* Manounou.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Manounou.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A2B3C4D5E6F789E /* Manounou.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Manounou.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A2B3C4D5E6F7891 /* ManounouApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManounouApp.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F7893 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F7895 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F7897 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F7899 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
-		1A2B3C4D5E6F789D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A2B3C4D5E6F789B /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F789F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,7 +50,7 @@
 		1A2B3C4D5E6F78A1 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1A2B3C4D5E6F789C /* Manounou.app */,
+				1A2B3C4D5E6F789E /* Manounou.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,7 +63,8 @@
 				1A2B3C4D5E6F7895 /* AuthenticationView.swift */,
 				1A2B3C4D5E6F7897 /* MainTabView.swift */,
 				1A2B3C4D5E6F7899 /* Config.swift */,
-				1A2B3C4D5E6F789D /* Info.plist */,
+				1A2B3C4D5E6F789B /* DesignSystem.swift */,
+				1A2B3C4D5E6F789F /* Info.plist */,
 			);
 			path = Manounou;
 			sourceTree = "<group>";
@@ -83,10 +86,10 @@
 			);
 			name = Manounou;
 			packageProductDependencies = (
-				1A2B3C4D5E6F789B /* Supabase */,
-			);
+					1A2B3C4D5E6F789D /* Supabase */,
+				);
 			productName = Manounou;
-			productReference = 1A2B3C4D5E6F789C /* Manounou.app */;
+			productReference = 1A2B3C4D5E6F789E /* Manounou.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -145,6 +148,7 @@
 				1A2B3C4D5E6F7894 /* AuthenticationView.swift in Sources */,
 				1A2B3C4D5E6F7896 /* MainTabView.swift in Sources */,
 				1A2B3C4D5E6F7898 /* Config.swift in Sources */,
+				1A2B3C4D5E6F789A /* DesignSystem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -366,7 +370,7 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1A2B3C4D5E6F789B /* Supabase */ = {
+		1A2B3C4D5E6F789D /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 1A2B3C4D5E6F78A8 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
