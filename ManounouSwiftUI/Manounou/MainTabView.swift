@@ -1065,7 +1065,14 @@ struct HomeView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
+            if authManager.isLoading {
+                ProgressView("Chargement...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !authManager.isAuthenticated {
+                AuthenticationView()
+                    .environmentObject(authManager)
+            } else {
+                ScrollView {
                 VStack(spacing: 24) {
                     // Header
                     VStack(spacing: 8) {
@@ -1236,6 +1243,7 @@ struct HomeView: View {
             }
             .navigationTitle("")
             .navigationBarHidden(true)
+            }
         }
         .sheet(isPresented: $childrenViewModel.showingAddChild) {
             AddChildView { firstName, lastName, dateOfBirth, gender in
@@ -1270,9 +1278,11 @@ struct HomeView: View {
             InviteFamilyView()
         }
         .task {
-            // Load data when the view appears
-            await childrenViewModel.loadChildren()
-            await eventsViewModel.loadEvents()
+            // Load data only if user is authenticated
+            if authManager.isAuthenticated {
+                await childrenViewModel.loadChildren()
+                await eventsViewModel.loadEvents()
+            }
         }
         .overlay(
             // Toast message
@@ -1306,12 +1316,14 @@ struct HomeView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        // Refresh data
-        await childrenViewModel.loadChildren()
-        await eventsViewModel.loadEvents()
-        
-        // Show success toast
-        showToast("Données mises à jour")
+        // Refresh data only if user is authenticated
+        if authManager.isAuthenticated {
+            await childrenViewModel.loadChildren()
+            await eventsViewModel.loadEvents()
+            showToast("Données mises à jour")
+        } else {
+            showToast("Veuillez vous connecter")
+        }
     }
     
     private func showToast(_ message: String) {
