@@ -1,11 +1,212 @@
-# 🍼 Manounou App
+# 🍼 Manounou - Application Familiale
 
-> Application mobile pour la gestion de garde d'enfants développée avec React Native et Expo.
+**Version :** 1.0.0  
+**Plateforme :** iOS (SwiftUI)  
+**Backend :** Supabase  
+**Architecture :** MVVM + Combine
 
-[![React Native](https://img.shields.io/badge/React%20Native-0.73.6-blue.svg)](https://reactnative.dev/)
-[![Expo](https://img.shields.io/badge/Expo-50.0.21-black.svg)](https://expo.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3.0-blue.svg)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+---
+
+## 📱 Description
+
+**Manounou** est une application familiale moderne conçue pour simplifier la gestion quotidienne des enfants. Elle permet aux parents de centraliser toutes les informations importantes : profils des enfants, événements familiaux, documents importants et bien plus.
+
+### ✨ **Fonctionnalités Principales**
+
+- 🏠 **Dashboard Familial** : Vue d'ensemble personnalisée avec compteurs dynamiques
+- 👶 **Gestion des Enfants** : Profils complets avec informations essentielles
+- 📅 **Calendrier Familial** : Planification et suivi des événements
+- 📄 **Documents** : Stockage sécurisé des documents importants
+- 👤 **Profil Utilisateur** : Gestion des informations personnelles
+
+---
+
+## 🚀 Installation et Configuration
+
+### **Prérequis**
+- Xcode 15.0+
+- iOS 16.0+
+- Compte Supabase
+- Swift 5.9+
+
+### **1. Cloner le Repository**
+```bash
+git clone https://github.com/[USERNAME]/manounou-app.git
+cd manounou-app/ManounouSwiftUI
+```
+
+### **2. Configuration Supabase**
+
+#### **A. Créer les Tables**
+1. Aller sur [Supabase Dashboard](https://app.supabase.com/project/emgrtgencepzainsknsb/sql)
+2. Exécuter le script `create_documents_table.sql`
+3. Vérifier que toutes les tables sont créées :
+   - ✅ `profiles`
+   - ✅ `children` 
+   - ✅ `events`
+   - ✅ `documents`
+
+#### **B. Configuration des Clés**
+Les clés Supabase sont déjà configurées dans `Config.swift` :
+```swift
+static let url = "https://emgrtgencepzainsknsb.supabase.co"
+static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### **3. Lancer l'Application**
+```bash
+# Ouvrir le projet Xcode
+open Manounou.xcodeproj
+
+# Ou via ligne de commande
+xcodebuild -project Manounou.xcodeproj -scheme Manounou -destination 'platform=iOS Simulator,name=iPhone 15' build
+```
+
+---
+
+## 🏗️ Architecture
+
+### **Structure du Projet**
+```
+ManounouSwiftUI/
+├── Manounou/
+│   ├── ManounouApp.swift          # Point d'entrée
+│   ├── Config.swift               # Configuration Supabase
+│   ├── AuthManager.swift          # Gestion authentification
+│   ├── AuthenticationView.swift   # Interface connexion
+│   └── MainTabView.swift          # Interface principale
+├── create_documents_table.sql     # Script création table
+├── supabase_setup.sql            # Configuration complète DB
+└── AUDIT_REPORT_360.md           # Rapport d'audit complet
+```
+
+### **Modèles de Données**
+
+#### **Child (Enfant)**
+```swift
+struct Child: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let firstName: String
+    let lastName: String
+    let dateOfBirth: Date
+    let gender: String?
+    let createdAt: Date
+    let updatedAt: Date
+}
+```
+
+#### **Event (Événement)**
+```swift
+struct Event: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let eventType: EventType
+    let startDate: Date
+    let endDate: Date?
+    let childId: UUID?
+}
+```
+
+#### **Document**
+```swift
+struct Document: Identifiable, Codable {
+    let id: UUID
+    let parentId: UUID
+    let title: String
+    let description: String?
+    let documentType: DocumentType
+    let fileName: String?
+    let fileUrl: String?
+    let childId: UUID?
+}
+```
+
+---
+
+## 📊 État du Projet
+
+### ✅ **Fonctionnalités Implémentées**
+- [x] Interface SwiftUI complète (5 écrans)
+- [x] Authentification Supabase
+- [x] Gestion des enfants (CRUD)
+- [x] Gestion des événements (CRUD)
+- [x] Interface documents (prête)
+- [x] Profil utilisateur
+- [x] Navigation TabView
+- [x] Gestion d'erreur gracieuse
+
+### ⚠️ **En Cours**
+- [ ] Table documents (script prêt)
+- [ ] Correction erreurs HTTP 400
+- [ ] Tests automatisés
+
+### 📋 **À Faire**
+- [ ] Optimisations performance
+- [ ] Cache local
+- [ ] Push notifications
+- [ ] Mode hors ligne
+
+---
+
+## 🧪 Tests
+
+### **Tests Manuels**
+1. **Lancer l'application** dans le simulateur
+2. **Tester la navigation** entre les 5 onglets
+3. **Vérifier les données** : 3 enfants existants visibles
+4. **Tester l'interface** : responsive et moderne
+5. **Vérifier les erreurs** : messages explicites
+
+---
+
+## 🔒 Sécurité
+
+### **Mesures Implémentées**
+- ✅ **Row Level Security** (RLS) Supabase
+- ✅ **Authentification JWT**
+- ✅ **Politiques d'accès** par utilisateur
+- ✅ **Validation côté client**
+
+---
+
+## 📚 Documentation
+
+### **Fichiers de Documentation**
+- 📊 `AUDIT_REPORT_360.md` : Audit complet 360°
+- 🗄️ `create_documents_table.sql` : Script création table
+- 📋 `supabase_setup.sql` : Configuration complète DB
+
+---
+
+## 📞 Support
+
+- **Email** : support@manounou.app
+- **Issues** : GitHub Issues
+- **Documentation** : Ce README + fichiers de doc
+
+---
+
+## 🎯 Roadmap
+
+### **Version 1.1** (Prochaine)
+- [ ] Finaliser la gestion des documents
+- [ ] Corriger les erreurs de connexion
+- [ ] Ajouter tests automatisés
+
+### **Version 1.2** (Future)
+- [ ] Mode hors ligne
+- [ ] Push notifications
+- [ ] Partage familial
+- [ ] Export de données
+
+---
+
+**🍼 Manounou - Simplifier la vie familiale, une fonctionnalité à la fois.**
+
+*Dernière mise à jour : 14 Août 2025*
 
 ## Fonctionnalités Principales
 
