@@ -794,7 +794,7 @@ class EventsViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let newEvent = try await service.createEvent(
+            _ = try await service.createEvent(
                 title: title,
                 description: description,
                 eventType: eventType,
@@ -818,7 +818,7 @@ class EventsViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let updatedEvent = try await service.updateEvent(
+            _ = try await service.updateEvent(
                 event,
                 title: title,
                 description: description,
