@@ -8,6 +8,266 @@
 import SwiftUI
 import Foundation
 import Supabase
+import UserNotifications
+import Network
+
+// MARK: - Error Management System
+
+enum AppError: LocalizedError, Equatable {
+    case networkUnavailable
+    case authenticationRequired
+    case authenticationFailed
+    case serverError(String)
+    case dataCorrupted
+    case operationCancelled
+    case rateLimitExceeded
+    case insufficientPermissions
+    case validationError(String)
+    case unknownError(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .networkUnavailable:
+            return "Aucune connexion internet. Vérifiez votre réseau."
+        case .authenticationRequired:
+            return "Vous devez vous connecter pour continuer."
+        case .authenticationFailed:
+            return "Échec de l'authentification. Reconnectez-vous."
+        case .serverError(let message):
+            return "Erreur serveur: \(message)"
+        case .dataCorrupted:
+            return "Données corrompues. Veuillez réessayer."
+        case .operationCancelled:
+            return "Opération annulée."
+        case .rateLimitExceeded:
+            return "Trop de requêtes. Attendez un moment."
+        case .insufficientPermissions:
+            return "Permissions insuffisantes."
+        case .validationError(let message):
+            return "Erreur de validation: \(message)"
+        case .unknownError(let message):
+            return "Erreur inconnue: \(message)"
+        }
+    }
+    
+    var isRetryable: Bool {
+        switch self {
+        case .networkUnavailable, .serverError, .rateLimitExceeded:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    var severity: ErrorSeverity {
+        switch self {
+        case .networkUnavailable, .operationCancelled:
+            return .low
+        case .validationError, .rateLimitExceeded:
+            return .medium
+        case .authenticationFailed, .serverError, .dataCorrupted:
+            return .high
+        case .authenticationRequired, .insufficientPermissions, .unknownError:
+            return .critical
+        }
+    }
+}
+
+enum ErrorSeverity {
+    case low, medium, high, critical
+}
+
+struct RetryConfiguration {
+    let maxAttempts: Int
+    let baseDelay: TimeInterval
+    let maxDelay: TimeInterval
+    let backoffMultiplier: Double
+    
+    static let `default` = RetryConfiguration(
+        maxAttempts: 3,
+        baseDelay: 1.0,
+        maxDelay: 10.0,
+        backoffMultiplier: 2.0
+    )
+    
+    static let aggressive = RetryConfiguration(
+        maxAttempts: 5,
+        baseDelay: 0.5,
+        maxDelay: 5.0,
+        backoffMultiplier: 1.5
+    )
+}
+
+class NetworkMonitor: ObservableObject {
+    @Published var isConnected = true
+    @Published var connectionType: NWInterface.InterfaceType?
+    
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "NetworkMonitor")
+    
+    init() {
+        startMonitoring()
+    }
+    
+    private func startMonitoring() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.isConnected = path.status == .satisfied
+                self?.connectionType = path.availableInterfaces.first?.type
+            }
+        }
+        monitor.start(queue: queue)
+    }
+    
+    deinit {
+        monitor.cancel()
+    }
+}
+
+class ErrorManager: ObservableObject {
+    @Published var currentError: AppError?
+    @Published var isShowingError = false
+    @Published var errorHistory: [ErrorLogEntry] = []
+    
+    private let networkMonitor = NetworkMonitor()
+    private let maxHistorySize = 50
+    
+    struct ErrorLogEntry: Identifiable {
+        let id = UUID()
+        let error: AppError
+        let timestamp: Date
+        let context: String?
+        
+        init(error: AppError, context: String? = nil) {
+            self.error = error
+            self.timestamp = Date()
+            self.context = context
+        }
+    }
+    
+    func handleError(_ error: Error, context: String? = nil) {
+        let appError = mapToAppError(error)
+        logError(appError, context: context)
+        
+        // Afficher l'erreur seulement si elle est significative
+        if appError.severity != .low {
+            currentError = appError
+            isShowingError = true
+        }
+    }
+    
+    func clearError() {
+        currentError = nil
+        isShowingError = false
+    }
+    
+    private func mapToAppError(_ error: Error) -> AppError {
+        // Vérifier d'abord la connectivité
+        if !networkMonitor.isConnected {
+            return .networkUnavailable
+        }
+        
+        // Mapper les erreurs spécifiques
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                return .networkUnavailable
+            case .cancelled:
+                return .operationCancelled
+            case .timedOut:
+                return .serverError("Délai d'attente dépassé")
+            default:
+                return .serverError(urlError.localizedDescription)
+            }
+        }
+        
+        // Erreurs NSError avec codes spécifiques
+        if let nsError = error as NSError? {
+            switch nsError.domain {
+            case "AuthError":
+                if nsError.code == 401 {
+                    return .authenticationRequired
+                }
+                return .authenticationFailed
+            case "ValidationError":
+                return .validationError(nsError.localizedDescription)
+            default:
+                break
+            }
+        }
+        
+        // Erreurs Supabase (si disponibles)
+        let errorMessage = error.localizedDescription
+        if errorMessage.contains("rate limit") {
+            return .rateLimitExceeded
+        }
+        if errorMessage.contains("permission") || errorMessage.contains("unauthorized") {
+            return .insufficientPermissions
+        }
+        if errorMessage.contains("server") || errorMessage.contains("internal") {
+            return .serverError(errorMessage)
+        }
+        
+        return .unknownError(errorMessage)
+    }
+    
+    private func logError(_ error: AppError, context: String?) {
+        let entry = ErrorLogEntry(error: error, context: context)
+        errorHistory.insert(entry, at: 0)
+        
+        // Limiter la taille de l'historique
+        if errorHistory.count > maxHistorySize {
+            errorHistory.removeLast()
+        }
+        
+        // Log pour debugging
+        print("🚨 [ErrorManager] \(error.severity): \(error.localizedDescription)")
+        if let context = context {
+            print("📍 Context: \(context)")
+        }
+    }
+    
+    func retryOperation<T>(
+        operation: @escaping () async throws -> T,
+        configuration: RetryConfiguration = .default,
+        context: String? = nil
+    ) async throws -> T {
+        var lastError: Error?
+        
+        for attempt in 1...configuration.maxAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+                let appError = mapToAppError(error)
+                
+                // Ne pas retry si l'erreur n'est pas retryable
+                if !appError.isRetryable {
+                    throw error
+                }
+                
+                // Ne pas attendre après le dernier essai
+                if attempt < configuration.maxAttempts {
+                    let delay = min(
+                        configuration.baseDelay * pow(configuration.backoffMultiplier, Double(attempt - 1)),
+                        configuration.maxDelay
+                    )
+                    
+                    print("🔄 Retry attempt \(attempt)/\(configuration.maxAttempts) in \(delay)s")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            }
+        }
+        
+        // Toutes les tentatives ont échoué
+        if let lastError = lastError {
+            handleError(lastError, context: context)
+            throw lastError
+        }
+        
+        throw AppError.unknownError("Retry operation failed")
+    }
+}
 
 // MARK: - Child Model
 struct Child: Identifiable, Codable {
@@ -405,26 +665,38 @@ enum DocumentType: String, CaseIterable, Codable {
 // MARK: - Children Service
 class ChildrenService {
     private let supabase: SupabaseClient
+    private let errorManager: ErrorManager
     
-    init() {
+    init(errorManager: ErrorManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
         )
+        if let errorManager = errorManager {
+            self.errorManager = errorManager
+        } else {
+            self.errorManager = ErrorManager()
+        }
     }
     
     func fetchChildren() async throws -> [Child] {
-        print("📥 Récupération des enfants...")
-        
-        let response: [Child] = try await supabase
-            .from("children")
-            .select()
-            .order("created_at", ascending: false)
-            .execute()
-            .value
-        
-        print("✅ \(response.count) enfant(s) récupéré(s)")
-        return response
+        return try await errorManager.retryOperation(
+            operation: { [self] in
+                print("📥 Récupération des enfants...")
+                
+                let response: [Child] = try await self.supabase
+                    .from("children")
+                    .select()
+                    .order("created_at", ascending: false)
+                    .execute()
+                    .value
+                
+                print("✅ \(response.count) enfant(s) récupéré(s)")
+                return response
+            },
+            configuration: .default,
+            context: "ChildrenService.fetchChildren"
+        )
     }
     
     func createChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async throws -> Child {
@@ -498,12 +770,18 @@ class ChildrenService {
 // MARK: - Events Service
 class EventsService {
     private let supabase: SupabaseClient
+    private let errorManager: ErrorManager
     
-    init() {
+    init(errorManager: ErrorManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
         )
+        if let errorManager = errorManager {
+            self.errorManager = errorManager
+        } else {
+            self.errorManager = ErrorManager()
+        }
     }
     
     func fetchEvents() async throws -> [Event] {
@@ -610,12 +888,18 @@ class EventsService {
 
 class DocumentsService {
     private let supabase: SupabaseClient
+    private let errorManager: ErrorManager
     
-    init() {
+    init(errorManager: ErrorManager? = nil) {
         self.supabase = SupabaseClient(
             supabaseURL: AppConfig.Supabase.apiURL,
             supabaseKey: AppConfig.Supabase.anonKey
         )
+        if let errorManager = errorManager {
+            self.errorManager = errorManager
+        } else {
+            self.errorManager = ErrorManager()
+        }
     }
     
     func fetchDocuments() async throws -> [Document] {
@@ -684,7 +968,14 @@ class ChildrenViewModel: ObservableObject {
     @Published var showingEditChild = false
     @Published var childToEdit: Child?
     
-    private let service = ChildrenService()
+    private let service: ChildrenService
+    private let errorManager: ErrorManager
+    
+    init(errorManager: ErrorManager? = nil) {
+        let manager = errorManager ?? ErrorManager()
+        self.errorManager = manager
+        self.service = ChildrenService(errorManager: manager)
+    }
     
     func loadChildren() async {
         isLoading = true
@@ -693,8 +984,8 @@ class ChildrenViewModel: ObservableObject {
         do {
             children = try await service.fetchChildren()
         } catch {
+            errorManager.handleError(error, context: "ChildrenViewModel.loadChildren")
             errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
-            print("❌ Erreur loadChildren: \(error)")
         }
         
         isLoading = false
@@ -779,13 +1070,35 @@ class ChildrenViewModel: ObservableObject {
 @MainActor
 class EventsViewModel: ObservableObject {
     @Published var events: [Event] = []
+    @Published var filteredEvents: [Event] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showingAddEvent = false
     @Published var showingEditEvent = false
     @Published var eventToEdit: Event?
+    @Published var searchText = ""
+    @Published var selectedEventType: EventType?
+    @Published var selectedChildId: UUID?
     
-    private let service = EventsService()
+    private let service: EventsService
+    private let errorManager: ErrorManager
+    
+    init(errorManager: ErrorManager? = nil) {
+        let manager = errorManager ?? ErrorManager()
+        self.errorManager = manager
+        self.service = EventsService(errorManager: manager)
+    }
+    
+    // Propriétés calculées pour les événements filtrés
+    var upcomingEvents: [Event] {
+        let filtered = filteredEvents.isEmpty ? events : filteredEvents
+        return filtered.filter { $0.isUpcoming }.prefix(3).map { $0 }
+    }
+    
+    var todayEvents: [Event] {
+        let filtered = filteredEvents.isEmpty ? events : filteredEvents
+        return filtered.filter { $0.isToday }
+    }
     
     func loadEvents() async {
         isLoading = true
@@ -794,6 +1107,7 @@ class EventsViewModel: ObservableObject {
         do {
             events = try await service.fetchEvents()
             print("✅ \(events.count) événement(s) chargé(s)")
+            applyFilters() // Appliquer les filtres après le chargement
             isLoading = false
         } catch {
             // Gestion spécifique de l'erreur "cancelled"
@@ -808,12 +1122,61 @@ class EventsViewModel: ObservableObject {
         }
     }
     
-    func addEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?) async {
+    // MARK: - Recherche et Filtres
+    func applyFilters() {
+        var filtered = events
+        
+        // Filtre par texte de recherche
+        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            filtered = filtered.filter { event in
+                event.title.localizedCaseInsensitiveContains(searchText) ||
+                (event.description?.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+        
+        // Filtre par type d'événement
+        if let eventType = selectedEventType {
+            filtered = filtered.filter { $0.eventType == eventType }
+        }
+        
+        // Filtre par enfant
+        if let childId = selectedChildId {
+            filtered = filtered.filter { $0.childId == childId }
+        }
+        
+        filteredEvents = filtered
+        print("🔍 Filtres appliqués: \(filteredEvents.count)/\(events.count) événements")
+    }
+    
+    func clearFilters() {
+        searchText = ""
+        selectedEventType = nil
+        selectedChildId = nil
+        filteredEvents = []
+        print("🧹 Filtres effacés")
+    }
+    
+    func updateSearchText(_ text: String) {
+        searchText = text
+        applyFilters()
+    }
+    
+    func selectEventType(_ eventType: EventType?) {
+        selectedEventType = eventType
+        applyFilters()
+    }
+    
+    func selectChild(_ childId: UUID?) {
+        selectedChildId = childId
+        applyFilters()
+    }
+    
+    func addEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date?, childId: UUID?, notificationManager: NotificationManager? = nil) async {
         isLoading = true
         errorMessage = nil
         
         do {
-            _ = try await service.createEvent(
+            let newEvent = try await service.createEvent(
                 title: title,
                 description: description,
                 eventType: eventType,
@@ -821,6 +1184,11 @@ class EventsViewModel: ObservableObject {
                 endDate: endDate,
                 childId: childId
             )
+            
+            // Programmer les notifications intelligentes pour le nouvel événement
+            if let notificationManager = notificationManager {
+                await notificationManager.scheduleSmartReminders(for: [newEvent])
+            }
             
             // Recharger la liste complète depuis Supabase pour assurer la synchronisation
             await loadEvents()
@@ -885,14 +1253,6 @@ class EventsViewModel: ObservableObject {
     func dismissError() {
         errorMessage = nil
     }
-    
-    var upcomingEvents: [Event] {
-        events.filter { $0.isUpcoming }.prefix(3).map { $0 }
-    }
-    
-    var todayEvents: [Event] {
-        events.filter { $0.isToday }
-    }
 }
 
 // MARK: - Documents ViewModel
@@ -906,7 +1266,14 @@ class DocumentsViewModel: ObservableObject {
     @Published var showingEditDocument = false
     @Published var documentToEdit: Document?
     
-    private let service = DocumentsService()
+    private let service: DocumentsService
+    private let errorManager: ErrorManager
+    
+    init(errorManager: ErrorManager? = nil) {
+        let manager = errorManager ?? ErrorManager()
+        self.errorManager = manager
+        self.service = DocumentsService(errorManager: manager)
+    }
     
     func loadDocuments() async {
         isLoading = true
@@ -1014,9 +1381,20 @@ class DocumentsViewModel: ObservableObject {
 struct MainTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var selectedTab = 0
-    @StateObject private var childrenViewModel = ChildrenViewModel()
-    @StateObject private var eventsViewModel = EventsViewModel()
-    @StateObject private var documentsViewModel = DocumentsViewModel()
+    @StateObject private var errorManager = ErrorManager()
+    @StateObject private var childrenViewModel: ChildrenViewModel
+    @StateObject private var eventsViewModel: EventsViewModel
+    @StateObject private var documentsViewModel: DocumentsViewModel
+    @StateObject private var notificationManager = NotificationManager()
+    
+    init() {
+        // Créer une instance partagée d'ErrorManager
+        let sharedErrorManager = ErrorManager()
+        self._errorManager = StateObject(wrappedValue: sharedErrorManager)
+        self._childrenViewModel = StateObject(wrappedValue: ChildrenViewModel(errorManager: sharedErrorManager))
+        self._eventsViewModel = StateObject(wrappedValue: EventsViewModel(errorManager: sharedErrorManager))
+        self._documentsViewModel = StateObject(wrappedValue: DocumentsViewModel(errorManager: sharedErrorManager))
+    }
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -1024,6 +1402,7 @@ struct MainTabView: View {
             HomeView()
                 .environmentObject(childrenViewModel)
                 .environmentObject(eventsViewModel)
+                .environmentObject(notificationManager)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Accueil")
@@ -1043,6 +1422,7 @@ struct MainTabView: View {
             CalendarView()
                 .environmentObject(eventsViewModel)
                 .environmentObject(childrenViewModel)
+                .environmentObject(notificationManager)
                 .tabItem {
                     Image(systemName: "calendar")
                     Text("Calendrier")
@@ -1059,15 +1439,37 @@ struct MainTabView: View {
                 }
                 .tag(3)
             
-            // Profil
-            ProfileView()
+            // Paramètres
+            SettingsView()
+                .environmentObject(notificationManager)
+                .environmentObject(authManager)
                 .tabItem {
-                    Image(systemName: "person.fill")
-                    Text("Profil")
+                    Image(systemName: "gearshape.fill")
+                    Text("Paramètres")
                 }
                 .tag(4)
         }
         .accentColor(.pink)
+        .environmentObject(errorManager)
+        .alert("Erreur", isPresented: $errorManager.isShowingError) {
+            if let error = errorManager.currentError, error.isRetryable {
+                Button("Réessayer") {
+                    // Le retry sera géré par les ViewModels
+                    errorManager.clearError()
+                }
+                Button("Annuler", role: .cancel) {
+                    errorManager.clearError()
+                }
+            } else {
+                Button("OK") {
+                    errorManager.clearError()
+                }
+            }
+        } message: {
+            if let error = errorManager.currentError {
+                Text(error.localizedDescription)
+            }
+        }
     }
 }
 
@@ -1076,6 +1478,7 @@ struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @EnvironmentObject var eventsViewModel: EventsViewModel
+    @EnvironmentObject var notificationManager: NotificationManager
     @State private var showingAddDocument = false
     @State private var showingInviteFamily = false
     @State private var isRefreshing = false
@@ -1288,7 +1691,8 @@ struct HomeView: View {
                         eventType: eventType,
                         startDate: startDate,
                         endDate: endDate,
-                        childId: childId
+                        childId: childId,
+                        notificationManager: notificationManager
                     )
                 }
             }
@@ -1591,65 +1995,132 @@ struct ChildrenView: View {
 struct CalendarView: View {
     @EnvironmentObject var eventsViewModel: EventsViewModel
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    @EnvironmentObject var notificationManager: NotificationManager
+    @State private var showingFilters = false
+    
+    // Événements à afficher (filtrés ou tous)
+    private var displayedEvents: [Event] {
+        eventsViewModel.filteredEvents.isEmpty ? eventsViewModel.events : eventsViewModel.filteredEvents
+    }
+    
+    // Indicateur de filtres actifs
+    private var hasActiveFilters: Bool {
+        !eventsViewModel.searchText.isEmpty || 
+        eventsViewModel.selectedEventType != nil || 
+        eventsViewModel.selectedChildId != nil
+    }
     
     var body: some View {
         NavigationView {
-            Group {
-                if eventsViewModel.events.isEmpty && !eventsViewModel.isLoading {
-                    // Empty state
-                    VStack(spacing: 30) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 60))
-                            .foregroundColor(.pink)
-                        
-                        Text("Aucun événement")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        Text("Ajoutez votre premier événement pour commencer")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Button(action: eventsViewModel.showAddEvent) {
-                            HStack {
-                                Image(systemName: "calendar.badge.plus")
-                                Text("Ajouter un événement")
-                            }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.pink)
-                            .cornerRadius(12)
+            VStack(spacing: 0) {
+                // Barre de recherche
+                SearchBar(text: $eventsViewModel.searchText) { text in
+                    eventsViewModel.updateSearchText(text)
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
+                // Filtres actifs
+                if hasActiveFilters {
+                    ActiveFiltersView(
+                        searchText: eventsViewModel.searchText,
+                        selectedEventType: eventsViewModel.selectedEventType,
+                        selectedChildId: eventsViewModel.selectedChildId,
+                        children: childrenViewModel.children,
+                        onClearFilters: {
+                            eventsViewModel.clearFilters()
                         }
-                        .padding(.horizontal)
-                    }
-                    .padding(.top, 40)
-                } else {
-                    // Events list
-                    List {
-                        ForEach(eventsViewModel.events) { event in
-                            EventRow(
-                                event: event,
-                                onEdit: {
-                                    eventsViewModel.showEditEvent(event)
-                                },
-                                onDelete: {
-                                    Task {
-                                        await eventsViewModel.deleteEvent(event)
-                                    }
+                    )
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+                
+                Group {
+                    if eventsViewModel.events.isEmpty && !eventsViewModel.isLoading {
+                        // Empty state
+                        VStack(spacing: 30) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 60))
+                                .foregroundColor(.pink)
+                            
+                            Text("Aucun événement")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            Text("Ajoutez votre premier événement pour commencer")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button(action: eventsViewModel.showAddEvent) {
+                                HStack {
+                                    Image(systemName: "calendar.badge.plus")
+                                    Text("Ajouter un événement")
                                 }
-                            )
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color.pink)
+                                .cornerRadius(12)
+                            }
+                            .padding(.horizontal)
                         }
-                    }
-                    .refreshable {
-                        await eventsViewModel.loadEvents()
+                        .padding(.top, 40)
+                    } else if displayedEvents.isEmpty && hasActiveFilters {
+                        // No results state
+                        VStack(spacing: 20) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 50))
+                                .foregroundColor(.gray)
+                            
+                            Text("Aucun résultat")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            Text("Aucun événement ne correspond à vos critères")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button("Effacer les filtres") {
+                                eventsViewModel.clearFilters()
+                            }
+                            .foregroundColor(.pink)
+                        }
+                        .padding(.top, 60)
+                    } else {
+                        // Events list
+                        List {
+                            ForEach(displayedEvents) { event in
+                                EventRow(
+                                    event: event,
+                                    onEdit: {
+                                        eventsViewModel.showEditEvent(event)
+                                    },
+                                    onDelete: {
+                                        Task {
+                                            await eventsViewModel.deleteEvent(event)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .refreshable {
+                            await eventsViewModel.loadEvents()
+                        }
                     }
                 }
             }
             .navigationTitle("Calendrier")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showingFilters = true }) {
+                        Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                            .foregroundColor(hasActiveFilters ? .pink : .primary)
+                    }
+                }
+                
                 if !eventsViewModel.events.isEmpty {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: eventsViewModel.showAddEvent) {
@@ -1669,6 +2140,12 @@ struct CalendarView: View {
                 await eventsViewModel.loadEvents()
             }
         }
+        .sheet(isPresented: $showingFilters) {
+            FiltersView(
+                eventsViewModel: eventsViewModel,
+                childrenViewModel: childrenViewModel
+            )
+        }
         .sheet(isPresented: $eventsViewModel.showingAddEvent) {
             AddEventView { title, description, eventType, startDate, endDate, childId in
                 Task {
@@ -1678,7 +2155,8 @@ struct CalendarView: View {
                         eventType: eventType,
                         startDate: startDate,
                         endDate: endDate,
-                        childId: childId
+                        childId: childId,
+                        notificationManager: notificationManager
                     )
                 }
             }
@@ -2993,6 +3471,499 @@ struct EditEventView: View {
         
         // Note: isLoading sera géré par le ViewModel après l'opération async
         dismiss()
+    }
+}
+
+// MARK: - Notification Manager
+
+@MainActor
+class NotificationManager: ObservableObject {
+    @Published var isAuthorized = false
+    @Published var pendingNotifications: [UNNotificationRequest] = []
+    
+    init() {
+        checkAuthorizationStatus()
+    }
+    
+    func requestPermission() async {
+        do {
+            let granted = try await UNUserNotificationCenter.current().requestAuthorization(
+                options: [.alert, .badge, .sound]
+            )
+            await MainActor.run {
+                self.isAuthorized = granted
+            }
+            print(granted ? "✅ Notifications autorisées" : "❌ Notifications refusées")
+        } catch {
+            print("❌ Erreur demande permission notifications: \(error)")
+        }
+    }
+    
+    private func checkAuthorizationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                self.isAuthorized = settings.authorizationStatus == .authorized
+            }
+        }
+    }
+    
+    func scheduleEventReminder(for event: Event, minutesBefore: Int = 30) async {
+        guard isAuthorized else {
+            print("❌ Notifications non autorisées")
+            return
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Rappel d'événement"
+        content.body = "\(event.title) dans \(minutesBefore) minutes"
+        content.sound = .default
+        content.badge = 1
+        
+        // Calculer la date de notification
+        let notificationDate = event.startDate.addingTimeInterval(-Double(minutesBefore * 60))
+        
+        // Ne programmer que les événements futurs
+        guard notificationDate > Date() else {
+            print("⏰ Événement trop proche pour programmer une notification")
+            return
+        }
+        
+        let dateComponents = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute],
+            from: notificationDate
+        )
+        
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: dateComponents,
+            repeats: false
+        )
+        
+        let identifier = "event_\(event.id.uuidString)_\(minutesBefore)min"
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: trigger
+        )
+        
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            print("✅ Notification programmée pour \(event.title) à \(notificationDate)")
+        } catch {
+            print("❌ Erreur programmation notification: \(error)")
+        }
+    }
+    
+    func cancelEventReminders(for eventId: UUID) async {
+        let identifiers = [
+            "event_\(eventId.uuidString)_30min",
+            "event_\(eventId.uuidString)_60min",
+            "event_\(eventId.uuidString)_1440min" // 24h
+        ]
+        
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        print("🗑️ Notifications supprimées pour l'événement \(eventId)")
+    }
+    
+    func scheduleSmartReminders(for events: [Event]) async {
+        for event in events {
+            // Rappel 30 minutes avant pour tous les événements
+            await scheduleEventReminder(for: event, minutesBefore: 30)
+            
+            // Rappel 1 heure avant pour les événements médicaux
+            if event.eventType == .medical {
+                await scheduleEventReminder(for: event, minutesBefore: 60)
+            }
+            
+            // Rappel 24h avant pour les événements scolaires
+            if event.eventType == .school {
+                await scheduleEventReminder(for: event, minutesBefore: 1440) // 24h
+            }
+        }
+    }
+    
+    func getPendingNotifications() async {
+        let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
+        await MainActor.run {
+            self.pendingNotifications = requests
+        }
+        print("📋 \(requests.count) notifications en attente")
+    }
+}
+
+// MARK: - Settings View
+
+struct SettingsView: View {
+    @EnvironmentObject var notificationManager: NotificationManager
+    @EnvironmentObject var authManager: AuthManager
+    @State private var showingNotificationSettings = false
+    
+    var body: some View {
+        NavigationView {
+            List {
+                // Section Notifications
+                Section("Notifications") {
+                    HStack {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(.orange)
+                            .frame(width: 30)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Rappels d'événements")
+                                .font(.headline)
+                            Text(notificationManager.isAuthorized ? "Activées" : "Désactivées")
+                                .font(.caption)
+                                .foregroundColor(notificationManager.isAuthorized ? .green : .red)
+                        }
+                        
+                        Spacer()
+                        
+                        if !notificationManager.isAuthorized {
+                            Button("Activer") {
+                                Task {
+                                    await notificationManager.requestPermission()
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.orange)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    
+                    if notificationManager.isAuthorized {
+                        Button(action: { showingNotificationSettings = true }) {
+                            HStack {
+                                Image(systemName: "gear")
+                                    .foregroundColor(.gray)
+                                    .frame(width: 30)
+                                Text("Paramètres de notifications")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                }
+                
+                // Section Compte
+                Section("Compte") {
+                    HStack {
+                        Image(systemName: "person.fill")
+                            .foregroundColor(.blue)
+                            .frame(width: 30)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Profil utilisateur")
+                                .font(.headline)
+                            if let email = authManager.currentUser?.email {
+                                Text(email)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    
+                    Button(action: {
+                        Task {
+                            await authManager.signOut()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .foregroundColor(.red)
+                                .frame(width: 30)
+                            Text("Se déconnecter")
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                    }
+                }
+                
+                // Section À propos
+                Section("À propos") {
+                    HStack {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.purple)
+                            .frame(width: 30)
+                        Text("Version de l'app")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("Paramètres")
+        }
+        .sheet(isPresented: $showingNotificationSettings) {
+            NotificationSettingsView()
+                .environmentObject(notificationManager)
+        }
+    }
+}
+
+struct NotificationSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var notificationManager: NotificationManager
+    @State private var reminderFor30Min = true
+    @State private var reminderFor1Hour = true
+    @State private var reminderFor24Hours = false
+    @State private var smartReminders = true
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section("Rappels par défaut") {
+                    Toggle("30 minutes avant", isOn: $reminderFor30Min)
+                    Toggle("1 heure avant", isOn: $reminderFor1Hour)
+                    Toggle("24 heures avant", isOn: $reminderFor24Hours)
+                }
+                
+                Section("Rappels intelligents") {
+                    Toggle("Activer les rappels intelligents", isOn: $smartReminders)
+                    
+                    if smartReminders {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Les rappels intelligents adaptent automatiquement les notifications selon le type d'événement :")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            HStack {
+                                Image(systemName: "cross.fill")
+                                    .foregroundColor(.red)
+                                Text("Médical : 30min + 1h avant")
+                                    .font(.caption)
+                            }
+                            
+                            HStack {
+                                Image(systemName: "book.fill")
+                                    .foregroundColor(.blue)
+                                Text("École : 30min + 24h avant")
+                                    .font(.caption)
+                            }
+                            
+                            HStack {
+                                Image(systemName: "figure.run")
+                                    .foregroundColor(.green)
+                                Text("Activité : 30min avant")
+                                    .font(.caption)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                
+                Section("Notifications en attente") {
+                    HStack {
+                        Text("Notifications programmées")
+                        Spacer()
+                        Text("\(notificationManager.pendingNotifications.count)")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button("Actualiser") {
+                        Task {
+                            await notificationManager.getPendingNotifications()
+                        }
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Terminé") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .task {
+            await notificationManager.getPendingNotifications()
+        }
+    }
+}
+
+// MARK: - Search and Filter Components
+
+struct SearchBar: View {
+    @Binding var text: String
+    let onSearchTextChanged: (String) -> Void
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            
+            TextField("Rechercher des événements...", text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+                .onChange(of: text) { newValue in
+                    onSearchTextChanged(newValue)
+                }
+            
+            if !text.isEmpty {
+                Button(action: {
+                    text = ""
+                    onSearchTextChanged("")
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+    }
+}
+
+struct ActiveFiltersView: View {
+    let searchText: String
+    let selectedEventType: EventType?
+    let selectedChildId: UUID?
+    let children: [Child]
+    let onClearFilters: () -> Void
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if !searchText.isEmpty {
+                    FilterChip(title: "\"\(searchText)\"", color: .blue)
+                }
+                
+                if let eventType = selectedEventType {
+                    FilterChip(title: eventType.displayName, color: eventType.color)
+                }
+                
+                if let childId = selectedChildId,
+                   let child = children.first(where: { $0.id == childId }) {
+                    FilterChip(title: child.fullName, color: .purple)
+                }
+                
+                Button("Effacer tout") {
+                    onClearFilters()
+                }
+                .font(.caption)
+                .foregroundColor(.pink)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.pink.opacity(0.1))
+                .cornerRadius(6)
+            }
+            .padding(.horizontal)
+        }
+    }
+}
+
+struct FilterChip: View {
+    let title: String
+    let color: Color
+    
+    var body: some View {
+        Text(title)
+            .font(.caption)
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.1))
+            .cornerRadius(6)
+    }
+}
+
+struct FiltersView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var eventsViewModel: EventsViewModel
+    @ObservedObject var childrenViewModel: ChildrenViewModel
+    
+    @State private var tempSearchText: String
+    @State private var tempEventType: EventType?
+    @State private var tempChildId: UUID?
+    
+    init(eventsViewModel: EventsViewModel, childrenViewModel: ChildrenViewModel) {
+        self.eventsViewModel = eventsViewModel
+        self.childrenViewModel = childrenViewModel
+        self._tempSearchText = State(initialValue: eventsViewModel.searchText)
+        self._tempEventType = State(initialValue: eventsViewModel.selectedEventType)
+        self._tempChildId = State(initialValue: eventsViewModel.selectedChildId)
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Recherche") {
+                    TextField("Rechercher par titre ou description", text: $tempSearchText)
+                }
+                
+                Section("Type d'événement") {
+                    Picker("Type", selection: $tempEventType) {
+                        Text("Tous les types").tag(nil as EventType?)
+                        ForEach(EventType.allCases, id: \.self) { eventType in
+                            HStack {
+                                Image(systemName: eventType.icon)
+                                    .foregroundColor(eventType.color)
+                                Text(eventType.displayName)
+                            }
+                            .tag(eventType as EventType?)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                }
+                
+                if !childrenViewModel.children.isEmpty {
+                    Section("Enfant") {
+                        Picker("Enfant", selection: $tempChildId) {
+                            Text("Tous les enfants").tag(nil as UUID?)
+                            ForEach(childrenViewModel.children) { child in
+                                Text(child.fullName).tag(child.id as UUID?)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                    }
+                }
+                
+                Section {
+                    Button("Effacer tous les filtres") {
+                        tempSearchText = ""
+                        tempEventType = nil
+                        tempChildId = nil
+                    }
+                    .foregroundColor(.pink)
+                }
+            }
+            .navigationTitle("Filtres")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Appliquer") {
+                        applyFilters()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+    
+    private func applyFilters() {
+        eventsViewModel.updateSearchText(tempSearchText)
+        eventsViewModel.selectEventType(tempEventType)
+        eventsViewModel.selectChild(tempChildId)
     }
 }
 
