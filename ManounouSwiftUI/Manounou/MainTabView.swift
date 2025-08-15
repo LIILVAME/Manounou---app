@@ -2439,12 +2439,14 @@ enum CalendarViewType: String, CaseIterable {
     case month = "month"
     case week = "week"
     case day = "day"
+    case agenda = "agenda"
     
     var displayName: String {
         switch self {
         case .month: return "Mois"
         case .week: return "Semaine"
         case .day: return "Jour"
+        case .agenda: return "Agenda"
         }
     }
     
@@ -2453,6 +2455,7 @@ enum CalendarViewType: String, CaseIterable {
         case .month: return "calendar"
         case .week: return "calendar.day.timeline.left"
         case .day: return "calendar.day.timeline.leading"
+        case .agenda: return "list.bullet.clipboard"
         }
     }
 }
@@ -2501,17 +2504,50 @@ struct CalendarView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
                 
-                // Sélecteur de vue calendrier
-                Picker("Vue calendrier", selection: $selectedViewType) {
-                    ForEach(CalendarViewType.allCases, id: \.self) { viewType in
-                        HStack {
-                            Image(systemName: viewType.icon)
-                            Text(viewType.displayName)
+                // En-tête avec sélecteur et bouton Aujourd'hui
+                VStack(spacing: 12) {
+                    // Sélecteur de vue calendrier
+                    Picker("Vue calendrier", selection: $selectedViewType) {
+                        ForEach(CalendarViewType.allCases, id: \.self) { viewType in
+                            HStack {
+                                Image(systemName: viewType.icon)
+                                Text(viewType.displayName)
+                            }
+                            .tag(viewType)
                         }
-                        .tag(viewType)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    // Bouton Aujourd'hui (sauf pour la vue Agenda qui a le sien)
+                    if selectedViewType != .agenda {
+                        HStack {
+                            Spacer()
+                            
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    selectedDate = Date()
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "calendar.circle.fill")
+                                        .font(.caption)
+                                    Text("Aujourd'hui")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue)
+                                )
+                            }
+                            .disabled(Calendar.current.isDate(selectedDate, inSameDayAs: Date()))
+                            .opacity(Calendar.current.isDate(selectedDate, inSameDayAs: Date()) ? 0.5 : 1.0)
+                        }
                     }
                 }
-                .pickerStyle(SegmentedPickerStyle())
                 .padding(.horizontal)
                 .padding(.top, 8)
                 
@@ -2539,6 +2575,8 @@ struct CalendarView: View {
                         WeekCalendarView(selectedDate: $selectedDate, events: displayedEvents)
                     case .day:
                         DayCalendarView(selectedDate: $selectedDate, events: displayedEvents)
+                    case .agenda:
+                        AgendaCalendarView(selectedDate: $selectedDate, events: displayedEvents)
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: selectedViewType)
@@ -4917,6 +4955,263 @@ struct DayCalendarView: View {
         if let newDate = calendar.date(byAdding: .day, value: direction, to: selectedDate) {
             selectedDate = newDate
         }
+    }
+}
+
+struct AgendaCalendarView: View {
+    @Binding var selectedDate: Date
+    let events: [Event]
+    
+    private let calendar = Calendar.current
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM yyyy"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    private let sectionDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    // Événements groupés par date
+    private var groupedEvents: [(Date, [Event])] {
+        let now = Date()
+        let futureEvents = events
+            .filter { $0.startDate >= now }
+            .sorted { $0.startDate < $1.startDate }
+        
+        let grouped = Dictionary(grouping: futureEvents) { event in
+            calendar.startOfDay(for: event.startDate)
+        }
+        
+        return grouped
+            .sorted { $0.key < $1.key }
+            .map { (date, events) in
+                (date, events.sorted { $0.startDate < $1.startDate })
+            }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // En-tête Agenda
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Agenda")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Événements à venir")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Bouton "Aujourd'hui"
+                Button(action: {
+                    selectedDate = Date()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar.circle")
+                        Text("Aujourd'hui")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 16)
+            
+            // Liste des événements groupés
+            if groupedEvents.isEmpty {
+                // État vide
+                VStack(spacing: 20) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.5))
+                    
+                    Text("Aucun événement à venir")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Tous vos événements futurs apparaîtront ici")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 60)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(groupedEvents, id: \.0) { date, dayEvents in
+                            AgendaDateSection(date: date, events: dayEvents)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+    }
+}
+
+struct AgendaDateSection: View {
+    let date: Date
+    let events: [Event]
+    
+    private let calendar = Calendar.current
+    private let sectionDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    private var dateTitle: String {
+        if calendar.isDateInToday(date) {
+            return "Aujourd'hui"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Demain"
+        } else {
+            return sectionDateFormatter.string(from: date).capitalized
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // En-tête de section
+            HStack {
+                Text(dateTitle)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text("\(events.count) événement\(events.count > 1 ? "s" : "")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(6)
+            }
+            .padding(.top, 20)
+            
+            // Liste des événements du jour
+            VStack(spacing: 8) {
+                ForEach(events, id: \.id) { event in
+                    AgendaEventCard(event: event)
+                }
+            }
+        }
+    }
+}
+
+struct AgendaEventCard: View {
+    let event: Event
+    
+    private let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Barre colorée et heure
+            VStack(spacing: 4) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(event.eventType.color)
+                    .frame(width: 4, height: 40)
+                
+                Text(timeFormatter.string(from: event.startDate))
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Contenu de l'événement
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: event.eventType.icon)
+                        .foregroundColor(event.eventType.color)
+                        .font(.caption)
+                    
+                    Text(event.eventType.displayName)
+                        .font(.caption)
+                        .foregroundColor(event.eventType.color)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(event.eventType.color.opacity(0.1))
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                    
+                    if let endDate = event.endDate {
+                        Text("\(timeFormatter.string(from: event.startDate)) - \(timeFormatter.string(from: endDate))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Text(event.title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(2)
+                
+                if let description = event.description, !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                
+                // Informations spéciales pour garde d'enfant
+                if event.eventType == .childcare, let childcareInfo = event.childcareInfo {
+                    HStack(spacing: 12) {
+                        if let nannyName = childcareInfo.nannyName {
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption2)
+                                Text(nannyName)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        if let nannyPhone = childcareInfo.nannyPhone {
+                            HStack(spacing: 4) {
+                                Image(systemName: "phone.fill")
+                                    .foregroundColor(.green)
+                                    .font(.caption2)
+                                Text(nannyPhone)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
+        )
     }
 }
 
