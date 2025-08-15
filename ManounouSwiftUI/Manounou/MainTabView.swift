@@ -1603,6 +1603,11 @@ class EventsViewModel: ObservableObject {
         showingEditEvent = true
     }
     
+    func editEvent(_ event: Event) {
+        eventToEdit = event
+        showingEditEvent = true
+    }
+    
     func dismissError() {
         errorMessage = nil
     }
@@ -2402,11 +2407,25 @@ struct ChildrenView: View {
     }
 }
 
+enum CalendarSheet: Identifiable {
+    case filters
+    case addEvent
+    case editEvent
+    
+    var id: Int {
+        switch self {
+        case .filters: return 0
+        case .addEvent: return 1
+        case .editEvent: return 2
+        }
+    }
+}
+
 struct CalendarView: View {
     @EnvironmentObject var eventsViewModel: EventsViewModel
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @EnvironmentObject var notificationManager: NotificationManager
-    @State private var showingFilters = false
+    @State private var activeSheet: CalendarSheet?
     
     // Événements à afficher (filtrés ou tous)
     private var displayedEvents: [Event] {
@@ -2506,7 +2525,8 @@ struct CalendarView: View {
                                 EventRow(
                                     event: event,
                                     onEdit: {
-                                        eventsViewModel.showEditEvent(event)
+                                        eventsViewModel.eventToEdit = event
+                                        activeSheet = .editEvent
                                     },
                                     onDelete: {
                                         Task {
@@ -2525,7 +2545,7 @@ struct CalendarView: View {
             .navigationTitle("Calendrier")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingFilters = true }) {
+                    Button(action: { activeSheet = .filters }) {
                         Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                             .foregroundColor(hasActiveFilters ? .pink : .primary)
                     }
@@ -2533,7 +2553,7 @@ struct CalendarView: View {
                 
                 if !eventsViewModel.events.isEmpty {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: eventsViewModel.showAddEvent) {
+                        Button(action: { activeSheet = .addEvent }) {
                             Image(systemName: "plus")
                         }
                     }
@@ -2550,40 +2570,43 @@ struct CalendarView: View {
                 await eventsViewModel.loadEvents()
             }
         }
-        .sheet(isPresented: $showingFilters) {
-            FiltersView(
-                eventsViewModel: eventsViewModel,
-                childrenViewModel: childrenViewModel
-            )
-        }
-        .sheet(isPresented: $eventsViewModel.showingAddEvent) {
-            AddEventView { title, description, eventType, startDate, endDate, childId in
-                Task {
-                    await eventsViewModel.addEvent(
-                        title: title,
-                        description: description,
-                        eventType: eventType,
-                        startDate: startDate,
-                        endDate: endDate,
-                        childId: childId,
-                        notificationManager: notificationManager
-                    )
-                }
-            }
-        }
-        .sheet(isPresented: $eventsViewModel.showingEditEvent) {
-            if let eventToEdit = eventsViewModel.eventToEdit {
-                EditEventView(event: eventToEdit) { title, description, eventType, startDate, endDate, childId in
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .filters:
+                FiltersView(
+                    eventsViewModel: eventsViewModel,
+                    childrenViewModel: childrenViewModel
+                )
+            case .addEvent:
+                AddEventView { title, description, eventType, startDate, endDate, childId in
                     Task {
-                        await eventsViewModel.updateEvent(
-                            eventToEdit,
+                        await eventsViewModel.addEvent(
                             title: title,
                             description: description,
                             eventType: eventType,
                             startDate: startDate,
                             endDate: endDate,
-                            childId: childId
+                            childId: childId,
+                            notificationManager: notificationManager
                         )
+                    }
+                    activeSheet = nil
+                }
+            case .editEvent:
+                if let eventToEdit = eventsViewModel.eventToEdit {
+                    EditEventView(event: eventToEdit) { title, description, eventType, startDate, endDate, childId in
+                        Task {
+                            await eventsViewModel.updateEvent(
+                                eventToEdit,
+                                title: title,
+                                description: description,
+                                eventType: eventType,
+                                startDate: startDate,
+                                endDate: endDate,
+                                childId: childId
+                            )
+                        }
+                        activeSheet = nil
                     }
                 }
             }
