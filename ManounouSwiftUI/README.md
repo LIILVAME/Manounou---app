@@ -1,183 +1,134 @@
-# Supabase CLI
+# 🍼 Manounou - Application SwiftUI
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+**Version :** 1.0.0  
+**Plateforme :** iOS 16.0+  
+**Framework :** SwiftUI  
+**Backend :** Supabase
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+---
 
-This repository contains all the functionality for Supabase CLI.
+## 📱 Description
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+Ce dossier contient l'application iOS native **Manounou** développée en SwiftUI. L'application permet aux parents de gérer efficacement leurs enfants, événements familiaux et documents importants.
 
-## Getting started
+## 🏗️ Structure du Projet
 
-### Install the CLI
+```
+ManounouSwiftUI/
+├── Manounou/                    # Code source principal
+│   ├── ManounouApp.swift       # Point d'entrée de l'app
+│   ├── MainTabView.swift       # Interface principale avec onglets
+│   ├── AuthManager.swift       # Gestion de l'authentification
+│   ├── AuthenticationView.swift # Interface de connexion
+│   ├── Config.swift           # Configuration de l'app
+│   ├── Package.swift          # Dépendances Swift Package Manager
+│   └── Info.plist            # Configuration iOS
+├── Manounou.xcodeproj/         # Projet Xcode
+├── supabase/                   # Configuration base de données
+│   └── migrations/            # Migrations SQL
+├── create_documents_table.sql  # Script de création table documents
+└── supabase_setup.sql         # Configuration initiale Supabase
+```
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+## 🚀 Fonctionnalités Implémentées
+
+### ✅ **Core Features**
+- 🔐 **Authentification** : Connexion/inscription avec Supabase Auth
+- 🏠 **Dashboard** : Vue d'ensemble avec compteurs dynamiques
+- 👶 **Gestion Enfants** : Profils complets avec informations essentielles
+- 📅 **Calendrier** : 4 vues (Mois, Semaine, Jour, Agenda) avec détection de conflits
+- 📄 **Documents** : Stockage et gestion sécurisés
+- 👤 **Profil** : Gestion des informations utilisateur
+
+### 🎯 **Fonctionnalités Avancées**
+- ⚠️ **Détection de conflits** : Alertes visuelles pour événements qui se chevauchent
+- 🔄 **Navigation fluide** : Bouton "Aujourd'hui" et transitions animées
+- 🎨 **Design moderne** : Interface SwiftUI native avec thème cohérent
+- 📱 **Responsive** : Adaptation automatique aux différentes tailles d'écran
+
+## 🛠️ Technologies Utilisées
+
+- **SwiftUI** : Framework UI déclaratif d'Apple
+- **Combine** : Framework de programmation réactive
+- **Supabase Swift** : SDK pour base de données et authentification
+- **Swift Package Manager** : Gestionnaire de dépendances
+
+## 📦 Dépendances
+
+```swift
+// Package.swift
+dependencies: [
+    .package(url: "https://github.com/supabase/supabase-swift.git", from: "2.31.2")
+]
+```
+
+## 🔧 Configuration
+
+### Prérequis
+- Xcode 15.0+
+- iOS 16.0+
+- Compte Supabase configuré
+
+### Variables d'environnement
+Configurer dans `Config.swift` :
+- `SUPABASE_URL` : URL de votre projet Supabase
+- `SUPABASE_ANON_KEY` : Clé anonyme Supabase
+
+## 🚀 Lancement
+
+1. **Ouvrir le projet**
+   ```bash
+   open Manounou.xcodeproj
+   ```
+
+2. **Configurer les dépendances**
+   - Xcode résoudra automatiquement les packages Swift
+
+3. **Configurer Supabase**
+   - Exécuter `supabase_setup.sql` dans votre projet Supabase
+   - Mettre à jour `Config.swift` avec vos clés
+
+4. **Compiler et lancer**
+   - Sélectionner un simulateur iOS
+   - Appuyer sur ⌘+R pour compiler et lancer
+
+## 📊 Architecture
+
+### Pattern MVVM
+- **Models** : Structures de données (Event, Child, Document, etc.)
+- **Views** : Interfaces SwiftUI (MainTabView, AuthenticationView, etc.)
+- **ViewModels** : Logique métier et état de l'application
+- **Managers** : Services (AuthManager, etc.)
+
+### Navigation
+- **TabView** : Navigation principale avec 5 onglets
+- **NavigationStack** : Navigation hiérarchique dans chaque onglet
+- **Sheets** : Modales pour création/édition
+
+## 🎨 Design System
+
+- **Couleurs** : Palette cohérente avec couleurs système iOS
+- **Typography** : Utilisation des styles de texte natifs
+- **Spacing** : Système d'espacement basé sur des multiples de 8pt
+- **Icons** : SF Symbols pour cohérence avec l'écosystème Apple
+
+## 🧪 Tests
 
 ```bash
-npm i supabase --save-dev
+# Compiler pour vérifier les erreurs
+xcodebuild -project Manounou.xcodeproj -scheme Manounou build
+
+# Lancer sur simulateur
+xcodebuild -project Manounou.xcodeproj -scheme Manounou -destination 'platform=iOS Simulator,name=iPhone 15' build
 ```
 
-To install the beta release channel:
+## 📝 Notes de Développement
 
-```bash
-npm i supabase@beta --save-dev
-```
+- **Performance** : Utilisation de `LazyVStack` et `LazyVGrid` pour les listes
+- **Accessibilité** : Support VoiceOver et Dynamic Type
+- **Localisation** : Prêt pour l'internationalisation
+- **Sécurité** : Authentification sécurisée avec Supabase
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+---
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
-```bash
-supabase bootstrap
-```
-
-Or using npx:
-
-```bash
-npx supabase bootstrap
-```
-
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
-
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
-```
+**Développé avec ❤️ en SwiftUI pour iOS**
