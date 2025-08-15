@@ -4942,7 +4942,7 @@ struct DayCalendarView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(dayEvents, id: \.id) { event in
-                            DayEventCard(event: event)
+                            DayEventCard(event: event, allEvents: events)
                         }
                     }
                     .padding(.horizontal)
@@ -5054,7 +5054,7 @@ struct AgendaCalendarView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(groupedEvents, id: \.0) { date, dayEvents in
-                            AgendaDateSection(date: date, events: dayEvents)
+                            AgendaDateSection(date: date, events: dayEvents, allEvents: events)
                         }
                     }
                     .padding(.horizontal)
@@ -5067,6 +5067,7 @@ struct AgendaCalendarView: View {
 struct AgendaDateSection: View {
     let date: Date
     let events: [Event]
+    let allEvents: [Event]
     
     private let calendar = Calendar.current
     private let sectionDateFormatter: DateFormatter = {
@@ -5086,6 +5087,16 @@ struct AgendaDateSection: View {
         }
     }
     
+    private var conflictsCount: Int {
+        let dayConflicts = ConflictDetector.detectConflicts(in: allEvents)
+            .filter { conflict in
+                conflict.events.contains { event in
+                    events.contains { $0.id == event.id }
+                }
+            }
+        return dayConflicts.count
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // En-tête de section
@@ -5097,20 +5108,38 @@ struct AgendaDateSection: View {
                 
                 Spacer()
                 
-                Text("\(events.count) événement\(events.count > 1 ? "s" : "")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(6)
+                HStack(spacing: 8) {
+                    // Badge de conflits
+                    if conflictsCount > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                            Text("\(conflictsCount)")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange)
+                        .cornerRadius(4)
+                    }
+                    
+                    Text("\(events.count) événement\(events.count > 1 ? "s" : "")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(6)
+                }
             }
             .padding(.top, 20)
             
             // Liste des événements du jour
             VStack(spacing: 8) {
                 ForEach(events, id: \.id) { event in
-                    AgendaEventCard(event: event)
+                    AgendaEventCard(event: event, allEvents: allEvents)
                 }
             }
         }
@@ -5119,6 +5148,7 @@ struct AgendaDateSection: View {
 
 struct AgendaEventCard: View {
     let event: Event
+    let allEvents: [Event]
     
     private let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -5126,18 +5156,45 @@ struct AgendaEventCard: View {
         return formatter
     }()
     
+    private var conflicts: [EventConflict] {
+        ConflictDetector.detectConflicts(in: allEvents)
+            .filter { conflict in
+                conflict.events.contains { $0.id == event.id }
+            }
+    }
+    
+    private var hasConflict: Bool {
+        !conflicts.isEmpty
+    }
+    
+    private var conflictSeverity: EventConflict.ConflictSeverity? {
+        conflicts.max(by: { $0.severity.color == .yellow && $1.severity.color != .yellow })?.severity
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
-            // Barre colorée et heure
+            // Barre colorée et heure avec indicateur de conflit
             VStack(spacing: 4) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(event.eventType.color)
                     .frame(width: 4, height: 40)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 2)
+                            .stroke(hasConflict ? (conflictSeverity?.color ?? .clear) : .clear, lineWidth: 1)
+                    )
                 
-                Text(timeFormatter.string(from: event.startDate))
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 2) {
+                    if hasConflict, let severity = conflictSeverity {
+                        Image(systemName: severity.icon)
+                            .foregroundColor(severity.color)
+                            .font(.caption2)
+                    }
+                    
+                    Text(timeFormatter.string(from: event.startDate))
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(hasConflict ? conflictSeverity?.color : .secondary)
+                }
             }
             
             // Contenu de l'événement
@@ -5157,6 +5214,16 @@ struct AgendaEventCard: View {
                     
                     Spacer()
                     
+                    // Badge de conflit compact
+                    if hasConflict, let severity = conflictSeverity {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(severity.color)
+                            .font(.caption2)
+                            .padding(4)
+                            .background(severity.color.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    
                     if let endDate = event.endDate {
                         Text("\(timeFormatter.string(from: event.startDate)) - \(timeFormatter.string(from: endDate))")
                             .font(.caption2)
@@ -5174,6 +5241,13 @@ struct AgendaEventCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
+                }
+                
+                // Alerte de conflit compacte
+                if hasConflict {
+                    ForEach(conflicts, id: \.id) { conflict in
+                        CompactConflictAlert(conflict: conflict, currentEvent: event)
+                    }
                 }
                 
                 // Informations spéciales pour garde d'enfant
@@ -5210,13 +5284,130 @@ struct AgendaEventCard: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(hasConflict ? (conflictSeverity?.color.opacity(0.2) ?? .clear) : .clear, lineWidth: 1)
+                )
                 .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
         )
     }
 }
 
+struct CompactConflictAlert: View {
+    let conflict: EventConflict
+    let currentEvent: Event
+    
+    private var otherEvent: Event? {
+        conflict.events.first { $0.id != currentEvent.id }
+    }
+    
+    private var conflictMessage: String {
+        guard let other = otherEvent else { return "Conflit" }
+        return "⚠️ Conflit avec \"\(other.title)\""
+    }
+    
+    var body: some View {
+        Text(conflictMessage)
+            .font(.caption2)
+            .foregroundColor(conflict.severity.color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(conflict.severity.color.opacity(0.1))
+            )
+    }
+}
+
+// MARK: - Event Conflict Detection
+struct EventConflict {
+    let id = UUID()
+    let events: [Event]
+    let type: ConflictType
+    let severity: ConflictSeverity
+    
+    enum ConflictType {
+        case overlap
+        case doubleBooking
+        case travelTime
+    }
+    
+    enum ConflictSeverity {
+        case low, medium, high
+        
+        var color: Color {
+            switch self {
+            case .low: return .yellow
+            case .medium: return .orange
+            case .high: return .red
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .low: return "exclamationmark.triangle"
+            case .medium: return "exclamationmark.triangle.fill"
+            case .high: return "xmark.octagon.fill"
+            }
+        }
+    }
+}
+
+class ConflictDetector {
+    static func detectConflicts(in events: [Event]) -> [EventConflict] {
+        var conflicts: [EventConflict] = []
+        let sortedEvents = events.sorted { $0.startDate < $1.startDate }
+        
+        for i in 0..<sortedEvents.count {
+            for j in (i+1)..<sortedEvents.count {
+                let event1 = sortedEvents[i]
+                let event2 = sortedEvents[j]
+                
+                if let conflict = checkConflict(between: event1, and: event2) {
+                    conflicts.append(conflict)
+                }
+            }
+        }
+        
+        return conflicts
+    }
+    
+    private static func checkConflict(between event1: Event, and event2: Event) -> EventConflict? {
+        guard let endDate1 = event1.endDate, let endDate2 = event2.endDate else { return nil }
+        
+        // Vérifier le chevauchement
+        let overlap = event1.startDate < endDate2 && event2.startDate < endDate1
+        
+        if overlap {
+            let severity: EventConflict.ConflictSeverity
+            let type: EventConflict.ConflictType
+            
+            // Déterminer la sévérité basée sur le type d'événements
+            if event1.eventType == .childcare && event2.eventType == .childcare {
+                severity = .high
+                type = .doubleBooking
+            } else if event1.eventType == .childcare || event2.eventType == .childcare {
+                severity = .medium
+                type = .overlap
+            } else {
+                severity = .low
+                type = .overlap
+            }
+            
+            return EventConflict(
+                events: [event1, event2],
+                type: type,
+                severity: severity
+            )
+        }
+        
+        return nil
+    }
+}
+
 struct DayEventCard: View {
     let event: Event
+    let allEvents: [Event]
     
     private let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -5224,14 +5415,37 @@ struct DayEventCard: View {
         return formatter
     }()
     
+    private var conflicts: [EventConflict] {
+        ConflictDetector.detectConflicts(in: allEvents)
+            .filter { conflict in
+                conflict.events.contains { $0.id == event.id }
+            }
+    }
+    
+    private var hasConflict: Bool {
+        !conflicts.isEmpty
+    }
+    
+    private var conflictSeverity: EventConflict.ConflictSeverity? {
+        conflicts.max(by: { $0.severity.color == .yellow && $1.severity.color != .yellow })?.severity
+    }
+    
     var body: some View {
         HStack(spacing: 16) {
-            // Heure
+            // Heure avec indicateur de conflit
             VStack(spacing: 4) {
-                Text(timeFormatter.string(from: event.startDate))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    if hasConflict, let severity = conflictSeverity {
+                        Image(systemName: severity.icon)
+                            .foregroundColor(severity.color)
+                            .font(.caption2)
+                    }
+                    
+                    Text(timeFormatter.string(from: event.startDate))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(hasConflict ? conflictSeverity?.color : .secondary)
+                }
                 
                 if let endDate = event.endDate {
                     Text(timeFormatter.string(from: endDate))
@@ -5239,12 +5453,16 @@ struct DayEventCard: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(width: 50)
+            .frame(width: 60)
             
-            // Barre colorée
+            // Barre colorée avec bordure de conflit
             RoundedRectangle(cornerRadius: 2)
                 .fill(event.eventType.color)
                 .frame(width: 4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 2)
+                        .stroke(hasConflict ? (conflictSeverity?.color ?? .clear) : .clear, lineWidth: 2)
+                )
             
             // Contenu de l'événement
             VStack(alignment: .leading, spacing: 8) {
@@ -5262,6 +5480,22 @@ struct DayEventCard: View {
                         .cornerRadius(4)
                     
                     Spacer()
+                    
+                    // Badge de conflit
+                    if hasConflict, let severity = conflictSeverity {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                            Text("Conflit")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(severity.color)
+                        .cornerRadius(4)
+                    }
                 }
                 
                 Text(event.title)
@@ -5273,6 +5507,13 @@ struct DayEventCard: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(3)
+                }
+                
+                // Alerte de conflit détaillée
+                if hasConflict {
+                    ForEach(conflicts, id: \.id) { conflict in
+                        ConflictAlert(conflict: conflict, currentEvent: event)
+                    }
                 }
                 
                 // Informations de garde d'enfant si disponibles
@@ -5310,7 +5551,54 @@ struct DayEventCard: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(hasConflict ? (conflictSeverity?.color.opacity(0.3) ?? .clear) : .clear, lineWidth: 2)
+                )
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+    }
+}
+
+struct ConflictAlert: View {
+    let conflict: EventConflict
+    let currentEvent: Event
+    
+    private var otherEvent: Event? {
+        conflict.events.first { $0.id != currentEvent.id }
+    }
+    
+    private var conflictMessage: String {
+        guard let other = otherEvent else { return "Conflit détecté" }
+        
+        switch conflict.type {
+        case .overlap:
+            return "Chevauchement avec \"\(other.title)\""
+        case .doubleBooking:
+            return "Double réservation avec \"\(other.title)\""
+        case .travelTime:
+            return "Temps de trajet insuffisant avec \"\(other.title)\""
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: conflict.severity.icon)
+                .foregroundColor(conflict.severity.color)
+                .font(.caption)
+            
+            Text(conflictMessage)
+                .font(.caption)
+                .foregroundColor(conflict.severity.color)
+                .lineLimit(2)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(conflict.severity.color.opacity(0.1))
         )
     }
 }
