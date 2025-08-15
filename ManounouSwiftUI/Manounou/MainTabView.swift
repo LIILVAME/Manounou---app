@@ -646,6 +646,25 @@ enum Gender: String, CaseIterable {
     }
 }
 
+// MARK: - Childcare Model
+struct ChildcareInfo: Codable {
+    let nannyName: String?
+    let nannyPhone: String?
+    let dropOffTime: Date?
+    let pickUpTime: Date?
+    let weeklyDays: [Int]? // 1-7 pour lundi-dimanche
+    let isRecurring: Bool
+    
+    init(nannyName: String? = nil, nannyPhone: String? = nil, dropOffTime: Date? = nil, pickUpTime: Date? = nil, weeklyDays: [Int]? = nil, isRecurring: Bool = false) {
+        self.nannyName = nannyName
+        self.nannyPhone = nannyPhone
+        self.dropOffTime = dropOffTime
+        self.pickUpTime = pickUpTime
+        self.weeklyDays = weeklyDays
+        self.isRecurring = isRecurring
+    }
+}
+
 // MARK: - Event Model
 struct Event: Identifiable, Codable {
     let id: UUID
@@ -656,6 +675,7 @@ struct Event: Identifiable, Codable {
     let startDate: Date
     let endDate: Date?
     let childId: UUID?
+    let childcareInfo: ChildcareInfo?
     let createdAt: Date
     let updatedAt: Date
     
@@ -683,6 +703,7 @@ struct Event: Identifiable, Codable {
         case startDate = "start_date"
         case endDate = "end_date"
         case childId = "child_id"
+        case childcareInfo = "childcare_info"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -703,6 +724,9 @@ struct Event: Identifiable, Codable {
         endDate = try container.decodeIfPresent(Date.self, forKey: .endDate)
         createdAt = try Self.decodeDate(from: container, forKey: .createdAt)
         updatedAt = try Self.decodeDate(from: container, forKey: .updatedAt)
+        
+        // Décodage des informations de garde d'enfant
+        childcareInfo = try container.decodeIfPresent(ChildcareInfo.self, forKey: .childcareInfo)
     }
     
     private static func decodeDate(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Date {
@@ -762,6 +786,7 @@ enum EventType: String, CaseIterable, Codable {
     case school = "school"
     case activity = "activity"
     case family = "family"
+    case childcare = "childcare"
     case other = "other"
     
     var displayName: String {
@@ -770,6 +795,7 @@ enum EventType: String, CaseIterable, Codable {
         case .school: return "École"
         case .activity: return "Activité"
         case .family: return "Famille"
+        case .childcare: return "Garde d'enfant"
         case .other: return "Autre"
         }
     }
@@ -780,6 +806,7 @@ enum EventType: String, CaseIterable, Codable {
         case .school: return "book.fill"
         case .activity: return "figure.run"
         case .family: return "house.fill"
+        case .childcare: return "person.2.fill"
         case .other: return "calendar"
         }
     }
@@ -790,6 +817,7 @@ enum EventType: String, CaseIterable, Codable {
         case .school: return .blue
         case .activity: return .green
         case .family: return .purple
+        case .childcare: return .orange
         case .other: return .gray
         }
     }
@@ -2407,6 +2435,28 @@ struct ChildrenView: View {
     }
 }
 
+enum CalendarViewType: String, CaseIterable {
+    case month = "month"
+    case week = "week"
+    case day = "day"
+    
+    var displayName: String {
+        switch self {
+        case .month: return "Mois"
+        case .week: return "Semaine"
+        case .day: return "Jour"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .month: return "calendar"
+        case .week: return "calendar.day.timeline.left"
+        case .day: return "calendar.day.timeline.leading"
+        }
+    }
+}
+
 enum CalendarSheet: Identifiable {
     case filters
     case addEvent
@@ -2426,6 +2476,8 @@ struct CalendarView: View {
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @EnvironmentObject var notificationManager: NotificationManager
     @State private var activeSheet: CalendarSheet?
+    @State private var selectedViewType: CalendarViewType = .month
+    @State private var selectedDate = Date()
     
     // Événements à afficher (filtrés ou tous)
     private var displayedEvents: [Event] {
@@ -2449,6 +2501,20 @@ struct CalendarView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
                 
+                // Sélecteur de vue calendrier
+                Picker("Vue calendrier", selection: $selectedViewType) {
+                    ForEach(CalendarViewType.allCases, id: \.self) { viewType in
+                        HStack {
+                            Image(systemName: viewType.icon)
+                            Text(viewType.displayName)
+                        }
+                        .tag(viewType)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 // Filtres actifs
                 if hasActiveFilters {
                     ActiveFiltersView(
@@ -2463,6 +2529,19 @@ struct CalendarView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
+                
+                // Vue calendrier selon le type sélectionné
+                Group {
+                    switch selectedViewType {
+                    case .month:
+                        MonthCalendarView(selectedDate: $selectedDate, events: displayedEvents)
+                    case .week:
+                        WeekCalendarView(selectedDate: $selectedDate, events: displayedEvents)
+                    case .day:
+                        DayCalendarView(selectedDate: $selectedDate, events: displayedEvents)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.3), value: selectedViewType)
                 
                 Group {
                     if eventsViewModel.events.isEmpty && !eventsViewModel.isLoading {
@@ -4454,6 +4533,166 @@ struct FiltersView: View {
         eventsViewModel.updateSearchText(tempSearchText)
         eventsViewModel.selectEventType(tempEventType)
         eventsViewModel.selectChild(tempChildId)
+    }
+}
+
+// MARK: - Calendar Views
+struct MonthCalendarView: View {
+    @Binding var selectedDate: Date
+    let events: [Event]
+    
+    private let calendar = Calendar.current
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    var body: some View {
+        VStack {
+            // En-tête du mois
+            HStack {
+                Button(action: { changeMonth(-1) }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.blue)
+                }
+                
+                Spacer()
+                
+                Text(dateFormatter.string(from: selectedDate))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button(action: { changeMonth(1) }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal)
+            
+            // Grille du calendrier (version simplifiée)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                // Jours de la semaine
+                ForEach(["L", "M", "M", "J", "V", "S", "D"], id: \.self) { day in
+                    Text(day)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Jours du mois
+                ForEach(daysInMonth, id: \.self) { date in
+                    DayCell(date: date, events: eventsForDate(date), isSelected: calendar.isDate(date, inSameDayAs: selectedDate))
+                        .onTapGesture {
+                            selectedDate = date
+                        }
+                }
+            }
+            .padding(.horizontal)
+            
+            Spacer()
+        }
+    }
+    
+    private var daysInMonth: [Date] {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate),
+              let monthFirstWeek = calendar.dateInterval(of: .weekOfYear, for: monthInterval.start),
+              let monthLastWeek = calendar.dateInterval(of: .weekOfYear, for: monthInterval.end - 1)
+        else { return [] }
+        
+        var days: [Date] = []
+        var date = monthFirstWeek.start
+        
+        while date < monthLastWeek.end {
+            days.append(date)
+            date = calendar.date(byAdding: .day, value: 1, to: date)!
+        }
+        
+        return days
+    }
+    
+    private func eventsForDate(_ date: Date) -> [Event] {
+        events.filter { calendar.isDate($0.startDate, inSameDayAs: date) }
+    }
+    
+    private func changeMonth(_ direction: Int) {
+        if let newDate = calendar.date(byAdding: .month, value: direction, to: selectedDate) {
+            selectedDate = newDate
+        }
+    }
+}
+
+struct DayCell: View {
+    let date: Date
+    let events: [Event]
+    let isSelected: Bool
+    
+    private let calendar = Calendar.current
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(calendar.component(.day, from: date))")
+                .font(.system(size: 14, weight: isSelected ? .bold : .regular))
+                .foregroundColor(isSelected ? .white : .primary)
+            
+            // Indicateurs d'événements
+            HStack(spacing: 2) {
+                ForEach(events.prefix(3), id: \.id) { event in
+                    Circle()
+                        .fill(event.eventType.color)
+                        .frame(width: 4, height: 4)
+                }
+                if events.count > 3 {
+                    Text("+")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .frame(width: 32, height: 40)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.blue : Color.clear)
+        )
+    }
+}
+
+struct WeekCalendarView: View {
+    @Binding var selectedDate: Date
+    let events: [Event]
+    
+    var body: some View {
+        VStack {
+            Text("Vue Semaine")
+                .font(.title2)
+                .padding()
+            
+            Text("Implémentation à venir")
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+    }
+}
+
+struct DayCalendarView: View {
+    @Binding var selectedDate: Date
+    let events: [Event]
+    
+    var body: some View {
+        VStack {
+            Text("Vue Jour")
+                .font(.title2)
+                .padding()
+            
+            Text("Implémentation à venir")
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
     }
 }
 
