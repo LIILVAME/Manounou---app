@@ -4664,17 +4664,157 @@ struct WeekCalendarView: View {
     @Binding var selectedDate: Date
     let events: [Event]
     
+    private let calendar = Calendar.current
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    private var weekDays: [Date] {
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else {
+            return []
+        }
+        
+        var days: [Date] = []
+        var date = weekInterval.start
+        
+        while date < weekInterval.end {
+            days.append(date)
+            date = calendar.date(byAdding: .day, value: 1, to: date)!
+        }
+        
+        return days
+    }
+    
     var body: some View {
-        VStack {
-            Text("Vue Semaine")
-                .font(.title2)
-                .padding()
+        VStack(spacing: 0) {
+            // En-tête de la semaine
+            HStack {
+                Button(action: { changeWeek(-1) }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.blue)
+                }
+                
+                Spacer()
+                
+                Text(weekTitle)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button(action: { changeWeek(1) }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 16)
             
-            Text("Implémentation à venir")
-                .foregroundColor(.secondary)
+            // Grille de la semaine
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(weekDays, id: \.self) { day in
+                    WeekDayCell(
+                        date: day,
+                        events: eventsForDate(day),
+                        isSelected: calendar.isDate(day, inSameDayAs: selectedDate),
+                        isToday: calendar.isDateInToday(day)
+                    )
+                    .onTapGesture {
+                        selectedDate = day
+                    }
+                }
+            }
+            .padding(.horizontal)
             
             Spacer()
         }
+    }
+    
+    private var weekTitle: String {
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else {
+            return ""
+        }
+        
+        let startFormatter = DateFormatter()
+        startFormatter.dateFormat = "d MMM"
+        startFormatter.locale = Locale(identifier: "fr_FR")
+        
+        let endFormatter = DateFormatter()
+        endFormatter.dateFormat = "d MMM yyyy"
+        endFormatter.locale = Locale(identifier: "fr_FR")
+        
+        return "\(startFormatter.string(from: weekInterval.start)) - \(endFormatter.string(from: weekInterval.end - 1))"
+    }
+    
+    private func eventsForDate(_ date: Date) -> [Event] {
+        events.filter { calendar.isDate($0.startDate, inSameDayAs: date) }
+    }
+    
+    private func changeWeek(_ direction: Int) {
+        if let newDate = calendar.date(byAdding: .weekOfYear, value: direction, to: selectedDate) {
+            selectedDate = newDate
+        }
+    }
+}
+
+struct WeekDayCell: View {
+    let date: Date
+    let events: [Event]
+    let isSelected: Bool
+    let isToday: Bool
+    
+    private let calendar = Calendar.current
+    private let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Jour de la semaine
+            Text(dayFormatter.string(from: date).capitalized)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+            
+            // Numéro du jour
+            Text("\(calendar.component(.day, from: date))")
+                .font(.title2)
+                .fontWeight(isSelected ? .bold : .medium)
+                .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(isSelected ? Color.blue : (isToday ? Color.blue.opacity(0.1) : Color.clear))
+                )
+            
+            // Indicateurs d'événements
+            VStack(spacing: 2) {
+                ForEach(events.prefix(3), id: \.id) { event in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(event.eventType.color)
+                        .frame(height: 4)
+                }
+                
+                if events.count > 3 {
+                    Text("+\(events.count - 3)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(height: 40)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        )
     }
 }
 
@@ -4682,17 +4822,201 @@ struct DayCalendarView: View {
     @Binding var selectedDate: Date
     let events: [Event]
     
+    private let calendar = Calendar.current
+    private let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM yyyy"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    private let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+    
+    private var dayEvents: [Event] {
+        events.filter { calendar.isDate($0.startDate, inSameDayAs: selectedDate) }
+            .sorted { $0.startDate < $1.startDate }
+    }
+    
+    private var timeSlots: [Int] {
+        Array(6...23) // 6h à 23h
+    }
+    
     var body: some View {
-        VStack {
-            Text("Vue Jour")
-                .font(.title2)
-                .padding()
+        VStack(spacing: 0) {
+            // En-tête du jour
+            HStack {
+                Button(action: { changeDay(-1) }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.blue)
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 4) {
+                    Text(dayFormatter.string(from: selectedDate).capitalized)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    if calendar.isDateInToday(selectedDate) {
+                        Text("Aujourd'hui")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                }
+                
+                Spacer()
+                
+                Button(action: { changeDay(1) }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 16)
             
-            Text("Implémentation à venir")
-                .foregroundColor(.secondary)
+            // Timeline du jour
+            if dayEvents.isEmpty {
+                // État vide
+                VStack(spacing: 16) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 48))
+                        .foregroundColor(.gray.opacity(0.5))
+                    
+                    Text("Aucun événement")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Profitez de cette journée libre !")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // Liste des événements
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(dayEvents, id: \.id) { event in
+                            DayEventCard(event: event)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+    }
+    
+    private func changeDay(_ direction: Int) {
+        if let newDate = calendar.date(byAdding: .day, value: direction, to: selectedDate) {
+            selectedDate = newDate
+        }
+    }
+}
+
+struct DayEventCard: View {
+    let event: Event
+    
+    private let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Heure
+            VStack(spacing: 4) {
+                Text(timeFormatter.string(from: event.startDate))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                if let endDate = event.endDate {
+                    Text(timeFormatter.string(from: endDate))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 50)
+            
+            // Barre colorée
+            RoundedRectangle(cornerRadius: 2)
+                .fill(event.eventType.color)
+                .frame(width: 4)
+            
+            // Contenu de l'événement
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: event.eventType.icon)
+                        .foregroundColor(event.eventType.color)
+                        .font(.caption)
+                    
+                    Text(event.eventType.displayName)
+                        .font(.caption)
+                        .foregroundColor(event.eventType.color)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(event.eventType.color.opacity(0.1))
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                }
+                
+                Text(event.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                if let description = event.description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
+                
+                // Informations de garde d'enfant si disponibles
+                if event.eventType == .childcare, let childcareInfo = event.childcareInfo {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let nannyName = childcareInfo.nannyName {
+                            HStack {
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Nanny: \(nannyName)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        if let nannyPhone = childcareInfo.nannyPhone {
+                            HStack {
+                                Image(systemName: "phone.fill")
+                                    .foregroundColor(.green)
+                                    .font(.caption)
+                                Text(nannyPhone)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
             
             Spacer()
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
     }
 }
 
