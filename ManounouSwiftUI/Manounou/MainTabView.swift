@@ -4576,7 +4576,7 @@ struct MonthCalendarView: View {
             // Grille du calendrier (version simplifiée)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                 // Jours de la semaine
-                ForEach(["L", "M", "M", "J", "V", "S", "D"], id: \.self) { day in
+                ForEach(Array(zip(["L", "Ma", "Me", "J", "V", "S", "D"].indices, ["L", "Ma", "Me", "J", "V", "S", "D"])), id: \.0) { index, day in
                     Text(day)
                         .font(.caption)
                         .fontWeight(.semibold)
