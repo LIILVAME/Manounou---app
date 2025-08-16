@@ -8,23 +8,31 @@
 import Foundation
 
 // MARK: - Configuration de l'application
-struct AppConfig {
+struct Config {
     
     // MARK: - Supabase Configuration
-    struct Supabase {
-        // ✅ Configuration Supabase - Clés configurées
-        // Dashboard Supabase : https://app.supabase.com/project/emgrtgencepzainsknsb
-        
-        static let url = "https://emgrtgencepzainsknsb.supabase.co"
-        static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZ3J0Z2VuY2VwemFpbnNrbnNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjU3MzcsImV4cCI6MjA3MDc0MTczN30.2TtED_BEXHf6UqgPPcuOOd5YYTZlyqLSZRMoZtO93yM"
-        
-        // URL complète pour l'API
-        static var apiURL: URL {
-            guard let url = URL(string: url) else {
-                fatalError("URL Supabase invalide: \(url)")
-            }
-            return url
+    // ✅ Configuration Supabase - Clés configurées
+    // Dashboard Supabase : https://app.supabase.com/project/emgrtgencepzainsknsb
+    
+    static let supabaseURL = "https://emgrtgencepzainsknsb.supabase.co"
+    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZ3J0Z2VuY2VwemFpbnNrbnNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjU3MzcsImV4cCI6MjA3MDc0MTczN30.2TtED_BEXHf6UqgPPcuOOd5YYTZlyqLSZRMoZtO93yM"
+    
+    // URL complète pour l'API
+    static var supabaseAPIURL: URL {
+        guard let url = URL(string: supabaseURL) else {
+            fatalError("URL Supabase invalide: \(supabaseURL)")
         }
+        return url
+    }
+    
+    // MARK: - Supabase Tables
+    struct Tables {
+        static let children = "children"
+        static let events = "events"
+        static let documents = "documents"
+        static let users = "users"
+        static let families = "families"
+        static let nannies = "nannies"
     }
     
     // MARK: - App Information

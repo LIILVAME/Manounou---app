@@ -1,214 +1,134 @@
-# 🍼 Manounou - Application Familiale iOS
+# 🍼 Manounou - Application SwiftUI
 
 **Version :** 1.0.0  
-**Plateforme :** iOS (SwiftUI)  
-**Backend :** Supabase  
-**Architecture :** MVVM + Combine
+**Plateforme :** iOS 16.0+  
+**Framework :** SwiftUI  
+**Backend :** Supabase
 
 ---
 
 ## 📱 Description
 
-**Manounou** est une application familiale moderne développée en SwiftUI pour iOS. Elle permet aux parents de centraliser la gestion de leurs enfants : profils, événements, documents et bien plus.
+Ce dossier contient l'application iOS native **Manounou** développée en SwiftUI. L'application permet aux parents de gérer efficacement leurs enfants, événements familiaux et documents importants.
 
-### ✨ **Fonctionnalités**
-- 🏠 **Dashboard Familial** : Vue d'ensemble personnalisée
-- 👶 **Gestion des Enfants** : Profils complets avec allergies et contacts d'urgence
-- 📅 **Calendrier Familial** : Planification et suivi des événements
-- 📄 **Documents** : Stockage sécurisé des documents importants
-- 👤 **Profil Utilisateur** : Gestion des informations personnelles
-
----
-
-## 🏗️ **Structure du Projet**
+## 🏗️ Structure du Projet
 
 ```
-Manounou-App/
-├── 📱 ManounouSwiftUI/          # Application iOS principale
-│   ├── Manounou/               # Code source Swift
-│   ├── Manounou.xcodeproj/     # Projet Xcode
-│   ├── supabase/               # Configuration base de données
-│   └── create_documents_table.sql
-├── 📚 docs/                    # Documentation centralisée
-│   ├── README.md               # Documentation détaillée
-│   ├── AUDIT_REPORT_360.md     # Rapport d'audit complet
-│   ├── REFACTORING_PLAN.md     # Plan de refactoring
-│   ├── guides/                 # Guides techniques
-│   └── legal/                  # Documents légaux
-├── 🎨 design/                  # Ressources de design
-│   ├── assets/                 # Images et icônes
-│   ├── copy/                   # Textes et traductions
-│   └── tokens.json             # Design tokens
-├── 📋 project/                 # Gestion de projet
-│   ├── deliverables/           # Livrables
-│   ├── scripts/                # Scripts utilitaires
-│   └── checklists/             # Listes de vérification
-├── 🔧 config/                  # Configuration globale
-│   ├── .gitignore
-│   ├── .env.example
-│   └── project_rules.md
-└── 🗄️ _backup/                 # Sauvegardes (code React Native)
+ManounouSwiftUI/
+├── Manounou/                    # Code source principal
+│   ├── ManounouApp.swift       # Point d'entrée de l'app
+│   ├── MainTabView.swift       # Interface principale avec onglets
+│   ├── AuthManager.swift       # Gestion de l'authentification
+│   ├── AuthenticationView.swift # Interface de connexion
+│   ├── Config.swift           # Configuration de l'app
+│   ├── Package.swift          # Dépendances Swift Package Manager
+│   └── Info.plist            # Configuration iOS
+├── Manounou.xcodeproj/         # Projet Xcode
+├── supabase/                   # Configuration base de données
+│   └── migrations/            # Migrations SQL
+├── create_documents_table.sql  # Script de création table documents
+└── supabase_setup.sql         # Configuration initiale Supabase
 ```
 
----
+## 🚀 Fonctionnalités Implémentées
 
-## 🚀 **Démarrage Rapide**
+### ✅ **Core Features**
+- 🔐 **Authentification** : Connexion/inscription avec Supabase Auth
+- 🏠 **Dashboard** : Vue d'ensemble avec compteurs dynamiques
+- 👶 **Gestion Enfants** : Profils complets avec informations essentielles
+- 📅 **Calendrier** : 4 vues (Mois, Semaine, Jour, Agenda) avec détection de conflits
+- 📄 **Documents** : Stockage et gestion sécurisés
+- 👤 **Profil** : Gestion des informations utilisateur
 
-### **1. Prérequis**
+### 🎯 **Fonctionnalités Avancées**
+- ⚠️ **Détection de conflits** : Alertes visuelles pour événements qui se chevauchent
+- 🔄 **Navigation fluide** : Bouton "Aujourd'hui" et transitions animées
+- 🎨 **Design moderne** : Interface SwiftUI native avec thème cohérent
+- 📱 **Responsive** : Adaptation automatique aux différentes tailles d'écran
+
+## 🛠️ Technologies Utilisées
+
+- **SwiftUI** : Framework UI déclaratif d'Apple
+- **Combine** : Framework de programmation réactive
+- **Supabase Swift** : SDK pour base de données et authentification
+- **Swift Package Manager** : Gestionnaire de dépendances
+
+## 📦 Dépendances
+
+```swift
+// Package.swift
+dependencies: [
+    .package(url: "https://github.com/supabase/supabase-swift.git", from: "2.31.2")
+]
+```
+
+## 🔧 Configuration
+
+### Prérequis
 - Xcode 15.0+
 - iOS 16.0+
-- Compte Supabase
-- Swift 5.9+
+- Compte Supabase configuré
 
-### **2. Installation**
+### Variables d'environnement
+Configurer dans `Config.swift` :
+- `SUPABASE_URL` : URL de votre projet Supabase
+- `SUPABASE_ANON_KEY` : Clé anonyme Supabase
+
+## 🚀 Lancement
+
+1. **Ouvrir le projet**
+   ```bash
+   open Manounou.xcodeproj
+   ```
+
+2. **Configurer les dépendances**
+   - Xcode résoudra automatiquement les packages Swift
+
+3. **Configurer Supabase**
+   - Exécuter `supabase_setup.sql` dans votre projet Supabase
+   - Mettre à jour `Config.swift` avec vos clés
+
+4. **Compiler et lancer**
+   - Sélectionner un simulateur iOS
+   - Appuyer sur ⌘+R pour compiler et lancer
+
+## 📊 Architecture
+
+### Pattern MVVM
+- **Models** : Structures de données (Event, Child, Document, etc.)
+- **Views** : Interfaces SwiftUI (MainTabView, AuthenticationView, etc.)
+- **ViewModels** : Logique métier et état de l'application
+- **Managers** : Services (AuthManager, etc.)
+
+### Navigation
+- **TabView** : Navigation principale avec 5 onglets
+- **NavigationStack** : Navigation hiérarchique dans chaque onglet
+- **Sheets** : Modales pour création/édition
+
+## 🎨 Design System
+
+- **Couleurs** : Palette cohérente avec couleurs système iOS
+- **Typography** : Utilisation des styles de texte natifs
+- **Spacing** : Système d'espacement basé sur des multiples de 8pt
+- **Icons** : SF Symbols pour cohérence avec l'écosystème Apple
+
+## 🧪 Tests
+
 ```bash
-# Cloner le repository
-git clone [URL_DU_REPO]
-cd Manounou-App
+# Compiler pour vérifier les erreurs
+xcodebuild -project Manounou.xcodeproj -scheme Manounou build
 
-# Ouvrir le projet iOS
-open ManounouSwiftUI/Manounou.xcodeproj
-```
-
-### **3. Configuration Supabase**
-1. Aller sur [Supabase Dashboard](https://app.supabase.com/project/emgrtgencepzainsknsb/sql)
-2. Exécuter le script `ManounouSwiftUI/create_documents_table.sql`
-3. Vérifier la configuration dans `ManounouSwiftUI/Manounou/Config.swift`
-
-### **4. Lancer l'Application**
-```bash
-# Via Xcode
-Cmd+R dans Xcode
-
-# Via ligne de commande
-cd ManounouSwiftUI
+# Lancer sur simulateur
 xcodebuild -project Manounou.xcodeproj -scheme Manounou -destination 'platform=iOS Simulator,name=iPhone 15' build
 ```
 
----
+## 📝 Notes de Développement
 
-## 📚 **Documentation**
-
-### **📖 Guides Principaux**
-- 📊 **[Audit 360°](docs/AUDIT_REPORT_360.md)** : Analyse complète du projet
-- 🗄️ **[Vérification Tables](docs/TABLES_VERIFICATION_REPORT.md)** : État de la base de données
-- 🔧 **[Plan Refactoring](docs/REFACTORING_PLAN.md)** : Restructuration du projet
-
-### **🔧 Guides Techniques**
-- 📋 **[Création Tables](docs/guides/)** : Configuration Supabase
-- 🚨 **[Dépannage Auth](docs/guides/)** : Résolution problèmes authentification
-- 📱 **[Développement Lean](docs/guides/)** : Méthodologie de développement
-
-### **⚖️ Documents Légaux**
-- 🔒 **[Politique de Confidentialité](docs/legal/PRIVACY_POLICY.md)**
-- 📜 **[Conditions d'Utilisation](docs/legal/TERMS_OF_USE.md)**
+- **Performance** : Utilisation de `LazyVStack` et `LazyVGrid` pour les listes
+- **Accessibilité** : Support VoiceOver et Dynamic Type
+- **Localisation** : Prêt pour l'internationalisation
+- **Sécurité** : Authentification sécurisée avec Supabase
 
 ---
 
-## 🛠️ **Scripts Utilitaires**
-
-### **🗄️ Base de Données**
-```bash
-# Appliquer la migration Supabase
-./project/scripts/apply_migration.sh
-
-# Exécuter du SQL directement
-./project/scripts/execute_sql_direct.sh
-```
-
-### **📱 Application**
-```bash
-# Valider pour l'App Store
-./project/scripts/validate-app-store.sh
-
-# Déployer l'application
-./project/scripts/deploy.sh
-```
-
----
-
-## 🎯 **État du Projet**
-
-### **✅ Fonctionnalités Implémentées**
-- [x] Interface SwiftUI complète (5 écrans)
-- [x] Authentification Supabase
-- [x] Gestion des enfants (CRUD)
-- [x] Gestion des événements (CRUD)
-- [x] Interface documents (prête)
-- [x] Profil utilisateur
-- [x] Navigation TabView
-- [x] Gestion d'erreur gracieuse
-
-### **🔧 Corrections Récentes**
-- [x] Tables Supabase corrigées et optimisées
-- [x] Modèles de données synchronisés
-- [x] Erreurs HTTP 400 résolues
-- [x] Structure projet refactorisée
-
-### **📈 Score Qualité**
-- **Architecture** : 8.5/10
-- **Interface** : 9/10
-- **Fonctionnalités** : 8/10
-- **Documentation** : 9/10
-- **Maintenabilité** : 9/10
-
----
-
-## 🧪 **Tests**
-
-### **📱 Tests Manuels**
-1. Lancer l'application dans le simulateur
-2. Tester la navigation entre les 5 onglets
-3. Vérifier les données : 3 enfants existants
-4. Tester l'ajout d'enfants avec allergies
-5. Créer des événements avec statut
-6. Vérifier la page documents
-
-### **🔍 Vérifications**
-```sql
--- Dans Supabase Dashboard
-SELECT * FROM verify_data_integrity();
-SELECT * FROM app_statistics;
-```
-
----
-
-## 🤝 **Contribution**
-
-### **📋 Workflow**
-1. Fork le repository
-2. Créer une branche feature
-3. Développer et tester
-4. Créer une Pull Request
-5. Review et merge
-
-### **📏 Standards**
-- Suivre les conventions Swift
-- Documenter le code complexe
-- Tester les nouvelles fonctionnalités
-- Respecter l'architecture MVVM
-
----
-
-## 📞 **Support**
-
-- **Documentation** : Dossier `docs/`
-- **Issues** : GitHub Issues
-- **Email** : support@manounou.app
-
----
-
-## 🎉 **Changelog**
-
-### **v1.0.0 - 14 Août 2025**
-- ✅ Application SwiftUI complète
-- ✅ Base de données Supabase optimisée
-- ✅ Structure projet refactorisée
-- ✅ Documentation complète
-- ✅ Scripts d'automatisation
-
----
-
-**🍼 Manounou - Simplifier la vie familiale avec une technologie moderne**
-
-*Dernière mise à jour : 14 Août 2025*
+**Développé avec ❤️ en SwiftUI pour iOS**
