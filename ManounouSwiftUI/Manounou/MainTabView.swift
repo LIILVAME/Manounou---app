@@ -217,7 +217,7 @@ struct CalendarView: View {
     @State private var selectedDate = Date()
     @State private var showingAddEvent = false
     
-    @State private var eventsSheetOffset: CGFloat = 180
+    @State private var eventsSheetOffset: CGFloat = 100
     @State private var isEventsSheetExpanded = false
     
     var body: some View {
@@ -277,12 +277,16 @@ struct CalendarView: View {
                     Spacer()
                     
                     VStack(spacing: 0) {
-                        // Handle de glissement
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color(.systemGray3))
-                            .frame(width: 40, height: 6)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
+                        // Handle de glissement amélioré
+                        VStack(spacing: 0) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(.systemGray3))
+                                .frame(width: 50, height: 5)
+                                .padding(.top, 8)
+                                .padding(.bottom, 12)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.systemBackground))
                         
                         // En-tête de la section événements avec bouton flottant
                         HStack(alignment: .center, spacing: 16) {
@@ -320,18 +324,18 @@ struct CalendarView: View {
                                 .animation(.easeInOut(duration: 0.1), value: isEventsSheetExpanded)
                             }
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 18)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
                         
                         // Contenu des événements
                         if eventsViewModel.events.isEmpty {
-                            VStack(spacing: 20) {
+                            VStack(spacing: 16) {
                                 Image(systemName: "calendar")
-                                    .font(.system(size: 48))
+                                    .font(.system(size: 40))
                                     .foregroundColor(.blue.opacity(0.6))
                                 
                                 Text("Aucun événement")
-                                    .font(.title3)
+                                    .font(.headline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.primary)
                                 
@@ -341,20 +345,21 @@ struct CalendarView: View {
                                     .multilineTextAlignment(.center)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 50)
-                            .padding(.horizontal, 24)
+                            .padding(.vertical, 30)
+                            .padding(.horizontal, 20)
                         } else {
                             ScrollView {
-                                LazyVStack(spacing: 8) {
+                                LazyVStack(spacing: 6) {
                                     ForEach(eventsViewModel.events, id: \.id) { event in
                                         EventRowView(event: event)
-                                            .padding(.horizontal, 24)
-                                            .padding(.vertical, 4)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 2)
                                     }
                                 }
-                                .padding(.top, 8)
-                                .padding(.bottom, 16)
+                                .padding(.top, 4)
+                                .padding(.bottom, 12)
                             }
+                            .frame(maxHeight: isEventsSheetExpanded ? .infinity : 120)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -368,23 +373,23 @@ struct CalendarView: View {
                         DragGesture()
                             .onChanged { value in
                                 let newOffset = eventsSheetOffset + value.translation.height
-                                let minOffset: CGFloat = 80
-                                let maxOffset: CGFloat = 180
+                                let minOffset: CGFloat = 50
+                                let maxOffset: CGFloat = 100
                                 
                                 eventsSheetOffset = max(minOffset, min(maxOffset, newOffset))
                             }
                             .onEnded { value in
                                 let velocity = value.translation.height
-                                let threshold: CGFloat = 30
+                                let threshold: CGFloat = 20
                                 
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.3)) {
                                     if velocity > threshold {
                                         // Glissement vers le bas - Position ancrée
-                                        eventsSheetOffset = 180
+                                        eventsSheetOffset = 100
                                         isEventsSheetExpanded = false
                                     } else {
                                         // Glissement vers le haut - Ouvrir complètement
-                                        eventsSheetOffset = 80
+                                        eventsSheetOffset = 50
                                         isEventsSheetExpanded = true
                                     }
                                 }
