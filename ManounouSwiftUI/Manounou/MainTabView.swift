@@ -283,7 +283,7 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: UIScreen.main.bounds.height * 0.12)
-    }
+     }
 }
 
 // MARK: - Action Card
@@ -586,9 +586,14 @@ struct TemporaryChildrenView: View {
                     
                     Spacer()
                     
-                    Text(DateFormatters.simpleAgeText(for: child.birthDate))
-                         .font(.system(size: geometry.size.width * 0.035, weight: .medium))
-                         .foregroundColor(.secondary)
+                    Text({
+                         let calendar = Calendar.current
+                         let ageComponents = calendar.dateComponents([.year], from: child.birthDate, to: Date())
+                         let years = ageComponents.year ?? 0
+                         return years <= 1 ? "\(years) an" : "\(years) ans"
+                     }())
+                           .font(.system(size: geometry.size.width * 0.035, weight: .medium))
+                           .foregroundColor(.secondary)
                 }
                 
                 HStack(spacing: geometry.size.width * 0.02) {
@@ -598,7 +603,7 @@ struct TemporaryChildrenView: View {
                              .font(.system(size: geometry.size.width * 0.03, weight: .medium))
                              .foregroundColor(.blue)
                          
-                         Text("Né(e) le \(DateFormatters.shortDateFormatter.string(from: child.birthDate))")
+                         Text("Né(e) le \(child.birthDate.formatted(date: .abbreviated, time: .omitted))")
                              .font(.system(size: geometry.size.width * 0.03, weight: .medium))
                              .foregroundColor(.blue)
                      }
