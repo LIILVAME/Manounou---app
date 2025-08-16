@@ -217,100 +217,179 @@ struct CalendarView: View {
     @State private var selectedDate = Date()
     @State private var showingAddEvent = false
     
+    @State private var eventsSheetOffset: CGFloat = 180
+    @State private var isEventsSheetExpanded = false
+    
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Sélecteur de vue
-                HStack(spacing: 0) {
-                    ForEach([CalendarViewType.day, .week, .month], id: \.self) { viewType in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedViewType = viewType
+        GeometryReader { geometry in
+            ZStack {
+                // Contenu principal du calendrier
+                VStack(spacing: 0) {
+                    // Sélecteur de vue
+                    HStack(spacing: 0) {
+                        ForEach([CalendarViewType.day, .week, .month], id: \.self) { viewType in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedViewType = viewType
+                                }
+                            } label: {
+                                Text(viewType.displayName)
+                                    .font(.system(size: 15, weight: selectedViewType == viewType ? .semibold : .medium))
+                                    .foregroundColor(selectedViewType == viewType ? .white : .primary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedViewType == viewType ? Color.blue : Color.clear)
+                                    )
                             }
-                        } label: {
-                            Text(viewType.displayName)
-                                .font(.system(size: 15, weight: selectedViewType == viewType ? .semibold : .medium))
-                                .foregroundColor(selectedViewType == viewType ? .white : .primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedViewType == viewType ? Color.blue : Color.clear)
-                                )
                         }
                     }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(.systemGray6))
-                )
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                // Vue calendrier
-                Group {
-                    switch selectedViewType {
-                    case .month:
-                        MonthCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
-                    case .week:
-                        WeekCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
-                    case .day:
-                        DayCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
-                    case .agenda:
-                        AgendaCalendarView(events: eventsViewModel.events)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(.systemGray6))
+                    )
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // Zone de contenu principal
+                    Group {
+                        switch selectedViewType {
+                        case .month:
+                            MonthCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
+                        case .week:
+                            WeekCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
+                        case .day:
+                            DayCalendarView(selectedDate: $selectedDate, events: eventsViewModel.events)
+                        case .agenda:
+                            AgendaCalendarView(events: eventsViewModel.events)
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
-                // Liste des événements
-                if eventsViewModel.events.isEmpty {
-                    VStack(spacing: 30) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 60))
-                            .foregroundColor(.pink)
+                // Bottom Sheet pour les événements
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 0) {
+                        // Handle de glissement
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color(.systemGray3))
+                            .frame(width: 40, height: 6)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
                         
-                        Text("Aucun événement")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        Text("Ajoutez votre premier événement pour commencer")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Button(action: { showingAddEvent = true }) {
-                            HStack {
-                                Image(systemName: "calendar.badge.plus")
-                                Text("Ajouter un événement")
+                        // En-tête de la section événements avec bouton flottant
+                        HStack(alignment: .center, spacing: 16) {
+                            Text("Événements")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 12) {
+                                Text("\(eventsViewModel.events.count)")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.8))
+                                    )
+                                
+                                Button(action: { showingAddEvent = true }) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 40, height: 40)
+                                        .background(
+                                            Circle()
+                                                .fill(Color.blue)
+                                                .shadow(color: Color.blue.opacity(0.3), radius: 6, x: 0, y: 3)
+                                        )
+                                }
+                                .scaleEffect(1.0)
+                                .animation(.easeInOut(duration: 0.1), value: isEventsSheetExpanded)
                             }
-                            .font(.headline)
-                            .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 18)
+                        
+                        // Contenu des événements
+                        if eventsViewModel.events.isEmpty {
+                            VStack(spacing: 20) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.blue.opacity(0.6))
+                                
+                                Text("Aucun événement")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Ajoutez votre premier événement")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.pink)
-                            .cornerRadius(12)
+                            .padding(.vertical, 50)
+                            .padding(.horizontal, 24)
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 8) {
+                                    ForEach(eventsViewModel.events, id: \.id) { event in
+                                        EventRowView(event: event)
+                                            .padding(.horizontal, 24)
+                                            .padding(.vertical, 4)
+                                    }
+                                }
+                                .padding(.top, 8)
+                                .padding(.bottom, 16)
+                            }
                         }
-                        .padding(.horizontal)
                     }
-                    .padding(.top, 40)
-                } else {
-                    List {
-                        ForEach(eventsViewModel.events, id: \.id) { event in
-                            EventRowView(event: event)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Calendrier")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddEvent = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -5)
+                    )
+                    .offset(y: eventsSheetOffset)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let newOffset = eventsSheetOffset + value.translation.height
+                                let minOffset: CGFloat = 80
+                                let maxOffset: CGFloat = 180
+                                
+                                eventsSheetOffset = max(minOffset, min(maxOffset, newOffset))
+                            }
+                            .onEnded { value in
+                                let velocity = value.translation.height
+                                let threshold: CGFloat = 30
+                                
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.3)) {
+                                    if velocity > threshold {
+                                        // Glissement vers le bas - Position ancrée
+                                        eventsSheetOffset = 180
+                                        isEventsSheetExpanded = false
+                                    } else {
+                                        // Glissement vers le haut - Ouvrir complètement
+                                        eventsSheetOffset = 80
+                                        isEventsSheetExpanded = true
+                                    }
+                                }
+                            }
+                    )
                 }
             }
         }
