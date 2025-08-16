@@ -113,7 +113,7 @@ struct HomeView: View {
         NavigationView {
             GeometryReader { geometry in
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: geometry.size.height * 0.025) {
                         // En-tête de bienvenue
                         welcomeHeader
                         
@@ -123,9 +123,9 @@ struct HomeView: View {
                         // Statistiques familiales
                         familyStatistics
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .frame(maxHeight: geometry.size.height * 0.8)
+                    .padding(.horizontal, geometry.size.width * 0.05)
+                    .padding(.top, geometry.size.height * 0.04)
+                    .frame(maxHeight: geometry.size.height * 0.65)
                 }
             }
             .navigationTitle("")
@@ -198,79 +198,91 @@ struct HomeView: View {
     // MARK: - Quick Actions Grid
     
     private var quickActionsGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-            // Ajouter un enfant
-            ActionCard(
-                title: "Ajouter un enfant",
-                icon: "plus",
-                iconColor: .white,
-                backgroundColor: Color.blue
-            ) {
-                showingAddChild = true
-            }
-            
-            // Nouveau document
-            ActionCard(
-                title: "Nouveau document",
-                icon: "plus",
-                iconColor: .white,
-                backgroundColor: Color.green
-            ) {
-                showingAddDocument = true
-            }
-            
-            // Ajouter un événement
-            ActionCard(
-                title: "Ajouter un événement",
-                icon: "plus",
-                iconColor: .white,
-                backgroundColor: Color.orange
-            ) {
-                showingAddEvent = true
-            }
-            
-            // Inviter la famille
-            ActionCard(
-                title: "Inviter la famille",
-                icon: "person.2",
-                iconColor: .white,
-                backgroundColor: Color.purple
-            ) {
-                showingInviteFamily = true
+        GeometryReader { geometry in
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: geometry.size.width * 0.03), count: 2), spacing: geometry.size.width * 0.03) {
+                // Ajouter un enfant
+                ActionCard(
+                    title: "Ajouter un enfant",
+                    icon: "plus",
+                    iconColor: .white,
+                    backgroundColor: Color.blue,
+                    geometry: geometry
+                ) {
+                    showingAddChild = true
+                }
+                
+                // Nouveau document
+                ActionCard(
+                    title: "Nouveau document",
+                    icon: "plus",
+                    iconColor: .white,
+                    backgroundColor: Color.green,
+                    geometry: geometry
+                ) {
+                    showingAddDocument = true
+                }
+                
+                // Ajouter un événement
+                ActionCard(
+                    title: "Ajouter un événement",
+                    icon: "plus",
+                    iconColor: .white,
+                    backgroundColor: Color.orange,
+                    geometry: geometry
+                ) {
+                    showingAddEvent = true
+                }
+                
+                // Inviter la famille
+                ActionCard(
+                    title: "Inviter la famille",
+                    icon: "person.2",
+                    iconColor: .white,
+                    backgroundColor: Color.purple,
+                    geometry: geometry
+                ) {
+                    showingInviteFamily = true
+                }
             }
         }
+        .frame(height: UIScreen.main.bounds.height * 0.25)
     }
     
     // MARK: - Family Statistics
     
     private var familyStatistics: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Votre famille")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 12) {
-                // Statistique enfants
-                StatisticCard(
-                    count: childrenViewModel.children.count,
-                    label: "enfants",
-                    icon: "figure.2.and.child.holdinghands",
-                    backgroundColor: Color.blue.opacity(0.1),
-                    iconColor: Color.blue
-                )
+        GeometryReader { geometry in
+            VStack(alignment: .leading, spacing: geometry.size.height * 0.02) {
+                Text("Votre famille")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
                 
-                // Statistique événements à venir
-                StatisticCard(
-                    count: eventsViewModel.events.count,
-                    label: "à venir",
-                    icon: "calendar",
-                    backgroundColor: Color.orange.opacity(0.1),
-                    iconColor: Color.orange
-                )
+                HStack(spacing: geometry.size.width * 0.03) {
+                    // Statistique enfants
+                    StatisticCard(
+                        count: childrenViewModel.children.count,
+                        label: "enfants",
+                        icon: "figure.2.and.child.holdinghands",
+                        backgroundColor: Color.blue.opacity(0.1),
+                        iconColor: Color.blue,
+                        geometry: geometry
+                    )
+                    
+                    // Statistique événements à venir
+                    StatisticCard(
+                        count: eventsViewModel.events.count,
+                        label: "à venir",
+                        icon: "calendar",
+                        backgroundColor: Color.orange.opacity(0.1),
+                        iconColor: Color.orange,
+                        geometry: geometry
+                    )
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: UIScreen.main.bounds.height * 0.12)
     }
 }
 
@@ -281,32 +293,34 @@ struct ActionCard: View {
     let icon: String
     let iconColor: Color
     let backgroundColor: Color
+    let geometry: GeometryProxy
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
+            VStack(spacing: geometry.size.height * 0.015) {
                 Image(systemName: icon)
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: geometry.size.width * 0.06, weight: .medium))
                     .foregroundColor(iconColor)
-                    .frame(width: 50, height: 50)
+                    .frame(width: geometry.size.width * 0.12, height: geometry.size.width * 0.12)
                     .background(
                         Circle()
                             .fill(backgroundColor)
                     )
                 
                 Text(title)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: geometry.size.width * 0.035, weight: .medium))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 90)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 12)
+            .frame(height: geometry.size.height * 0.11)
+            .padding(.vertical, geometry.size.height * 0.015)
+            .padding(.horizontal, geometry.size.width * 0.03)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
                     .fill(Color(.systemGray6))
             )
         }
@@ -322,30 +336,36 @@ struct StatisticCard: View {
     let icon: String
     let backgroundColor: Color
     let iconColor: Color
+    let geometry: GeometryProxy
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: geometry.size.width * 0.03) {
             Image(systemName: icon)
-                .font(.system(size: 24, weight: .medium))
+                .font(.system(size: geometry.size.width * 0.06, weight: .medium))
                 .foregroundColor(iconColor)
-                .frame(width: 40, height: 40)
+                .frame(width: geometry.size.width * 0.1, height: geometry.size.width * 0.1)
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: geometry.size.height * 0.005) {
                 Text("\(count)")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: geometry.size.width * 0.07, weight: .bold))
                     .foregroundColor(.primary)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
                 
                 Text(label)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: geometry.size.width * 0.035, weight: .medium))
                     .foregroundColor(.secondary)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
             }
             
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .padding(16)
+        .frame(height: geometry.size.height * 0.08)
+        .padding(geometry.size.width * 0.04)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
                 .fill(backgroundColor)
         )
     }
