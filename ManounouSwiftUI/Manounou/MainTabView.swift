@@ -1074,10 +1074,11 @@ struct DocumentsView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Filtre par catégorie
+                // Filtre par catégorie - Version simplifiée
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach([DocumentType.all] + DocumentType.allCases.filter { $0 != .all }, id: \.self) { category in
+                        let allCategories = [DocumentType.all] + DocumentType.allCases.filter { $0 != .all }
+                        ForEach(allCategories, id: \.self) { category in
                             let totalCount = documentsViewModel.documents.count
                             let filteredCount = documentsViewModel.documents.filter { $0.type == category }.count
                             let categoryCount = category == .all ? totalCount : filteredCount
