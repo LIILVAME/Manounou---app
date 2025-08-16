@@ -316,7 +316,7 @@ struct ActionCard: View {
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: geometry.size.height * 0.11)
+            .frame(height: geometry.size.height * 0.45)
             .padding(.vertical, geometry.size.height * 0.015)
             .padding(.horizontal, geometry.size.width * 0.03)
             .background(
