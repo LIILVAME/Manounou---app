@@ -16,8 +16,8 @@ struct ManounouApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
-                .task {
-                    await authManager.initialize()
+                .onAppear {
+                    authManager.checkAuthStatus()
                 }
         }
     }

@@ -170,9 +170,7 @@ struct AuthenticationView: View {
             if isSignUp {
                 await authManager.signUp(
                     email: email,
-                    password: password,
-                    firstName: firstName,
-                    lastName: lastName
+                    password: password
                 )
             } else {
                 await authManager.signIn(email: email, password: password)
