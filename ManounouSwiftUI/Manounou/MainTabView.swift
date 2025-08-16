@@ -2311,13 +2311,73 @@ enum ReminderTime: String, CaseIterable {
 class EventsViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
+    @Published var showingAddEvent = false
     
     func loadEvents() async {
-        // Temporary implementation
+        await MainActor.run {
+            isLoading = true
+        }
+        
+        // Simulation de chargement
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        
+        await MainActor.run {
+            // Données de test
+            events = [
+                Event(
+                    title: "Rendez-vous médecin",
+                    description: "Visite de contrôle",
+                    startDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date(),
+                    endDate: Calendar.current.date(byAdding: .day, value: 1, to: Date())?.addingTimeInterval(3600) ?? Date(),
+                    eventType: EventType(name: "Médical", color: .red, icon: "cross.fill"),
+                    childId: nil
+                ),
+                Event(
+                    title: "École",
+                    description: "Réunion parents-professeurs",
+                    startDate: Calendar.current.date(byAdding: .day, value: 3, to: Date()) ?? Date(),
+                    endDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())?.addingTimeInterval(7200) ?? Date(),
+                    eventType: EventType(name: "École", color: .green, icon: "graduationcap.fill"),
+                    childId: nil
+                )
+            ]
+            isLoading = false
+        }
+    }
+    
+    func showAddEvent() {
+        showingAddEvent = true
+    }
+    
+    func addEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date, childId: UUID?, notificationManager: NotificationManager) async {
+        let newEvent = Event(
+            title: title,
+            description: description,
+            startDate: startDate,
+            endDate: endDate,
+            eventType: eventType,
+            childId: childId?.uuidString
+        )
+        
+        await MainActor.run {
+            events.append(newEvent)
+            showingAddEvent = false
+        }
     }
     
     func createEvent(title: String, description: String, eventType: EventType, startDate: Date, endDate: Date, childId: String?, recurrenceRule: String?) async {
-        // Temporary implementation
+        let newEvent = Event(
+            title: title,
+            description: description,
+            startDate: startDate,
+            endDate: endDate,
+            eventType: eventType,
+            childId: childId
+        )
+        
+        await MainActor.run {
+            events.append(newEvent)
+        }
     }
 }
 
@@ -2438,6 +2498,7 @@ class ChildrenViewModel: ObservableObject {
     @Published var children: [Child] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var showingAddChild = false
     
     func loadChildren() async {
         await MainActor.run {
@@ -2456,6 +2517,37 @@ class ChildrenViewModel: ObservableObject {
             ]
             isLoading = false
         }
+    }
+    
+    func showAddChild() {
+        showingAddChild = true
+    }
+    
+    func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String) async {
+        let newChild = Child(firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
+        
+        await MainActor.run {
+            children.append(newChild)
+            showingAddChild = false
+        }
+    }
+    
+    func updateChild(_ child: Child, firstName: String, lastName: String, dateOfBirth: Date, gender: String) async {
+        await MainActor.run {
+            if let index = children.firstIndex(where: { $0.id == child.id }) {
+                children[index] = Child(id: child.id, firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
+            }
+        }
+    }
+    
+    func deleteChild(_ child: Child) async {
+        await MainActor.run {
+            children.removeAll { $0.id == child.id }
+        }
+    }
+    
+    func dismissError() {
+        errorMessage = nil
     }
     
     func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async {
@@ -2499,24 +2591,6 @@ class ChildrenViewModel: ObservableObject {
         }
     }
     
-    func deleteChild(_ child: Child) async {
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-        }
-        
-        // Simulation de suppression
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        
-        await MainActor.run {
-            children.removeAll { $0.id == child.id }
-            isLoading = false
-        }
-    }
-    
-    func dismissError() {
-        errorMessage = nil
-    }
 }
 
 class CacheManager: ObservableObject {
@@ -3118,6 +3192,71 @@ struct AgendaCalendarView: View {
         return formatter
     }()
 }
+
+// MARK: - Missing Views
+
+struct ChildRowView: View {
+    let child: Child
+    let onEdit: () -> Void
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(child.firstName) \(child.lastName)")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Text("Né(e) le \(formatDate(child.birthDate))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Button(action: onEdit) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter.string(from: date)
+    }
+}
+
+struct EditDocumentView: View {
+    let document: Document
+    let onSave: (String, String, DocumentType) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Text("Édition de document à implémenter")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+            }
+            .navigationTitle("Éditer document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Additional Models
+// Document and DocumentType are already defined earlier in the file
 
 // MARK: - Preview
 
