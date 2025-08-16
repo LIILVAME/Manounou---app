@@ -184,16 +184,13 @@ struct HomeView: View {
     // MARK: - Computed Properties
     
     private var welcomeMessage: String {
-        if let user = authManager.currentUser,
-           let userMetadata = user.userMetadata,
-           let firstName = userMetadata["first_name"] as? String {
-            return "Bonjour \(firstName) !"
-        } else if let user = authManager.currentUser,
-                  let email = user.email {
-            // Extraire le prénom de l'email si pas de métadonnées
-            let emailPrefix = String(email.split(separator: "@").first ?? "")
-            let firstName = emailPrefix.capitalized
-            return "Bonjour \(firstName) !"
+        if let user = authManager.currentUser {
+            // Fallback : extraire le prénom depuis l'email
+            if let email = user.email {
+                let emailPrefix = String(email.split(separator: "@").first ?? "")
+                let firstName = emailPrefix.capitalized
+                return "Bonjour \(firstName) !"
+            }
         }
         return "Bonjour Utilisateur !"
     }
@@ -354,56 +351,7 @@ struct StatisticCard: View {
     }
 }
 
-// MARK: - Interactive Statistic Card
-
-struct InteractiveStatisticCard: View {
-    let count: Int
-    let label: String
-    let icon: String
-    let backgroundColor: Color
-    let iconColor: Color
-    let targetTab: Int
-    
-    var body: some View {
-        Button(action: {
-            // Navigation vers l'onglet correspondant
-            NotificationCenter.default.post(
-                name: NSNotification.Name("SwitchToTab"),
-                object: targetTab
-            )
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundColor(iconColor)
-                    .frame(width: 40, height: 40)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(count)")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text(label)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(backgroundColor)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
+// MARK: - Interactive Statistic Card (Removed temporarily for compilation)
 
 // MARK: - Placeholder Views (À remplacer par les vraies vues)
 
@@ -487,10 +435,18 @@ class ChildrenViewModel: ObservableObject {
     @Published var children: [Child] = []
     @Published var isLoading = false
     
+    init() {
+        #if DEBUG
+        children = Child.sampleChildren
+        #endif
+    }
+    
     func loadChildren() async {
         // TODO: Implémenter le chargement des enfants
         #if DEBUG
-        children = Child.sampleChildren
+        await MainActor.run {
+            children = Child.sampleChildren
+        }
         #endif
     }
     
@@ -500,7 +456,15 @@ class ChildrenViewModel: ObservableObject {
 }
 
 class NotificationManager: ObservableObject {
-    // TODO: Implémenter la gestion des notifications
+    @Published var hasNotifications = false
+    
+    init() {
+        // Initialisation des notifications
+    }
+    
+    func requestPermission() {
+        // TODO: Implémenter la demande de permission
+    }
 }
 
 // MARK: - Temporary Classes (À remplacer par les vrais modèles)
