@@ -124,7 +124,7 @@ struct HomeView: View {
                         familyStatistics
                     }
                     .padding(.horizontal, geometry.size.width * 0.05)
-                    .padding(.top, geometry.size.height * 0.04)
+                    .padding(.top, geometry.size.height * 0.3)
                     .frame(maxHeight: geometry.size.height * 0.65)
                 }
             }
@@ -282,7 +282,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: UIScreen.main.bounds.height * 0.12)
+        .frame(height: UIScreen.main.bounds.height * 0.3)
     }
 }
 
@@ -362,7 +362,7 @@ struct StatisticCard: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .frame(height: geometry.size.height * 0.08)
+        .frame(height: geometry.size.height * 0.4)
         .padding(geometry.size.width * 0.04)
         .background(
             RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
