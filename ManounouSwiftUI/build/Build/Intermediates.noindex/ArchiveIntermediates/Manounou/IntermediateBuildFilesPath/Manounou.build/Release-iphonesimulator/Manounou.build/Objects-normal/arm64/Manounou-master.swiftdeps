@@ -1,0 +1,15 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "a40b64e4742a1629f7463c007b16cfcffd17037e13f53b862500463326be01c3"
+build_start_time: [1755352979, 825706000]
+build_end_time: [1755353074, 887609000]
+inputs:
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/AuthManager.swift"
+  : !dirty [1755339053, 747373975]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/AuthenticationView.swift"
+  : !dirty [1755300383, 527630329]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/Config.swift"
+  : !dirty [1755166849, 160690784]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/MainTabView.swift"
+  : !dirty [1755352564, 894816512]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/ManounouApp.swift"
+  : !dirty [1755300383, 527899503]

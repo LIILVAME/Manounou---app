@@ -1,0 +1,15 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "51bf1aabf7014146f30be299ee542520cfa5f04aff4896f7ccdb2430ca719311"
+build_start_time: [1755352975, 167856000]
+build_end_time: [1755352980, 135610000]
+inputs:
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Supabase/Constants.swift"
+  : [1755298945, 671768426]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Supabase/Deprecated.swift"
+  : [1755298945, 672066688]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Supabase/Exports.swift"
+  : [1755298945, 672349452]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Supabase/SupabaseClient.swift"
+  : [1755298945, 672894716]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Supabase/Types.swift"
+  : [1755298945, 673235654]

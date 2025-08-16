@@ -1,0 +1,9 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "8d24f93e78861a256bb28a3820e9aa323976c3282a2f381763e955777323ab03"
+build_start_time: [1755352909, 706830000]
+build_end_time: [1755352912, 632333000]
+inputs:
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/XCTestDynamicOverlay/Internal/Deprecations.swift"
+  : [1755298945, 2642154]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/XCTestDynamicOverlay/Internal/Exports.swift"
+  : [1755298945, 2933025]

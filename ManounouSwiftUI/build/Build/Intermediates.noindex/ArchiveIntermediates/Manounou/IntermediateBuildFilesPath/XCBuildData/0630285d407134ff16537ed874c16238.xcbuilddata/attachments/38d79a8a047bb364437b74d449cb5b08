@@ -1,0 +1,35 @@
+{
+  "" : {
+    "const-values" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master.swiftconstvalues",
+    "dependencies" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master.d",
+    "diagnostics" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master.dia",
+    "emit-module-dependencies" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master-emit-module.dia",
+    "swift-dependencies" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Manounou-master.swiftdeps"
+  },
+  "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/AuthManager.swift" : {
+    "index-unit-output-path" : "/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthManager.o",
+    "llvm-bc" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthManager.bc",
+    "object" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthManager.o"
+  },
+  "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/AuthenticationView.swift" : {
+    "index-unit-output-path" : "/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthenticationView.o",
+    "llvm-bc" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthenticationView.bc",
+    "object" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/AuthenticationView.o"
+  },
+  "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/Config.swift" : {
+    "index-unit-output-path" : "/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Config.o",
+    "llvm-bc" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Config.bc",
+    "object" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/Config.o"
+  },
+  "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/MainTabView.swift" : {
+    "index-unit-output-path" : "/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/MainTabView.o",
+    "llvm-bc" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/MainTabView.bc",
+    "object" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/MainTabView.o"
+  },
+  "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/Manounou/ManounouApp.swift" : {
+    "index-unit-output-path" : "/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/ManounouApp.o",
+    "llvm-bc" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/ManounouApp.bc",
+    "object" : "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/Build/Intermediates.noindex/ArchiveIntermediates/Manounou/IntermediateBuildFilesPath/Manounou.build/Release-iphonesimulator/Manounou.build/Objects-normal/arm64/ManounouApp.o"
+  }
+}

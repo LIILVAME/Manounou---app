@@ -1,0 +1,55 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "7a6bf2ef7a2dfcdb095b0ce00c27df71fc5b809a22d210b7b65e701f7d2860f7"
+build_start_time: [1755352936, 817482000]
+build_end_time: [1755352976, 76940000]
+inputs:
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthAdmin.swift"
+  : [1755298945, 626646518]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthClient.swift"
+  : [1755298945, 627055406]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthClientConfiguration.swift"
+  : [1755298945, 627399206]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthError.swift"
+  : [1755298945, 627812862]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthMFA.swift"
+  : [1755298945, 628106355]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/AuthStateChangeListener.swift"
+  : [1755298945, 628371715]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Defaults.swift"
+  : [1755298945, 628723859]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Deprecated.swift"
+  : [1755298945, 629065752]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Exports.swift"
+  : [1755298945, 629326343]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/APIClient.swift"
+  : [1755298945, 629914522]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/CodeVerifierStorage.swift"
+  : [1755298945, 630356311]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Constants.swift"
+  : [1755298945, 630748510]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Dependencies.swift"
+  : [1755298945, 630986928]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/EventEmitter.swift"
+  : [1755298945, 631224632]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/FixedWidthInteger+Random.swift"
+  : [1755298945, 631484270]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Helpers.swift"
+  : [1755298945, 631735086]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Keychain.swift"
+  : [1755298945, 632067441]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/PKCE.swift"
+  : [1755298945, 632508516]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/SessionManager.swift"
+  : [1755298945, 632909536]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/SessionStorage.swift"
+  : [1755298945, 633486509]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/URLOpener.swift"
+  : [1755298945, 633833169]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Storage/AuthLocalStorage.swift"
+  : [1755298945, 634349107]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Storage/KeychainLocalStorage.swift"
+  : [1755298945, 634757518]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Storage/WinCredLocalStorage.swift"
+  : [1755298945, 635042667]
+  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/supabase-swift/Sources/Auth/Types.swift"
+  : [1755298945, 635390520]

@@ -97,523 +97,86 @@ struct MainTabView: View {
 // MARK: - Home View
 
 struct HomeView: View {
-    @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @EnvironmentObject var eventsViewModel: EventsViewModel
+    @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var notificationManager: NotificationManager
-    @State private var showingAddDocument = false
-    @State private var showingInviteFamily = false
-    @State private var isRefreshing = false
-    @State private var showingToast = false
-    @State private var toastMessage = ""
     
     var body: some View {
         NavigationView {
-            if authManager.isLoading {
-                ProgressView("Chargement...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if !authManager.isAuthenticated {
-                AuthenticationView()
-                    .environmentObject(authManager)
-            } else {
-                ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 8) {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Bonjour \(authManager.userProfile?.firstName ?? "Utilisateur") !")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                
-                                Text("Bienvenue dans votre carnet de famille")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            Button(action: {}) {
-                                Image(systemName: "bell")
-                                    .font(.title2)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                        .padding(.horizontal)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // En-tête de bienvenue
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Bonjour !")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        Text("Voici un aperçu de votre journée")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-                    
-                    // Quick Actions
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                        QuickActionCard(
-                            title: "Ajouter un enfant",
-                            icon: "plus.circle.fill",
-                            color: .blue
-                        ) {
-                            // Haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            childrenViewModel.showAddChild()
-                        }
-                        
-                        QuickActionCard(
-                            title: "Nouveau document",
-                            icon: "doc.badge.plus",
-                            color: .green
-                        ) {
-                            // Haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            showingAddDocument = true
-                        }
-                        
-                        QuickActionCard(
-                            title: "Ajouter un événement",
-                            icon: "calendar.badge.plus",
-                            color: .orange
-                        ) {
-                            // Haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            eventsViewModel.showAddEvent()
-                        }
-                        
-                        QuickActionCard(
-                            title: "Inviter la famille",
-                            icon: "person.2.fill",
-                            color: .purple
-                        ) {
-                            // Haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            showingInviteFamily = true
-                        }
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                     
-                    // Family Overview
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("Votre famille")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal)
+                    // Actions rapides
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Actions rapides")
+                            .font(.headline)
+                            .fontWeight(.semibold)
                         
-                        HStack(spacing: 16) {
-                            // Children Count Card
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "figure.2.and.child.holdinghands")
-                                        .font(.title2)
-                                        .foregroundColor(.blue)
-                                    
-                                    Spacer()
-                                }
-                                
-                                Text("\(childrenViewModel.children.count)")
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                
-                                Text(childrenViewModel.children.count <= 1 ? "enfant" : "enfants")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        HStack(spacing: 12) {
+                            QuickActionButton(
+                                title: "Nouvel événement",
+                                icon: "plus.circle.fill",
+                                color: .blue
+                            ) {
+                                // Action
                             }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(12)
                             
-                            // Events Count Card
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "calendar")
-                                        .font(.title2)
-                                        .foregroundColor(.orange)
-                                    
-                                    Spacer()
-                                }
-                                
-                                Text("\(eventsViewModel.events.count)")
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                
-                                Text("à venir")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                            QuickActionButton(
+                                title: "Voir agenda",
+                                icon: "calendar",
+                                color: .green
+                            ) {
+                                // Action
                             }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Upcoming Events
-                    if !eventsViewModel.events.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Prochains événements")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                
-                                Spacer()
-                                
-                                Button("Voir tout") {
-                                    // Switch to calendar tab
-                                }
-                                .font(.footnote)
-                                .foregroundColor(.pink)
-                            }
-                            .padding(.horizontal)
-                            
-                            VStack(spacing: 12) {
-                                ForEach(eventsViewModel.events.prefix(3), id: \.id) { event in
-                                    UpcomingEventRow(event: event)
-                                }
-                            }
-                            .padding(.horizontal)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
                     
-                    Spacer(minLength: 100)
+                    // Événements du jour
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Aujourd'hui")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        if eventsViewModel.events.isEmpty {
+                            Text("Aucun événement aujourd'hui")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ForEach(eventsViewModel.events.prefix(3), id: \.id) { event in
+                                EventRowView(event: event)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
                 }
-                .padding(.top)
             }
+            .navigationTitle("Accueil")
             .refreshable {
-                await refreshData()
-            }
-            .navigationTitle("")
-            .navigationBarHidden(true)
-            }
-        }
-        .sheet(isPresented: $childrenViewModel.showingAddChild) {
-            AddChildView { firstName, lastName, dateOfBirth, gender in
-                Task {
-                    await childrenViewModel.addChild(
-                        firstName: firstName,
-                        lastName: lastName,
-                        dateOfBirth: dateOfBirth,
-                        gender: gender
-                    )
-                }
-            }
-        }
-        .sheet(isPresented: $showingAddDocument) {
-            AddDocumentView()
-        }
-        .sheet(isPresented: $eventsViewModel.showingAddEvent) {
-            SimpleAddEventView { title, description, eventType, startDate, endDate, childId in
-                Task {
-                    await eventsViewModel.addEvent(
-                        title: title,
-                        description: description,
-                        eventType: eventType,
-                        startDate: startDate,
-                        endDate: endDate,
-                        childId: childId,
-                        notificationManager: notificationManager
-                    )
-                }
-            }
-        }
-        .sheet(isPresented: $showingInviteFamily) {
-            InviteFamilyView()
-        }
-        .task {
-            // Load data only if user is authenticated
-            if authManager.isAuthenticated {
-                await childrenViewModel.loadChildren()
                 await eventsViewModel.loadEvents()
+                await childrenViewModel.loadChildren()
             }
         }
-        .overlay(
-            // Toast message
-            VStack {
-                Spacer()
-                if showingToast {
-                    Text(toastMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color.green)
-                        .cornerRadius(8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                withAnimation {
-                                    showingToast = false
-                                }
-                            }
-                        }
-                }
-            }
-            .padding(.bottom, 100)
-        )
-    }
-    
-    // MARK: - Functions
-    private func refreshData() async {
-        // Haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
-        
-        // Refresh data only if user is authenticated
-        if authManager.isAuthenticated {
-            await childrenViewModel.loadChildren()
-            await eventsViewModel.loadEvents()
-            showToast("Données mises à jour")
-        } else {
-            showToast("Veuillez vous connecter")
-        }
-    }
-    
-    private func showToast(_ message: String) {
-        toastMessage = message
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showingToast = true
-        }
-    }
-}
-
-// MARK: - Quick Action Card
-struct QuickActionCard: View {
-    let title: String
-    let icon: String
-    let color: Color
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.title)
-                    .foregroundColor(color)
-                
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - Upcoming Event Row
-struct UpcomingEventRow: View {
-    let event: Event
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Event Type Icon
-            Circle()
-                .fill(event.eventType.color.opacity(0.2))
-                .frame(width: 40, height: 40)
-                .overlay {
-                    Image(systemName: event.eventType.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(event.eventType.color)
-                }
-            
-            // Event Details
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-                
-                Text(event.eventType.name)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text(formatEventDate(event.startDate))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Time
-            Text(formatEventTime(event.startDate))
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(event.eventType.color)
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
-    }
-    
-    private func formatEventDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "fr_FR")
-        return formatter.string(from: date)
-    }
-    
-    private func formatEventTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "fr_FR")
-        return formatter.string(from: date)
-    }
-}
-
-// MARK: - Add Child View
-struct AddChildView: View {
-    let onSave: (String, String, Date, String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var firstName = ""
-    @State private var lastName = ""
-    @State private var dateOfBirth = Date()
-    @State private var gender = "Autre"
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section("Informations de l'enfant") {
-                    TextField("Prénom", text: $firstName)
-                    TextField("Nom", text: $lastName)
-                    DatePicker("Date de naissance", selection: $dateOfBirth, displayedComponents: .date)
-                    Picker("Genre", selection: $gender) {
-                        Text("Fille").tag("Fille")
-                        Text("Garçon").tag("Garçon")
-                        Text("Autre").tag("Autre")
-                    }
-                }
-            }
-            .navigationTitle("Ajouter un enfant")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sauvegarder") {
-                        onSave(firstName, lastName, dateOfBirth, gender)
-                        dismiss()
-                    }
-                    .disabled(firstName.isEmpty || lastName.isEmpty)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Add Document View
-struct AddDocumentView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Fonctionnalité à venir")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Nouveau document")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Fermer") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Simple Add Event View
-struct SimpleAddEventView: View {
-    let onSave: (String, String?, EventType, Date, Date, UUID?) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var title = ""
-    @State private var description = ""
-    @State private var eventType = EventType(name: "Général", color: .blue, icon: "calendar")
-    @State private var startDate = Date()
-    @State private var endDate = Date().addingTimeInterval(3600)
-    
-    let eventTypes = [
-        EventType(name: "Général", color: .blue, icon: "calendar"),
-        EventType(name: "Médical", color: .red, icon: "cross.fill"),
-        EventType(name: "École", color: .green, icon: "graduationcap.fill"),
-        EventType(name: "Activité", color: .orange, icon: "figure.run")
-    ]
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section("Détails de l'événement") {
-                    TextField("Titre", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    Picker("Type", selection: $eventType) {
-                        ForEach(eventTypes, id: \.name) { type in
-                            Text(type.name).tag(type)
-                        }
-                    }
-                }
-                
-                Section("Horaires") {
-                    DatePicker("Début", selection: $startDate)
-                    DatePicker("Fin", selection: $endDate)
-                }
-            }
-            .navigationTitle("Nouvel événement")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sauvegarder") {
-                        onSave(title, description.isEmpty ? nil : description, eventType, startDate, endDate, nil)
-                        dismiss()
-                    }
-                    .disabled(title.isEmpty)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Invite Family View
-struct InviteFamilyView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Fonctionnalité à venir")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Inviter la famille")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Fermer") {
-                        dismiss()
-                    }
-                }
+        .onAppear {
+            Task {
+                await eventsViewModel.loadEvents()
+                await childrenViewModel.loadChildren()
             }
         }
     }
@@ -654,7 +217,7 @@ struct CalendarView: View {
     @State private var selectedDate = Date()
     @State private var showingAddEvent = false
     
-    @State private var eventsSheetOffset: CGFloat = 100
+    @State private var eventsSheetOffset: CGFloat = 180
     @State private var isEventsSheetExpanded = false
     
     var body: some View {
@@ -714,19 +277,15 @@ struct CalendarView: View {
                     Spacer()
                     
                     VStack(spacing: 0) {
-                        // Handle de glissement amélioré
-                        VStack(spacing: 0) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color(.systemGray3))
-                                .frame(width: 50, height: 5)
-                                .padding(.top, 8)
-                                .padding(.bottom, 12)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .background(Color(.systemBackground))
+                        // Handle de glissement
+                        RoundedRectangle(cornerRadius: 2.5)
+                            .fill(Color(.systemGray3))
+                            .frame(width: 36, height: 5)
+                            .padding(.top, 8)
+                            .padding(.bottom, 12)
                         
                         // En-tête de la section événements avec bouton flottant
-                        HStack(alignment: .center, spacing: 16) {
+                        HStack(alignment: .center, spacing: 12) {
                             Text("Événements")
                                 .font(.title2)
                                 .fontWeight(.bold)
@@ -734,13 +293,13 @@ struct CalendarView: View {
                             
                             Spacer()
                             
-                            HStack(spacing: 12) {
+                            HStack(spacing: 8) {
                                 Text("\(eventsViewModel.events.count)")
                                     .font(.caption)
                                     .fontWeight(.medium)
                                     .foregroundColor(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
                                     .background(
                                         Capsule()
                                             .fill(Color.blue.opacity(0.8))
@@ -748,21 +307,19 @@ struct CalendarView: View {
                                 
                                 Button(action: { showingAddEvent = true }) {
                                     Image(systemName: "plus")
-                                        .font(.system(size: 18, weight: .semibold))
+                                        .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .frame(width: 40, height: 40)
+                                        .frame(width: 36, height: 36)
                                         .background(
                                             Circle()
                                                 .fill(Color.blue)
-                                                .shadow(color: Color.blue.opacity(0.3), radius: 6, x: 0, y: 3)
+                                                .shadow(color: Color.blue.opacity(0.3), radius: 4, x: 0, y: 2)
                                         )
                                 }
-                                .scaleEffect(1.0)
-                                .animation(.easeInOut(duration: 0.1), value: isEventsSheetExpanded)
                             }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 16)
+                        .padding(.vertical, 12)
                         
                         // Contenu des événements
                         if eventsViewModel.events.isEmpty {
@@ -782,7 +339,7 @@ struct CalendarView: View {
                                     .multilineTextAlignment(.center)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 30)
+                            .padding(.vertical, 40)
                             .padding(.horizontal, 20)
                         } else {
                             ScrollView {
@@ -796,7 +353,6 @@ struct CalendarView: View {
                                 .padding(.top, 4)
                                 .padding(.bottom, 12)
                             }
-                            .frame(maxHeight: isEventsSheetExpanded ? .infinity : 120)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -810,23 +366,23 @@ struct CalendarView: View {
                         DragGesture()
                             .onChanged { value in
                                 let newOffset = eventsSheetOffset + value.translation.height
-                                let minOffset: CGFloat = 50
-                                let maxOffset: CGFloat = 100
+                                let minOffset: CGFloat = 80
+                                let maxOffset: CGFloat = 180
                                 
                                 eventsSheetOffset = max(minOffset, min(maxOffset, newOffset))
                             }
                             .onEnded { value in
                                 let velocity = value.translation.height
-                                let threshold: CGFloat = 20
+                                let threshold: CGFloat = 30
                                 
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.3)) {
                                     if velocity > threshold {
                                         // Glissement vers le bas - Position ancrée
-                                        eventsSheetOffset = 100
+                                        eventsSheetOffset = 180
                                         isEventsSheetExpanded = false
                                     } else {
                                         // Glissement vers le haut - Ouvrir complètement
-                                        eventsSheetOffset = 50
+                                        eventsSheetOffset = 80
                                         isEventsSheetExpanded = true
                                     }
                                 }
@@ -1074,19 +630,14 @@ struct DocumentsView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Filtre par catégorie - Version simplifiée
+                // Filtre par catégorie
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        let allCategories = [DocumentType.all] + DocumentType.allCases.filter { $0 != .all }
-                        ForEach(allCategories, id: \.self) { category in
-                            let totalCount = documentsViewModel.documents.count
-                            let filteredCount = documentsViewModel.documents.filter { $0.type == category }.count
-                            let categoryCount = category == .all ? totalCount : filteredCount
-                            
+                        ForEach([DocumentType.all] + DocumentType.allCases.filter { $0 != .all }, id: \.self) { category in
                             CategoryFilterButton(
                                 category: category,
                                 isSelected: selectedCategory == category,
-                                count: categoryCount
+                                count: category == .all ? documentsViewModel.documents.count : documentsViewModel.documents.filter { $0.type == category }.count
                             ) {
                                 selectedCategory = category
                             }
@@ -2171,6 +1722,339 @@ struct DocumentRowView: View {
     }
 }
 
+struct AddDocumentView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var description = ""
+    @State private var selectedType: DocumentType = .other
+    @State private var isLoading = false
+    
+    let onSave: (String, String, DocumentType) -> Void
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations du document") {
+                    TextField("Titre", text: $title)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Catégorie", selection: $selectedType) {
+                        ForEach(DocumentType.allCases.filter { $0 != .all }, id: \.self) { type in
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundColor(type.color)
+                                Text(type.displayName)
+                            }
+                            .tag(type)
+                        }
+                    }
+                }
+                
+                Section("Fichier") {
+                    Button(action: {}) {
+                        HStack {
+                            Image(systemName: "doc.badge.plus")
+                            Text("Sélectionner un fichier")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                }
+            }
+            .navigationTitle("Nouveau document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Ajouter") {
+                        saveDocument()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Ajout en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveDocument() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.trimmingCharacters(in: .whitespaces),
+            selectedType
+        )
+        
+        dismiss()
+    }
+}
+
+struct EditDocumentView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var description: String
+    @State private var selectedType: DocumentType
+    @State private var isLoading = false
+    
+    let document: Document
+    let onSave: (String, String, DocumentType) -> Void
+    
+    init(document: Document, onSave: @escaping (String, String, DocumentType) -> Void) {
+        self.document = document
+        self.onSave = onSave
+        self._title = State(initialValue: document.title)
+        self._description = State(initialValue: document.description ?? "")
+        self._selectedType = State(initialValue: document.type)
+    }
+    
+    var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations du document") {
+                    TextField("Titre", text: $title)
+                    
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Catégorie", selection: $selectedType) {
+                        ForEach(DocumentType.allCases.filter { $0 != .all }, id: \.self) { type in
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundColor(type.color)
+                                Text(type.displayName)
+                            }
+                            .tag(type)
+                        }
+                    }
+                }
+                
+                Section("Fichier") {
+                    if let fileURL = document.fileURL {
+                        HStack {
+                            Image(systemName: "doc.fill")
+                                .foregroundColor(.blue)
+                            Text(fileURL.lastPathComponent)
+                            Spacer()
+                        }
+                    } else {
+                        Button(action: {}) {
+                            HStack {
+                                Image(systemName: "doc.badge.plus")
+                                Text("Sélectionner un fichier")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+            }
+            .navigationTitle("Modifier le document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Enregistrer") {
+                        saveDocument()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Modification en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveDocument() {
+        isLoading = true
+        
+        onSave(
+            title.trimmingCharacters(in: .whitespaces),
+            description.trimmingCharacters(in: .whitespaces),
+            selectedType
+        )
+        
+        dismiss()
+    }
+}
+
+// MARK: - Child Management Views
+
+struct ChildRowView: View {
+    let child: Child
+    let onEdit: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Avatar
+            Circle()
+                .fill(Color.blue.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay {
+                    Text(String(child.firstName.prefix(1)))
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                }
+            
+            // Informations de l'enfant
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(child.firstName) \(child.lastName)")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Text(ageText(for: child.birthDate))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Text("Né(e) le \(dateFormatter.string(from: child.birthDate))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Bouton d'édition
+            Button(action: onEdit) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+    
+    private func ageText(for birthDate: Date) -> String {
+        let age = Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 0
+        return age <= 1 ? "\(age) an" : "\(age) ans"
+    }
+}
+
+struct AddChildView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var dateOfBirth = Date()
+    @State private var selectedGender: Gender? = nil
+    @State private var isLoading = false
+    
+    let onSave: (String, String, Date, String?) -> Void
+    
+    var isFormValid: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Informations de l'enfant") {
+                    TextField("Prénom", text: $firstName)
+                        .textContentType(.givenName)
+                    
+                    TextField("Nom", text: $lastName)
+                        .textContentType(.familyName)
+                    
+                    DatePicker(
+                        "Date de naissance",
+                        selection: $dateOfBirth,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    
+                    Picker("Genre", selection: $selectedGender) {
+                        Text("Non spécifié").tag(nil as Gender?)
+                        ForEach(Gender.allCases, id: \.self) { gender in
+                            Text(gender.displayName).tag(gender as Gender?)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Nouvel enfant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                    .disabled(isLoading)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Ajouter") {
+                        saveChild()
+                    }
+                    .disabled(!isFormValid || isLoading)
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("Ajout en cours...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.8))
+                }
+            }
+        }
+    }
+    
+    private func saveChild() {
+        isLoading = true
+        
+        onSave(
+            firstName.trimmingCharacters(in: .whitespaces),
+            lastName.trimmingCharacters(in: .whitespaces),
+            dateOfBirth,
+            selectedGender?.rawValue
+        )
+        
+        dismiss()
+    }
+}
 
 struct EditChildView: View {
     @Environment(\.dismiss) private var dismiss
@@ -2316,73 +2200,13 @@ enum ReminderTime: String, CaseIterable {
 class EventsViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
-    @Published var showingAddEvent = false
     
     func loadEvents() async {
-        await MainActor.run {
-            isLoading = true
-        }
-        
-        // Simulation de chargement
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        
-        await MainActor.run {
-            // Données de test
-            events = [
-                Event(
-                    title: "Rendez-vous médecin",
-                    description: "Visite de contrôle",
-                    startDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date(),
-                    endDate: Calendar.current.date(byAdding: .day, value: 1, to: Date())?.addingTimeInterval(3600) ?? Date(),
-                    eventType: EventType(name: "Médical", color: .red, icon: "cross.fill"),
-                    childId: nil
-                ),
-                Event(
-                    title: "École",
-                    description: "Réunion parents-professeurs",
-                    startDate: Calendar.current.date(byAdding: .day, value: 3, to: Date()) ?? Date(),
-                    endDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())?.addingTimeInterval(7200) ?? Date(),
-                    eventType: EventType(name: "École", color: .green, icon: "graduationcap.fill"),
-                    childId: nil
-                )
-            ]
-            isLoading = false
-        }
-    }
-    
-    func showAddEvent() {
-        showingAddEvent = true
-    }
-    
-    func addEvent(title: String, description: String?, eventType: EventType, startDate: Date, endDate: Date, childId: UUID?, notificationManager: NotificationManager) async {
-        let newEvent = Event(
-            title: title,
-            description: description,
-            startDate: startDate,
-            endDate: endDate,
-            eventType: eventType,
-            childId: childId?.uuidString
-        )
-        
-        await MainActor.run {
-            events.append(newEvent)
-            showingAddEvent = false
-        }
+        // Temporary implementation
     }
     
     func createEvent(title: String, description: String, eventType: EventType, startDate: Date, endDate: Date, childId: String?, recurrenceRule: String?) async {
-        let newEvent = Event(
-            title: title,
-            description: description,
-            startDate: startDate,
-            endDate: endDate,
-            eventType: eventType,
-            childId: childId
-        )
-        
-        await MainActor.run {
-            events.append(newEvent)
-        }
+        // Temporary implementation
     }
 }
 
@@ -2503,7 +2327,6 @@ class ChildrenViewModel: ObservableObject {
     @Published var children: [Child] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
-    @Published var showingAddChild = false
     
     func loadChildren() async {
         await MainActor.run {
@@ -2522,37 +2345,6 @@ class ChildrenViewModel: ObservableObject {
             ]
             isLoading = false
         }
-    }
-    
-    func showAddChild() {
-        showingAddChild = true
-    }
-    
-    func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String) async {
-        let newChild = Child(firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
-        
-        await MainActor.run {
-            children.append(newChild)
-            showingAddChild = false
-        }
-    }
-    
-    func updateChild(_ child: Child, firstName: String, lastName: String, dateOfBirth: Date, gender: String) async {
-        await MainActor.run {
-            if let index = children.firstIndex(where: { $0.id == child.id }) {
-                children[index] = Child(firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
-            }
-        }
-    }
-    
-    func deleteChild(_ child: Child) async {
-        await MainActor.run {
-            children.removeAll { $0.id == child.id }
-        }
-    }
-    
-    func dismissError() {
-        errorMessage = nil
     }
     
     func addChild(firstName: String, lastName: String, dateOfBirth: Date, gender: String?) async {
@@ -2596,6 +2388,24 @@ class ChildrenViewModel: ObservableObject {
         }
     }
     
+    func deleteChild(_ child: Child) async {
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
+        
+        // Simulation de suppression
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        
+        await MainActor.run {
+            children.removeAll { $0.id == child.id }
+            isLoading = false
+        }
+    }
+    
+    func dismissError() {
+        errorMessage = nil
+    }
 }
 
 class CacheManager: ObservableObject {
@@ -3197,71 +3007,6 @@ struct AgendaCalendarView: View {
         return formatter
     }()
 }
-
-// MARK: - Missing Views
-
-struct ChildRowView: View {
-    let child: Child
-    let onEdit: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(child.firstName) \(child.lastName)")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Text("Né(e) le \(formatDate(child.birthDate))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Button(action: onEdit) {
-                Image(systemName: "pencil.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.blue)
-            }
-        }
-        .padding(.vertical, 8)
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "fr_FR")
-        return formatter.string(from: date)
-    }
-}
-
-struct EditDocumentView: View {
-    let document: Document
-    let onSave: (String, String, DocumentType) -> Void
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Édition de document à implémenter")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Éditer document")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Additional Models
-// Document and DocumentType are already defined earlier in the file
 
 // MARK: - Preview
 
