@@ -1,7 +1,0 @@
-version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
-options: "c5903d1fa6d9baa22310a6c32f47eb2fe68fe92929b4ff3b9e6c8d6a1e487367"
-build_start_time: [1755352899, 601325000]
-build_end_time: [1755352900, 959937000]
-inputs:
-  ? "/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app/ManounouSwiftUI/build/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/IssueReportingPackageSupport/_Test.swift"
-  : [1755298944, 995902538]
