@@ -63,27 +63,15 @@ struct DateFormatters {
 
 extension DateFormatters {
     
-    /// Retourne une chaîne formatée pour l'âge d'un enfant (format: "X ans et Y jours")
+    /// Retourne une chaîne formatée pour l'âge d'un enfant
     static func ageText(for birthDate: Date) -> String {
         let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year, .day], from: birthDate, to: Date())
+        let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: Date())
         
-        guard let years = ageComponents.year, let totalDays = ageComponents.day else {
-            return "Nouveau-né"
-        }
-        
-        if years > 0 {
-            // Calculer les jours restants après avoir soustrait les années complètes
-            let startOfCurrentYear = calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
-            let remainingDays = calendar.dateComponents([.day], from: startOfCurrentYear, to: Date()).day ?? 0
-            
-            if remainingDays > 0 {
-                return "\(years) an\(years > 1 ? "s" : "") et \(remainingDays) jour\(remainingDays > 1 ? "s" : "")"
-            } else {
-                return "\(years) an\(years > 1 ? "s" : "")"
-            }
-        } else if totalDays > 0 {
-            return "\(totalDays) jour\(totalDays > 1 ? "s" : "")"
+        if let years = ageComponents.year, years > 0 {
+            return "\(years) an\(years > 1 ? "s" : "")"
+        } else if let months = ageComponents.month, months > 0 {
+            return "\(months) mois"
         } else {
             return "Nouveau-né"
         }

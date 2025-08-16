@@ -43,8 +43,8 @@ struct MainTabView: View {
                 }
                 .tag(0)
             
-            // Onglet Enfants
-            ChildrenView()
+            // Enfants
+            TemporaryChildrenView()
                 .environmentObject(childrenViewModel)
                 .tabItem {
                     Image(systemName: "person.2.fill")
@@ -117,7 +117,7 @@ struct HomeView: View {
                         // En-tête de bienvenue
                         welcomeHeader
                         
-                        // Actions rapides en grille
+                        // Actions rapides - 4 boutons en grille
                         quickActionsGrid
                         
                         // Statistiques familiales
@@ -316,7 +316,7 @@ struct ActionCard: View {
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: geometry.size.height * 0.45)
+            .frame(height: geometry.size.height * 0.11)
             .padding(.vertical, geometry.size.height * 0.015)
             .padding(.horizontal, geometry.size.width * 0.03)
             .background(
@@ -375,33 +375,255 @@ struct StatisticCard: View {
 
 // MARK: - Placeholder Views (À remplacer par les vraies vues)
 
-struct ChildrenView: View {
+// MARK: - Temporary Enhanced Children View
+
+struct TemporaryChildrenView: View {
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
+    @State private var showingAddChild = false
     
     var body: some View {
         NavigationView {
-            VStack {
-                 if childrenViewModel.children.isEmpty {
-                     VStack(spacing: 20) {
-                         Image(systemName: "person.2")
-                             .font(.system(size: 50))
-                             .foregroundColor(.green.opacity(0.6))
-                         Text("Aucun enfant")
-                             .font(.title3)
-                             .fontWeight(.medium)
-                         Text("Ajoutez les informations de vos enfants")
-                             .font(.subheadline)
-                             .foregroundColor(.secondary)
-                     }
-                     .padding(.top, 40)
-                 } else {
-                     List(childrenViewModel.children, id: \.id) { child in
-                         Text(child.fullName)
-                     }
-                 }
-             }
-            .navigationTitle("Enfants")
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Header moderne
+                    headerSection(geometry: geometry)
+                    
+                    // Contenu
+                    if childrenViewModel.children.isEmpty {
+                        // État vide amélioré
+                        emptyState(geometry: geometry)
+                    } else {
+                        // Liste des enfants
+                        childrenList(geometry: geometry)
+                    }
+                }
+            }
+            .navigationTitle("")
+            .navigationBarHidden(true)
         }
+        .sheet(isPresented: $showingAddChild) {
+            AddChildView()
+        }
+        .onAppear {
+            Task {
+                await childrenViewModel.loadChildren()
+            }
+        }
+    }
+    
+    // MARK: - Header Section
+    private func headerSection(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.02) {
+            HStack {
+                VStack(alignment: .leading, spacing: geometry.size.height * 0.005) {
+                    Text("Enfants")
+                        .font(.system(size: geometry.size.width * 0.08, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    if !childrenViewModel.children.isEmpty {
+                        Text("\(childrenViewModel.children.count) enfant(s)")
+                            .font(.system(size: geometry.size.width * 0.04, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Bouton d'ajout moderne
+                Button(action: { showingAddChild = true }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: geometry.size.width * 0.05, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(
+                            width: geometry.size.width * 0.12,
+                            height: geometry.size.width * 0.12
+                        )
+                        .background(
+                            Circle()
+                                .fill(Color.blue)
+                        )
+                        .shadow(
+                            color: Color.blue.opacity(0.3),
+                            radius: geometry.size.width * 0.01,
+                            x: 0,
+                            y: geometry.size.width * 0.005
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, geometry.size.width * 0.05)
+        .padding(.top, geometry.size.height * 0.02)
+        .background(Color(.systemBackground))
+    }
+    
+    // MARK: - Empty State
+    private func emptyState(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.04) {
+            Spacer()
+            
+            // Illustration
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.blue.opacity(0.1),
+                                Color.green.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(
+                        width: geometry.size.width * 0.3,
+                        height: geometry.size.width * 0.3
+                    )
+                
+                Image(systemName: "figure.2.and.child.holdinghands")
+                    .font(.system(size: geometry.size.width * 0.12, weight: .light))
+                    .foregroundColor(.blue)
+            }
+            
+            // Message principal
+            VStack(spacing: geometry.size.height * 0.015) {
+                Text("Commencez votre carnet de famille")
+                    .font(.system(size: geometry.size.width * 0.06, weight: .bold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                
+                Text("Ajoutez les informations de vos enfants pour créer un espace familial personnalisé")
+                    .font(.system(size: geometry.size.width * 0.04, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(.horizontal, geometry.size.width * 0.08)
+            
+            // Bouton CTA
+            Button(action: { showingAddChild = true }) {
+                HStack(spacing: geometry.size.width * 0.03) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: geometry.size.width * 0.05, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Text("Ajouter votre premier enfant")
+                        .font(.system(size: geometry.size.width * 0.045, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: geometry.size.height * 0.07)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(geometry.size.width * 0.04)
+                .shadow(
+                    color: Color.blue.opacity(0.3),
+                    radius: geometry.size.width * 0.02,
+                    x: 0,
+                    y: geometry.size.width * 0.01
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, geometry.size.width * 0.06)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - Children List
+    private func childrenList(geometry: GeometryProxy) -> some View {
+        ScrollView {
+            LazyVStack(spacing: geometry.size.height * 0.015) {
+                ForEach(childrenViewModel.children, id: \.id) { child in
+                    childCard(child: child, geometry: geometry)
+                }
+            }
+            .padding(.horizontal, geometry.size.width * 0.05)
+            .padding(.top, geometry.size.height * 0.02)
+        }
+        .refreshable {
+            await childrenViewModel.loadChildren()
+        }
+    }
+    
+    // MARK: - Child Card
+    private func childCard(child: Child, geometry: GeometryProxy) -> some View {
+        HStack(spacing: geometry.size.width * 0.04) {
+            // Avatar
+             ZStack {
+                 Circle()
+                     .fill(
+                         LinearGradient(
+                             colors: [Color.blue.opacity(0.3), Color.blue.opacity(0.1)],
+                             startPoint: .topLeading,
+                             endPoint: .bottomTrailing
+                         )
+                     )
+                     .frame(
+                         width: geometry.size.width * 0.15,
+                         height: geometry.size.width * 0.15
+                     )
+                 
+                 Text("\(child.firstName.first?.uppercased() ?? "")\(child.lastName.first?.uppercased() ?? "")")
+                     .font(.system(size: geometry.size.width * 0.05, weight: .semibold))
+                     .foregroundColor(.blue)
+             }
+            
+            // Informations
+            VStack(alignment: .leading, spacing: geometry.size.height * 0.008) {
+                HStack {
+                    Text(child.fullName)
+                        .font(.system(size: geometry.size.width * 0.045, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Text(DateFormatters.simpleAgeText(for: child.birthDate))
+                         .font(.system(size: geometry.size.width * 0.035, weight: .medium))
+                         .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: geometry.size.width * 0.02) {
+                     // Badge âge
+                     HStack(spacing: geometry.size.width * 0.01) {
+                         Image(systemName: "calendar")
+                             .font(.system(size: geometry.size.width * 0.03, weight: .medium))
+                             .foregroundColor(.blue)
+                         
+                         Text("Né(e) le \(DateFormatters.shortDateFormatter.string(from: child.birthDate))")
+                             .font(.system(size: geometry.size.width * 0.03, weight: .medium))
+                             .foregroundColor(.blue)
+                     }
+                     .padding(.horizontal, geometry.size.width * 0.02)
+                     .padding(.vertical, geometry.size.height * 0.005)
+                     .background(
+                         RoundedRectangle(cornerRadius: geometry.size.width * 0.02)
+                             .fill(Color.blue.opacity(0.15))
+                     )
+                     
+                     Spacer()
+                 }
+            }
+        }
+        .padding(geometry.size.width * 0.04)
+        .background(
+            RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
+                .fill(Color(.systemBackground))
+                .shadow(
+                    color: Color.black.opacity(0.1),
+                    radius: geometry.size.width * 0.01,
+                    x: 0,
+                    y: geometry.size.width * 0.005
+                )
+        )
     }
 }
 
