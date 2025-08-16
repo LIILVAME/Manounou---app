@@ -95,25 +95,43 @@ struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var notificationManager: NotificationManager
     
+    @State private var showingAddChild = false
+    @State private var showingAddDocument = false
+    @State private var showingAddEvent = false
+    @State private var showingInviteFamily = false
+    
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 24) {
                     // En-tête de bienvenue
                     welcomeHeader
                     
-                    // Actions rapides
-                    quickActions
+                    // Actions rapides - 4 boutons en grille
+                    quickActionsGrid
                     
-                    // Événements d'aujourd'hui
-                    todayEvents
+                    // Statistiques familiales
+                    familyStatistics
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
             }
-            .navigationTitle("Accueil")
-            .refreshable {
-                await eventsViewModel.loadEvents()
-                await childrenViewModel.loadChildren()
-            }
+            .navigationTitle("")
+            .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $showingAddChild) {
+            AddChildView()
+        }
+        .sheet(isPresented: $showingAddDocument) {
+            AddDocumentView()
+        }
+        .sheet(isPresented: $showingAddEvent) {
+            AddEventView()
+                .environmentObject(eventsViewModel)
+                .environmentObject(childrenViewModel)
+        }
+        .sheet(isPresented: $showingInviteFamily) {
+            InviteFamilyView()
         }
         .onAppear {
             Task {
@@ -127,118 +145,183 @@ struct HomeView: View {
     
     private var welcomeHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Bonjour !")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("Voici un aperçu de votre journée")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Quick Actions
-    
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Actions rapides")
-                .font(.headline)
-                .fontWeight(.semibold)
-            
-            HStack(spacing: 12) {
-                QuickActionButton(
-                    title: "Nouvel événement",
-                    icon: "plus.circle.fill",
-                    color: .blue
-                ) {
-                    // TODO: Action pour nouvel événement
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bonjour Utilisateur !")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Bienvenue dans votre carnet de famille")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
                 
-                QuickActionButton(
-                    title: "Voir agenda",
-                    icon: "calendar",
-                    color: .green
-                ) {
-                    // TODO: Action pour voir agenda
+                Spacer()
+                
+                Button(action: {}) {
+                    Image(systemName: "bell")
+                        .font(.title2)
+                        .foregroundColor(.primary)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
     }
     
-    // MARK: - Today Events
+    // MARK: - Quick Actions Grid
     
-    private var todayEvents: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Aujourd'hui")
-                .font(.headline)
-                .fontWeight(.semibold)
+    private var quickActionsGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+            // Ajouter un enfant
+            ActionCard(
+                title: "Ajouter un enfant",
+                icon: "plus",
+                iconColor: .white,
+                backgroundColor: Color.blue
+            ) {
+                showingAddChild = true
+            }
             
-            if eventsViewModel.todayEvents.isEmpty {
-                 VStack(spacing: 12) {
-                     Image(systemName: "calendar")
-                         .font(.system(size: 30))
-                         .foregroundColor(.gray)
-                     Text("Aucun événement aujourd'hui")
-                         .font(.subheadline)
-                         .foregroundColor(.secondary)
-                 }
-                 .padding(.vertical, 20)
-             } else {
-                 ForEach(eventsViewModel.todayEvents.prefix(3), id: \.id) { event in
-                     HStack {
-                         Text(event.title)
-                             .font(.subheadline)
-                         Spacer()
-                         Text(DateFormatter.localizedString(from: event.startDate, dateStyle: .none, timeStyle: .short))
-                             .font(.caption)
-                             .foregroundColor(.secondary)
-                     }
-                     .padding(.vertical, 4)
-                     .padding(.horizontal, 12)
-                     .background(
-                         RoundedRectangle(cornerRadius: 8)
-                             .fill(Color(.systemGray6))
-                     )
-                 }
-             }
+            // Nouveau document
+            ActionCard(
+                title: "Nouveau document",
+                icon: "plus",
+                iconColor: .white,
+                backgroundColor: Color.green
+            ) {
+                showingAddDocument = true
+            }
+            
+            // Ajouter un événement
+            ActionCard(
+                title: "Ajouter un événement",
+                icon: "plus",
+                iconColor: .white,
+                backgroundColor: Color.orange
+            ) {
+                showingAddEvent = true
+            }
+            
+            // Inviter la famille
+            ActionCard(
+                title: "Inviter la famille",
+                icon: "person.2",
+                iconColor: .white,
+                backgroundColor: Color.purple
+            ) {
+                showingInviteFamily = true
+            }
+        }
+    }
+    
+    // MARK: - Family Statistics
+    
+    private var familyStatistics: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Votre famille")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            HStack(spacing: 12) {
+                // Statistique enfants
+                StatisticCard(
+                    count: childrenViewModel.children.count,
+                    label: "enfants",
+                    icon: "figure.2.and.child.holdinghands",
+                    backgroundColor: Color.blue.opacity(0.1),
+                    iconColor: Color.blue
+                )
+                
+                // Statistique événements à venir
+                StatisticCard(
+                    count: eventsViewModel.events.count,
+                    label: "à venir",
+                    icon: "calendar",
+                    backgroundColor: Color.orange.opacity(0.1),
+                    iconColor: Color.orange
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
     }
 }
 
-// MARK: - Quick Action Button
+// MARK: - Action Card
 
-struct QuickActionButton: View {
+struct ActionCard: View {
     let title: String
     let icon: String
-    let color: Color
+    let iconColor: Color
+    let backgroundColor: Color
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundColor(color)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(iconColor)
+                    .frame(width: 50, height: 50)
+                    .background(
+                        Circle()
+                            .fill(backgroundColor)
+                    )
                 
                 Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
+            .frame(height: 120)
             .padding(.vertical, 16)
+            .padding(.horizontal, 12)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.systemGray6))
             )
         }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Statistic Card
+
+struct StatisticCard: View {
+    let count: Int
+    let label: String
+    let icon: String
+    let backgroundColor: Color
+    let iconColor: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .medium))
+                .foregroundColor(iconColor)
+                .frame(width: 40, height: 40)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count)")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                Text(label)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(backgroundColor)
+        )
     }
 }
 
@@ -330,6 +413,10 @@ class ChildrenViewModel: ObservableObject {
         children = Child.sampleChildren
         #endif
     }
+    
+    func addChild(_ child: Child) {
+        children.append(child)
+    }
 }
 
 class NotificationManager: ObservableObject {
@@ -348,6 +435,20 @@ class TemporaryEventsViewModel: ObservableObject {
     
     func loadEvents() async {
         // TODO: Implémenter le chargement des événements
+        #if DEBUG
+        events = [
+            TemporaryEvent(
+                title: "Rendez-vous médecin",
+                startDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date(),
+                endDate: Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()) ?? Date()
+            ),
+            TemporaryEvent(
+                title: "École maternelle",
+                startDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()) ?? Date(),
+                endDate: Calendar.current.date(byAdding: .day, value: 2, to: Calendar.current.date(byAdding: .hour, value: 6, to: Date()) ?? Date()) ?? Date()
+            )
+        ]
+        #endif
     }
 }
 
@@ -422,7 +523,77 @@ struct TemporaryCalendarView: View {
     }
 }
 
-// MARK: - Temporary AddEventView
+// MARK: - Temporary Views
+
+struct AddChildView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 60))
+                    .foregroundColor(.blue)
+                
+                Text("Ajouter un enfant")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Formulaire d'ajout d'enfant en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Nouvel enfant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AddDocumentView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 60))
+                    .foregroundColor(.green)
+                
+                Text("Nouveau document")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Formulaire d'ajout de document en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Nouveau document")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
 
 struct AddEventView: View {
     @EnvironmentObject var eventsViewModel: EventsViewModel
@@ -431,23 +602,63 @@ struct AddEventView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-                Text("Formulaire d'ajout d'événement")
+            VStack(spacing: 20) {
+                Image(systemName: "calendar.badge.plus")
+                    .font(.system(size: 60))
+                    .foregroundColor(.orange)
+                
+                Text("Ajouter un événement")
                     .font(.title2)
-                    .padding()
+                    .fontWeight(.semibold)
+                
+                Text("Formulaire d'ajout d'événement en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
                 
                 Spacer()
-                
-                Button("Fermer") {
-                    dismiss()
-                }
-                .padding()
             }
+            .padding()
             .navigationTitle("Nouvel événement")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
+                    Button("Fermer") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct InviteFamilyView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "person.2.badge.plus")
+                    .font(.system(size: 60))
+                    .foregroundColor(.purple)
+                
+                Text("Inviter la famille")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Fonctionnalité d'invitation familiale en cours de développement")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Inviter la famille")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") {
                         dismiss()
                     }
                 }
