@@ -10,6 +10,7 @@ import SwiftUI
 import Foundation
 import Supabase
 import UserNotifications
+import Combine
 
 // Imports temporaires pour les nouveaux composants
 // TODO: Ajouter les fichiers au projet Xcode
@@ -26,8 +27,10 @@ struct MainTabView: View {
     @StateObject private var cacheService = CacheService.shared
     @StateObject private var notificationManager = NotificationManager()
     
+    @State private var selectedTab = 0
+    
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             // Onglet Accueil
             HomeView()
                 .environmentObject(childrenViewModel)
@@ -38,6 +41,7 @@ struct MainTabView: View {
                     Image(systemName: "house.fill")
                     Text("Accueil")
                 }
+                .tag(0)
             
             // Onglet Enfants
             ChildrenView()
@@ -46,6 +50,7 @@ struct MainTabView: View {
                     Image(systemName: "person.2.fill")
                     Text("Enfants")
                 }
+                .tag(1)
             
             // Onglet Calendrier
             TemporaryCalendarView()
@@ -56,6 +61,7 @@ struct MainTabView: View {
                     Image(systemName: "calendar")
                     Text("Calendrier")
                 }
+                .tag(2)
             
             // Onglet Documents
             DocumentsView()
@@ -63,6 +69,7 @@ struct MainTabView: View {
                     Image(systemName: "doc.fill")
                     Text("Documents")
                 }
+                .tag(3)
             
             // Onglet Paramètres
             SettingsView()
@@ -72,6 +79,7 @@ struct MainTabView: View {
                     Image(systemName: "gearshape.fill")
                     Text("Paramètres")
                 }
+                .tag(4)
         }
         .environmentObject(authManager)
         .environmentObject(eventsViewModel)
@@ -84,6 +92,7 @@ struct MainTabView: View {
                 await childrenViewModel.loadChildren()
             }
         }
+        // Navigation par onglets sera implémentée plus tard
     }
 }
 
@@ -102,19 +111,22 @@ struct HomeView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // En-tête de bienvenue
-                    welcomeHeader
-                    
-                    // Actions rapides - 4 boutons en grille
-                    quickActionsGrid
-                    
-                    // Statistiques familiales
-                    familyStatistics
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // En-tête de bienvenue
+                        welcomeHeader
+                        
+                        // Actions rapides - 4 boutons en grille
+                        quickActionsGrid
+                        
+                        // Statistiques familiales
+                        familyStatistics
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .frame(maxHeight: geometry.size.height * 0.8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
             }
             .navigationTitle("")
             .navigationBarHidden(true)
@@ -147,7 +159,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Bonjour Utilisateur !")
+                    Text(welcomeMessage)
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
@@ -167,6 +179,23 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var welcomeMessage: String {
+        if let user = authManager.currentUser,
+           let userMetadata = user.userMetadata,
+           let firstName = userMetadata["first_name"] as? String {
+            return "Bonjour \(firstName) !"
+        } else if let user = authManager.currentUser,
+                  let email = user.email {
+            // Extraire le prénom de l'email si pas de métadonnées
+            let emailPrefix = String(email.split(separator: "@").first ?? "")
+            let firstName = emailPrefix.capitalized
+            return "Bonjour \(firstName) !"
+        }
+        return "Bonjour Utilisateur !"
     }
     
     // MARK: - Quick Actions Grid
@@ -276,8 +305,8 @@ struct ActionCard: View {
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 120)
-            .padding(.vertical, 16)
+            .frame(height: 90)
+            .padding(.vertical, 12)
             .padding(.horizontal, 12)
             .background(
                 RoundedRectangle(cornerRadius: 16)
@@ -322,6 +351,57 @@ struct StatisticCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(backgroundColor)
         )
+    }
+}
+
+// MARK: - Interactive Statistic Card
+
+struct InteractiveStatisticCard: View {
+    let count: Int
+    let label: String
+    let icon: String
+    let backgroundColor: Color
+    let iconColor: Color
+    let targetTab: Int
+    
+    var body: some View {
+        Button(action: {
+            // Navigation vers l'onglet correspondant
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SwitchToTab"),
+                object: targetTab
+            )
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(iconColor)
+                    .frame(width: 40, height: 40)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(count)")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text(label)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(backgroundColor)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
