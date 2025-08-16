@@ -1078,10 +1078,14 @@ struct DocumentsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach([DocumentType.all] + DocumentType.allCases.filter { $0 != .all }, id: \.self) { category in
+                            let totalCount = documentsViewModel.documents.count
+                            let filteredCount = documentsViewModel.documents.filter { $0.type == category }.count
+                            let categoryCount = category == .all ? totalCount : filteredCount
+                            
                             CategoryFilterButton(
                                 category: category,
                                 isSelected: selectedCategory == category,
-                                count: category == .all ? documentsViewModel.documents.count : documentsViewModel.documents.filter { $0.type == category }.count
+                                count: categoryCount
                             ) {
                                 selectedCategory = category
                             }
@@ -2535,7 +2539,7 @@ class ChildrenViewModel: ObservableObject {
     func updateChild(_ child: Child, firstName: String, lastName: String, dateOfBirth: Date, gender: String) async {
         await MainActor.run {
             if let index = children.firstIndex(where: { $0.id == child.id }) {
-                children[index] = Child(id: child.id, firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
+                children[index] = Child(firstName: firstName, lastName: lastName, birthDate: dateOfBirth)
             }
         }
     }
