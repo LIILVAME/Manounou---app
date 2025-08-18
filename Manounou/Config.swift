@@ -115,53 +115,53 @@ struct Config {
 }
 
 // MARK: - Configuration Validation
-extension AppConfig {
+extension Config {
     
     /// Valide la configuration de l'application au démarrage
     static func validateConfiguration() {
         // Vérification de la configuration Supabase
-        guard !Supabase.url.contains("your-project-ref") else {
+        guard !supabaseURL.contains("your-project-ref") else {
             fatalError("❌ Configuration Supabase manquante! Veuillez configurer votre URL Supabase dans Config.swift")
         }
         
-        guard !Supabase.anonKey.contains("your-anon-key") else {
+        guard !supabaseAnonKey.contains("your-anon-key") else {
             fatalError("❌ Clé Supabase manquante! Veuillez configurer votre clé anonyme dans Config.swift")
         }
         
         // Vérification de la validité de l'URL
-        guard URL(string: Supabase.url) != nil else {
-            fatalError("❌ URL Supabase invalide: \(Supabase.url)")
+        guard URL(string: supabaseURL) != nil else {
+            fatalError("❌ URL Supabase invalide: \(supabaseURL)")
         }
         
         if Debug.enableLogging {
             print("✅ Configuration validée avec succès")
             print("🌍 Environnement: \(Environment.current)")
-            print("🔗 URL Supabase: \(Supabase.url)")
+            print("🔗 URL Supabase: \(supabaseURL)")
         }
     }
 }
 
 // MARK: - Helper Extensions
-extension AppConfig {
+extension Config {
     
     /// Retourne les headers par défaut pour les requêtes API
     static var defaultHeaders: [String: String] {
         return [
             "Content-Type": "application/json",
             "User-Agent": "\(App.name)/\(App.version)",
-            "apikey": Supabase.anonKey
+            "apikey": supabaseAnonKey
         ]
     }
     
     /// Retourne l'URL complète pour un endpoint donné
     static func apiURL(for endpoint: String) -> URL {
-        return Supabase.apiURL.appendingPathComponent(endpoint)
+        return supabaseAPIURL.appendingPathComponent(endpoint)
     }
 }
 
 // MARK: - Configuration pour différents environnements
 #if DEBUG
-extension AppConfig.Supabase {
+extension Config {
     // Configuration de développement
     static let enableDetailedLogging = true
     static let bypassSSLValidation = false // ⚠️ Jamais en production!

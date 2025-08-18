@@ -28,8 +28,8 @@ class AuthManager: ObservableObject {
     @Published var userProfile: UserProfile?
     
     private let supabase = SupabaseClient(
-        supabaseURL: AppConfig.Supabase.apiURL,
-        supabaseKey: AppConfig.Supabase.anonKey
+        supabaseURL: Config.supabaseAPIURL,
+        supabaseKey: Config.supabaseAnonKey
     )
     
     init() {

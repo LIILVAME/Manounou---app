@@ -47,9 +47,12 @@ protocol CacheServiceProtocol {
     func getCachedEvents() -> [Event]?
     func cacheChildren(_ children: [Child])
     func getCachedChildren() -> [Child]?
+    func cacheDocuments(_ documents: [Document])
+    func getCachedDocuments() -> [Document]?
     func clearCache()
     func clearEventsCache()
     func clearChildrenCache()
+    func clearDocumentsCache()
 }
 
 // MARK: - Cache Statistics
@@ -98,4 +101,16 @@ enum ServiceError: LocalizedError {
             return "Redémarrez l'application ou contactez le support."
         }
     }
+}
+
+// MARK: - Documents Service Protocol
+protocol DocumentsServiceProtocol {
+    func fetchDocuments() async throws -> [Document]
+    func createDocument(_ document: Document) async throws -> Document
+    func updateDocument(_ document: Document) async throws -> Document
+    func deleteDocument(id: UUID) async throws
+    func fetchDocumentsForChild(childId: UUID) async throws -> [Document]
+    func fetchDocumentsByType(_ type: DocumentType) async throws -> [Document]
+    func uploadFile(data: Data, fileName: String, mimeType: String) async throws -> String
+    func deleteFile(url: String) async throws
 }

@@ -161,8 +161,48 @@ class CacheService: CacheServiceProtocol, ObservableObject {
     }
     
     func clearChildrenCache() {
-        userDefaults.removeObject(forKey: CacheKeys.children)
         cache.removeObject(forKey: CacheKeys.children as NSString)
+        userDefaults.removeObject(forKey: CacheKeys.children)
+    }
+    
+    // MARK: - Documents Cache
+    
+    func cacheDocuments(_ documents: [Document]) {
+        cacheQueue.async {
+            DispatchQueue.main.async {
+                // Cache en mémoire
+                self.cache.setObject(documents as NSArray, forKey: CacheKeys.documents as NSString)
+                
+                // Cache persistant
+                if let encoded = try? JSONEncoder().encode(documents) {
+                    self.userDefaults.set(encoded, forKey: CacheKeys.documents)
+                }
+                
+                self.updateLastSyncDate()
+            }
+        }
+    }
+    
+    func getCachedDocuments() -> [Document]? {
+        // Essayer le cache mémoire d'abord
+        if let cached = cache.object(forKey: CacheKeys.documents as NSString) as? [Document] {
+            return cached
+        }
+        
+        // Fallback sur le cache persistant
+        if let data = userDefaults.data(forKey: CacheKeys.documents),
+           let documents = try? JSONDecoder().decode([Document].self, from: data) {
+            // Remettre en cache mémoire
+            cache.setObject(documents as NSArray, forKey: CacheKeys.documents as NSString)
+            return documents
+        }
+        
+        return nil
+    }
+    
+    func clearDocumentsCache() {
+        cache.removeObject(forKey: CacheKeys.documents as NSString)
+        userDefaults.removeObject(forKey: CacheKeys.documents)
     }
     
     // MARK: - Private Methods
@@ -239,6 +279,7 @@ class CacheService: CacheServiceProtocol, ObservableObject {
 class MockCacheService: CacheServiceProtocol, ObservableObject {
     private var eventsCache: [Event]?
     private var childrenCache: [Child]?
+    private var documentsCache: [Document]?
     private var mockLastSyncDate: Date?
     
     var cacheStatistics: CacheStatistics {
@@ -291,5 +332,19 @@ class MockCacheService: CacheServiceProtocol, ObservableObject {
     
     func clearChildrenCache() {
         childrenCache = nil
+    }
+    
+    func cacheDocuments(_ documents: [Document]) {
+        documentsCache = documents
+        mockLastSyncDate = Date()
+    }
+    
+    func getCachedDocuments() -> [Document]? {
+        return documentsCache
+    }
+    
+    func clearDocumentsCache() {
+        documentsCache = nil
+        mockLastSyncDate = Date()
     }
 }

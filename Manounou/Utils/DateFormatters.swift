@@ -63,17 +63,22 @@ struct DateFormatters {
 
 extension DateFormatters {
     
-    /// Retourne une chaîne formatée pour l'âge d'un enfant
+    /// Retourne une chaîne formatée pour l'âge d'un enfant au format "X ans et Y mois"
     static func ageText(for birthDate: Date) -> String {
         let calendar = Calendar.current
         let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: Date())
         
-        if let years = ageComponents.year, years > 0 {
-            return "\(years) an\(years > 1 ? "s" : "")"
-        } else if let months = ageComponents.month, months > 0 {
-            return "\(months) mois"
-        } else {
+        let years = ageComponents.year ?? 0
+        let months = ageComponents.month ?? 0
+        
+        if years == 0 && months == 0 {
             return "Nouveau-né"
+        } else if years == 0 {
+            return "\(months) mois"
+        } else if months == 0 {
+            return "\(years) an\(years > 1 ? "s" : "")"
+        } else {
+            return "\(years) an\(years > 1 ? "s" : "") et \(months) mois"
         }
     }
     

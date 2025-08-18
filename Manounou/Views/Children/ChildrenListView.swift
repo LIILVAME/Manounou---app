@@ -28,12 +28,7 @@ struct ChildrenListView: View {
                     if filteredChildren.isEmpty {
                         if childrenViewModel.children.isEmpty {
                             // Empty state
-                            EmptyChildrenView(
-                                geometry: geometry,
-                                onAddChild: {
-                                    showingAddChild = true
-                                }
-                            )
+                            emptyStateView(geometry: geometry)
                         } else {
                             // No results from search/filter
                             noResultsView(geometry: geometry)
@@ -291,6 +286,159 @@ struct ChildrenListView: View {
             .foregroundColor(.blue)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - Empty State View
+    private func emptyStateView(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.04) {
+            Spacer()
+            
+            // Family illustration
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.blue.opacity(0.1),
+                                Color.green.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(
+                        width: geometry.size.width * 0.3,
+                        height: geometry.size.width * 0.3
+                    )
+                
+                Image(systemName: "figure.2.and.child.holdinghands")
+                    .font(.system(size: geometry.size.width * 0.12, weight: .light))
+                    .foregroundColor(.blue)
+            }
+            
+            // Message
+            VStack(spacing: geometry.size.height * 0.015) {
+                Text("Commencez votre carnet de famille")
+                    .font(.system(size: geometry.size.width * 0.06, weight: .bold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                
+                Text("Ajoutez les informations de vos enfants pour créer un espace familial personnalisé")
+                    .font(.system(size: geometry.size.width * 0.04, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(.horizontal, geometry.size.width * 0.08)
+            
+            // Benefits list
+            VStack(spacing: geometry.size.height * 0.02) {
+                emptyStateBenefit(
+                    icon: "calendar.badge.plus",
+                    title: "Suivez les événements",
+                    description: "Gardez une trace des moments importants",
+                    color: .orange,
+                    geometry: geometry
+                )
+                
+                emptyStateBenefit(
+                    icon: "doc.text",
+                    title: "Organisez les documents",
+                    description: "Centralisez tous les documents importants",
+                    color: .green,
+                    geometry: geometry
+                )
+                
+                emptyStateBenefit(
+                    icon: "person.2.fill",
+                    title: "Partagez en famille",
+                    description: "Invitez la famille à participer",
+                    color: .purple,
+                    geometry: geometry
+                )
+            }
+            .padding(.horizontal, geometry.size.width * 0.06)
+            
+            // CTA Button
+            Button(action: { showingAddChild = true }) {
+                HStack(spacing: geometry.size.width * 0.03) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: geometry.size.width * 0.05, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Text("Ajouter votre premier enfant")
+                        .font(.system(size: geometry.size.width * 0.045, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: geometry.size.height * 0.07)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(geometry.size.width * 0.04)
+                .shadow(
+                    color: Color.blue.opacity(0.3),
+                    radius: geometry.size.width * 0.02,
+                    x: 0,
+                    y: geometry.size.width * 0.01
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, geometry.size.width * 0.06)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color.blue.opacity(0.02)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+    
+    private func emptyStateBenefit(
+        icon: String,
+        title: String,
+        description: String,
+        color: Color,
+        geometry: GeometryProxy
+    ) -> some View {
+        HStack(spacing: geometry.size.width * 0.04) {
+            Image(systemName: icon)
+                .font(.system(size: geometry.size.width * 0.06, weight: .medium))
+                .foregroundColor(color)
+                .frame(
+                    width: geometry.size.width * 0.12,
+                    height: geometry.size.width * 0.12
+                )
+                .background(
+                    Circle()
+                        .fill(color.opacity(0.15))
+                )
+            
+            VStack(alignment: .leading, spacing: geometry.size.height * 0.005) {
+                Text(title)
+                    .font(.system(size: geometry.size.width * 0.04, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text(description)
+                    .font(.system(size: geometry.size.width * 0.035, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+        }
     }
     
     // MARK: - Computed Properties

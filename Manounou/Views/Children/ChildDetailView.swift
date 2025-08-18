@@ -2,7 +2,8 @@
 //  ChildDetailView.swift
 //  Manounou
 //
-//  Created by Assistant on 16/08/2025.
+//  Created by Assistant on 18/08/2025.
+//  Page dédiée aux informations détaillées des enfants
 //
 
 import SwiftUI
@@ -10,33 +11,36 @@ import SwiftUI
 struct ChildDetailView: View {
     let child: Child
     @Environment(\.dismiss) private var dismiss
-    @State private var showingEditView = false
+    @State private var showingEditChild = false
     
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: geometry.size.height * 0.03) {
-                        // Header with photo and basic info
-                        headerSection(geometry: geometry)
+                        // Header avec photo de profil
+                        profileHeader(geometry: geometry)
                         
-                        // Information cards
-                        informationCards(geometry: geometry)
+                        // Informations principales
+                        mainInformation(geometry: geometry)
                         
-                        // Notes section
+                        // Informations détaillées
+                        detailedInformation(geometry: geometry)
+                        
+                        // Notes
                         if let notes = child.notes, !notes.isEmpty {
                             notesSection(notes: notes, geometry: geometry)
                         }
                         
-                        // Action buttons
-                        actionButtons(geometry: geometry)
+                        // Statistiques
+                        statisticsSection(geometry: geometry)
                     }
                     .padding(.horizontal, geometry.size.width * 0.05)
                     .padding(.top, geometry.size.height * 0.02)
                 }
             }
-            .navigationTitle(child.fullName)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("Détails de l'enfant")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Fermer") {
@@ -46,403 +50,329 @@ struct ChildDetailView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Modifier") {
-                        showingEditView = true
+                        showingEditChild = true
                     }
                 }
             }
         }
-        .sheet(isPresented: $showingEditView) {
+        .sheet(isPresented: $showingEditChild) {
             EditChildView(child: child)
         }
     }
     
-    // MARK: - Header Section
-    private func headerSection(geometry: GeometryProxy) -> some View {
+    // MARK: - Profile Header
+    
+    private func profileHeader(geometry: GeometryProxy) -> some View {
         VStack(spacing: geometry.size.height * 0.02) {
-            // Profile photo
-            profilePhoto(geometry: geometry)
+            // Photo de profil
+            ZStack {
+                Circle()
+                    .fill(child.gender.color.opacity(0.2))
+                    .frame(width: geometry.size.width * 0.3, height: geometry.size.width * 0.3)
+                
+                if let profileImageURL = child.profileImageURL, !profileImageURL.isEmpty {
+                    AsyncImage(url: URL(string: profileImageURL)) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(systemName: child.gender.icon)
+                            .font(.system(size: geometry.size.width * 0.08))
+                            .foregroundColor(child.gender.color)
+                    }
+                    .frame(width: geometry.size.width * 0.3, height: geometry.size.width * 0.3)
+                    .clipShape(Circle())
+                } else {
+                    Text(child.initials)
+                        .font(.system(size: geometry.size.width * 0.08, weight: .bold))
+                        .foregroundColor(child.gender.color)
+                }
+            }
             
-            // Basic information
+            // Nom complet
+            Text(child.fullName)
+                .font(.title)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+            
+            // Âge formaté selon la demande
+            Text(child.formattedAge)
+                .font(.title2)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(child.gender.color.opacity(0.1))
+                )
+        }
+    }
+    
+    // MARK: - Main Information
+    
+    private func mainInformation(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.015) {
+            Text("Informations principales")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
             VStack(spacing: geometry.size.height * 0.01) {
-                Text(child.fullName)
-                    .font(.system(size: geometry.size.width * 0.07, weight: .bold))
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
+                informationRow(
+                    icon: "calendar",
+                    title: "Date de naissance",
+                    value: child.birthDateText,
+                    color: .blue,
+                    geometry: geometry
+                )
                 
-                Text(child.ageText)
-                    .font(.system(size: geometry.size.width * 0.05, weight: .medium))
-                    .foregroundColor(.secondary)
+                informationRow(
+                    icon: child.gender.icon,
+                    title: "Genre",
+                    value: child.gender.displayName,
+                    color: child.gender.color,
+                    geometry: geometry
+                )
                 
-                // Gender and category badges
-                HStack(spacing: geometry.size.width * 0.03) {
-                    genderBadge(geometry: geometry)
-                    categoryBadge(geometry: geometry)
-                }
-            }
-        }
-        .padding(.vertical, geometry.size.height * 0.02)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            child.gender.color.opacity(0.1),
-                            child.gender.color.opacity(0.05)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                informationRow(
+                    icon: child.ageCategory.icon,
+                    title: "Catégorie d'âge",
+                    value: child.ageCategory.displayName,
+                    color: child.ageCategory.color,
+                    geometry: geometry
                 )
-        )
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 2)
+            )
+        }
     }
     
-    private func profilePhoto(geometry: GeometryProxy) -> some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            child.gender.color.opacity(0.3),
-                            child.gender.color.opacity(0.1)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+    // MARK: - Detailed Information
+    
+    private func detailedInformation(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.015) {
+            Text("Informations détaillées")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            VStack(spacing: geometry.size.height * 0.01) {
+                informationRow(
+                    icon: "number",
+                    title: "Âge en années",
+                    value: "\(child.ageInYears) an\(child.ageInYears > 1 ? "s" : "")",
+                    color: .orange,
+                    geometry: geometry
                 )
-                .frame(
-                    width: geometry.size.width * 0.25,
-                    height: geometry.size.width * 0.25
-                )
-            
-            if let profileImageURL = child.profileImageURL, !profileImageURL.isEmpty {
-                AsyncImage(url: URL(string: profileImageURL)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    initialsView(geometry: geometry)
-                }
-                .frame(
-                    width: geometry.size.width * 0.25,
-                    height: geometry.size.width * 0.25
-                )
-                .clipShape(Circle())
-            } else {
-                initialsView(geometry: geometry)
-            }
-        }
-    }
-    
-    private func initialsView(geometry: GeometryProxy) -> some View {
-        Text(child.initials)
-            .font(.system(size: geometry.size.width * 0.08, weight: .bold))
-            .foregroundColor(child.gender.color)
-    }
-    
-    private func genderBadge(geometry: GeometryProxy) -> some View {
-        HStack(spacing: geometry.size.width * 0.02) {
-            Image(systemName: child.gender.icon)
-                .font(.system(size: geometry.size.width * 0.04, weight: .medium))
-                .foregroundColor(child.gender.color)
-            
-            Text(child.gender.displayName)
-                .font(.system(size: geometry.size.width * 0.04, weight: .medium))
-                .foregroundColor(child.gender.color)
-        }
-        .padding(.horizontal, geometry.size.width * 0.03)
-        .padding(.vertical, geometry.size.height * 0.01)
-        .background(
-            RoundedRectangle(cornerRadius: geometry.size.width * 0.02)
-                .fill(child.gender.color.opacity(0.15))
-        )
-    }
-    
-    private func categoryBadge(geometry: GeometryProxy) -> some View {
-        HStack(spacing: geometry.size.width * 0.02) {
-            Image(systemName: child.ageCategory.icon)
-                .font(.system(size: geometry.size.width * 0.04, weight: .medium))
-                .foregroundColor(child.ageCategory.color)
-            
-            Text(child.ageCategory.displayName)
-                .font(.system(size: geometry.size.width * 0.04, weight: .medium))
-                .foregroundColor(child.ageCategory.color)
-        }
-        .padding(.horizontal, geometry.size.width * 0.03)
-        .padding(.vertical, geometry.size.height * 0.01)
-        .background(
-            RoundedRectangle(cornerRadius: geometry.size.width * 0.02)
-                .fill(child.ageCategory.color.opacity(0.15))
-        )
-    }
-    
-    // MARK: - Information Cards
-    private func informationCards(geometry: GeometryProxy) -> some View {
-        VStack(spacing: geometry.size.height * 0.02) {
-            // Birth information
-            informationCard(
-                title: "Informations de naissance",
-                icon: "calendar",
-                iconColor: .blue,
-                geometry: geometry
-            ) {
-                VStack(spacing: geometry.size.height * 0.015) {
-                    informationRow(
-                        label: "Date de naissance",
-                        value: child.birthDateText,
-                        geometry: geometry
-                    )
-                    
-                    informationRow(
-                        label: "Âge exact",
-                        value: "\(child.ageInYears) ans et \(child.ageInMonths) mois",
-                        geometry: geometry
-                    )
-                }
-            }
-            
-            // Personal information
-            informationCard(
-                title: "Informations personnelles",
-                icon: "person.circle",
-                iconColor: .green,
-                geometry: geometry
-            ) {
-                VStack(spacing: geometry.size.height * 0.015) {
-                    informationRow(
-                        label: "Prénom",
-                        value: child.firstName,
-                        geometry: geometry
-                    )
-                    
-                    informationRow(
-                        label: "Nom de famille",
-                        value: child.lastName,
-                        geometry: geometry
-                    )
-                    
-                    informationRow(
-                        label: "Genre",
-                        value: child.gender.displayName,
-                        geometry: geometry
-                    )
-                }
-            }
-            
-            // Metadata
-            informationCard(
-                title: "Informations système",
-                icon: "info.circle",
-                iconColor: .orange,
-                geometry: geometry
-            ) {
-                VStack(spacing: geometry.size.height * 0.015) {
-                    informationRow(
-                        label: "Créé le",
-                        value: DateFormatters.mediumDateFormatter.string(from: child.createdAt),
-                        geometry: geometry
-                    )
-                    
-                    informationRow(
-                        label: "Modifié le",
-                        value: DateFormatters.mediumDateFormatter.string(from: child.updatedAt),
-                        geometry: geometry
-                    )
-                }
-            }
-        }
-    }
-    
-    private func informationCard<Content: View>(
-        title: String,
-        icon: String,
-        iconColor: Color,
-        geometry: GeometryProxy,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: geometry.size.height * 0.02) {
-            // Card header
-            HStack(spacing: geometry.size.width * 0.03) {
-                Image(systemName: icon)
-                    .font(.system(size: geometry.size.width * 0.05, weight: .medium))
-                    .foregroundColor(iconColor)
                 
-                Text(title)
-                    .font(.system(size: geometry.size.width * 0.045, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-            }
-            
-            // Card content
-            content()
-        }
-        .padding(geometry.size.width * 0.04)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
-                .fill(Color(.systemBackground))
-                .shadow(
-                    color: Color.black.opacity(0.05),
-                    radius: geometry.size.width * 0.01,
-                    x: 0,
-                    y: geometry.size.width * 0.005
+                informationRow(
+                    icon: "calendar.badge.clock",
+                    title: "Âge en mois",
+                    value: "\(child.ageInMonths) mois",
+                    color: .green,
+                    geometry: geometry
                 )
-        )
+                
+                informationRow(
+                    icon: "clock",
+                    title: "Créé le",
+                    value: DateFormatters.mediumDateFormatter.string(from: child.createdAt),
+                    color: .purple,
+                    geometry: geometry
+                )
+                
+                informationRow(
+                    icon: "pencil.circle",
+                    title: "Modifié le",
+                    value: DateFormatters.mediumDateFormatter.string(from: child.updatedAt),
+                    color: .indigo,
+                    geometry: geometry
+                )
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 2)
+            )
+        }
     }
+    
+    // MARK: - Notes Section
+    
+    private func notesSection(notes: String, geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.015) {
+            Text("Notes")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            VStack(alignment: .leading, spacing: geometry.size.height * 0.01) {
+                HStack {
+                    Image(systemName: "note.text")
+                        .foregroundColor(.yellow)
+                        .frame(width: 24)
+                    
+                    Text(notes)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                    
+                    Spacer()
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 2)
+            )
+        }
+    }
+    
+    // MARK: - Statistics Section
+    
+    private func statisticsSection(geometry: GeometryProxy) -> some View {
+        VStack(spacing: geometry.size.height * 0.015) {
+            Text("Statistiques")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: geometry.size.height * 0.015) {
+                statisticCard(
+                    title: "Jours de vie",
+                    value: "\(daysSinceBirth)",
+                    icon: "sun.max",
+                    color: .orange,
+                    geometry: geometry
+                )
+                
+                statisticCard(
+                    title: "Semaines de vie",
+                    value: "\(weeksSinceBirth)",
+                    icon: "calendar.badge.plus",
+                    color: .blue,
+                    geometry: geometry
+                )
+                
+                statisticCard(
+                    title: "Mois de vie",
+                    value: "\(monthsSinceBirth)",
+                    icon: "calendar",
+                    color: .green,
+                    geometry: geometry
+                )
+                
+                statisticCard(
+                    title: "Prochaine année",
+                    value: daysUntilNextBirthday,
+                    icon: "gift",
+                    color: .pink,
+                    geometry: geometry
+                )
+            }
+        }
+    }
+    
+    // MARK: - Helper Views
     
     private func informationRow(
-        label: String,
+        icon: String,
+        title: String,
         value: String,
+        color: Color,
         geometry: GeometryProxy
     ) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: geometry.size.width * 0.04, weight: .medium))
+        HStack(spacing: geometry.size.width * 0.04) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            Text(title)
+                .font(.body)
                 .foregroundColor(.secondary)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: geometry.size.width * 0.04, weight: .regular))
+                .font(.body)
+                .fontWeight(.medium)
                 .foregroundColor(.primary)
-                .multilineTextAlignment(.trailing)
         }
     }
     
-    // MARK: - Notes Section
-    private func notesSection(notes: String, geometry: GeometryProxy) -> some View {
-        informationCard(
-            title: "Notes",
-            icon: "note.text",
-            iconColor: .purple,
-            geometry: geometry
-        ) {
-            Text(notes)
-                .font(.system(size: geometry.size.width * 0.04, weight: .regular))
-                .foregroundColor(.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-    
-    // MARK: - Action Buttons
-    private func actionButtons(geometry: GeometryProxy) -> some View {
-        VStack(spacing: geometry.size.height * 0.02) {
-            // Edit button
-            Button(action: { showingEditView = true }) {
-                HStack(spacing: geometry.size.width * 0.03) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: geometry.size.width * 0.045, weight: .medium))
-                        .foregroundColor(.white)
-                    
-                    Text("Modifier les informations")
-                        .font(.system(size: geometry.size.width * 0.045, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: geometry.size.height * 0.06)
-                .background(
-                    LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(geometry.size.width * 0.03)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Additional actions
-            HStack(spacing: geometry.size.width * 0.03) {
-                actionButton(
-                    title: "Événements",
-                    icon: "calendar",
-                    color: .orange,
-                    geometry: geometry
-                ) {
-                    // TODO: Navigate to child events
-                    print("View events for \(child.fullName)")
-                }
-                
-                actionButton(
-                    title: "Documents",
-                    icon: "doc",
-                    color: .green,
-                    geometry: geometry
-                ) {
-                    // TODO: Navigate to child documents
-                    print("View documents for \(child.fullName)")
-                }
-            }
-        }
-        .padding(.bottom, geometry.size.height * 0.03)
-    }
-    
-    private func actionButton(
+    private func statisticCard(
         title: String,
+        value: String,
         icon: String,
         color: Color,
-        geometry: GeometryProxy,
-        action: @escaping () -> Void
+        geometry: GeometryProxy
     ) -> some View {
-        Button(action: action) {
-            VStack(spacing: geometry.size.height * 0.01) {
-                Image(systemName: icon)
-                    .font(.system(size: geometry.size.width * 0.06, weight: .medium))
-                    .foregroundColor(color)
-                
-                Text(title)
-                    .font(.system(size: geometry.size.width * 0.035, weight: .medium))
-                    .foregroundColor(.primary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: geometry.size.height * 0.08)
-            .background(
-                RoundedRectangle(cornerRadius: geometry.size.width * 0.03)
-                    .fill(color.opacity(0.1))
-            )
+        VStack(spacing: geometry.size.height * 0.01) {
+            Image(systemName: icon)
+                .font(.system(size: geometry.size.width * 0.06))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.1))
+        )
     }
-}
-
-// MARK: - Edit Child View Placeholder
-struct EditChildView: View {
-    let child: Child
-    @Environment(\.dismiss) private var dismiss
     
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Modification de \(child.fullName)")
-                    .font(.title2)
-                    .padding()
-                
-                Text("Formulaire de modification en cours de développement")
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-            }
-            .navigationTitle("Modifier")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sauvegarder") {
-                        dismiss()
-                    }
-                }
-            }
+    // MARK: - Computed Properties
+    
+    private var daysSinceBirth: Int {
+        Calendar.current.dateComponents([.day], from: child.birthDate, to: Date()).day ?? 0
+    }
+    
+    private var weeksSinceBirth: Int {
+        daysSinceBirth / 7
+    }
+    
+    private var monthsSinceBirth: Int {
+        Calendar.current.dateComponents([.month], from: child.birthDate, to: Date()).month ?? 0
+    }
+    
+    private var daysUntilNextBirthday: String {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // Calculer le prochain anniversaire
+        var nextBirthday = calendar.dateComponents([.month, .day], from: child.birthDate)
+        nextBirthday.year = calendar.component(.year, from: today)
+        
+        guard let nextBirthdayDate = calendar.date(from: nextBirthday) else {
+            return "N/A"
         }
+        
+        // Si l'anniversaire est déjà passé cette année, prendre l'année suivante
+        let finalBirthdayDate = nextBirthdayDate < today ?
+            calendar.date(byAdding: .year, value: 1, to: nextBirthdayDate) ?? nextBirthdayDate :
+            nextBirthdayDate
+        
+        let days = calendar.dateComponents([.day], from: today, to: finalBirthdayDate).day ?? 0
+        return "\(days) jours"
     }
 }
 
 // MARK: - Preview
+
 #if DEBUG
 struct ChildDetailView_Previews: PreviewProvider {
     static var previews: some View {

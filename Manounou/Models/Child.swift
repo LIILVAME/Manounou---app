@@ -97,14 +97,41 @@ extension Child {
         DateFormatters.ageText(for: birthDate)
     }
     
+    /// Âge formaté selon le format "X ans et Y mois"
+    var formattedAge: String {
+        let components = ageComponents
+        let years = components.years
+        let months = components.months
+        
+        if years == 0 {
+            return "\(months) mois"
+        } else if months == 0 {
+            return "\(years) an\(years > 1 ? "s" : "")"
+        } else {
+            return "\(years) an\(years > 1 ? "s" : "") et \(months) mois"
+        }
+    }
+    
     /// Âge de l'enfant en années
     var ageInYears: Int {
         Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 0
     }
     
-    /// Âge de l'enfant en mois
+    /// Âge de l'enfant en mois (mois restants après les années complètes)
     var ageInMonths: Int {
+        let components = Calendar.current.dateComponents([.year, .month], from: birthDate, to: Date())
+        return components.month ?? 0
+    }
+    
+    /// Nombre total de mois depuis la naissance
+    var totalMonthsSinceBirth: Int {
         Calendar.current.dateComponents([.month], from: birthDate, to: Date()).month ?? 0
+    }
+    
+    /// Composants d'âge détaillés (années et mois)
+    var ageComponents: (years: Int, months: Int) {
+        let components = Calendar.current.dateComponents([.year, .month], from: birthDate, to: Date())
+        return (years: components.year ?? 0, months: components.month ?? 0)
     }
     
     /// Vérifie si l'enfant est un bébé (moins de 2 ans)
