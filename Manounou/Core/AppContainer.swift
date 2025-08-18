@@ -23,6 +23,7 @@ class AppContainer: ObservableObject {
     let authService: AuthServiceProtocol
     let eventsService: EventsServiceProtocol
     let childrenService: ChildrenServiceProtocol
+    let documentsService: DocumentsServiceProtocol
     let cacheService: CacheServiceProtocol
     
     // MARK: - ViewModels
@@ -30,6 +31,7 @@ class AppContainer: ObservableObject {
     @Published var authViewModel: AuthViewModel
     @Published var eventsViewModel: EventsViewModel
     @Published var childrenViewModel: ChildrenViewModel
+    @Published var documentsViewModel: DocumentsViewModel
     @Published var notificationManager: NotificationManager
     
     // MARK: - Configuration
@@ -53,17 +55,20 @@ class AppContainer: ObservableObject {
             self.cacheService = MockCacheService()
             self.eventsService = MockEventsService()
             self.childrenService = MockChildrenService()
+            self.documentsService = MockDocumentsService()
         } else {
             self.cacheService = CacheService.shared
             self.authService = AuthService(supabaseClient: supabaseClient)
             self.eventsService = EventsService(supabaseClient: supabaseClient, cacheService: cacheService)
             self.childrenService = ChildrenService(supabaseClient: supabaseClient, cacheService: cacheService)
+            self.documentsService = DocumentsService(supabaseClient: supabaseClient, cacheService: cacheService)
         }
         
         // Initialisation des ViewModels avec injection de dépendances
         self.authViewModel = AuthViewModel(authService: authService)
         self.eventsViewModel = EventsViewModel(eventsService: eventsService)
         self.childrenViewModel = ChildrenViewModel(childrenService: childrenService)
+        self.documentsViewModel = DocumentsViewModel(documentsService: documentsService)
         self.notificationManager = NotificationManager()
     }
     
@@ -92,10 +97,12 @@ class AppContainer: ObservableObject {
     private func loadInitialData() async {
         async let eventsTask = eventsViewModel.loadEvents()
         async let childrenTask = childrenViewModel.loadChildren()
+        async let documentsTask = documentsViewModel.loadDocuments()
         
         // Attendre que toutes les tâches se terminent
         await eventsTask
         await childrenTask
+        await documentsTask
     }
     
     // MARK: - Authentication State Management

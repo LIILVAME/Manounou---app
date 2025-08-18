@@ -14,17 +14,17 @@ import UserNotifications
 
 // MARK: - Main Tab View
 struct MainTabView: View {
-    @StateObject private var authManager = AuthManager()
-    @StateObject private var notificationManager = NotificationManager()
-    
+    @StateObject private var appContainer = AppContainer.shared
     @State private var selectedTab = 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
             // Home Tab
-            SimpleHomeView()
-                .environmentObject(authManager)
-                .environmentObject(notificationManager)
+            HomeView()
+                .environmentObject(appContainer.authViewModel)
+                .environmentObject(appContainer.notificationManager)
+                .environmentObject(appContainer.childrenViewModel)
+                .environmentObject(appContainer.eventsViewModel)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Accueil")
@@ -32,7 +32,8 @@ struct MainTabView: View {
                 .tag(0)
             
             // Children Tab
-            SimpleChildrenView()
+            ChildrenListView()
+                .environmentObject(appContainer.childrenViewModel)
                 .tabItem {
                     Image(systemName: "person.2.fill")
                     Text("Enfants")
@@ -40,7 +41,8 @@ struct MainTabView: View {
                 .tag(1)
             
             // Calendar Tab
-            SimpleCalendarView()
+            CalendarView()
+                .environmentObject(appContainer.eventsViewModel)
                 .tabItem {
                     Image(systemName: "calendar")
                     Text("Calendrier")
@@ -48,7 +50,8 @@ struct MainTabView: View {
                 .tag(2)
             
             // Documents Tab
-            SimpleDocumentsView()
+            DocumentsView()
+                .environmentObject(appContainer.documentsViewModel)
                 .tabItem {
                     Image(systemName: "doc.fill")
                     Text("Documents")
@@ -56,149 +59,25 @@ struct MainTabView: View {
                 .tag(3)
             
             // Settings Tab
-            SimpleSettingsView()
+            ProfileView()
+                .environmentObject(appContainer.authViewModel)
                 .tabItem {
                     Image(systemName: "gearshape.fill")
                     Text("Paramètres")
                 }
                 .tag(4)
         }
-        .environmentObject(authManager)
-        .environmentObject(notificationManager)
+        .environmentObject(appContainer)
+        .onAppear {
+            Task {
+                await appContainer.initialize()
+            }
+        }
     }
     
 }
 
-// MARK: - Simple Tab Views
 
-struct SimpleHomeView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
-                
-                Text("Accueil")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Dashboard familial simplifié")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                Text("✅ Architecture modulaire implémentée")
-                    .font(.caption)
-                    .foregroundColor(.green)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray6))
-                    )
-            }
-            .padding()
-            .navigationTitle("Accueil")
-        }
-    }
-}
-
-struct SimpleChildrenView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.green)
-                
-                Text("Enfants")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Gestion des profils enfants")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding()
-            .navigationTitle("Enfants")
-        }
-    }
-}
-
-struct SimpleCalendarView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 60))
-                    .foregroundColor(.orange)
-                
-                Text("Calendrier")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Planification des événements")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding()
-            .navigationTitle("Calendrier")
-        }
-    }
-}
-
-struct SimpleDocumentsView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "doc.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.purple)
-                
-                Text("Documents")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Gestion des fichiers")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding()
-            .navigationTitle("Documents")
-        }
-    }
-}
-
-struct SimpleSettingsView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.red)
-                
-                Text("Paramètres")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Configuration utilisateur")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding()
-            .navigationTitle("Paramètres")
-        }
-    }
-}
 
 // MARK: - Notification Manager
  
