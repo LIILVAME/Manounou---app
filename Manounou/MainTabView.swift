@@ -16,8 +16,8 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Home Tab - Using TempHomeView temporarily
-            TempHomeView()
+            // Home Tab - Functional Dashboard
+            FunctionalHomeView()
                 .environmentObject(authManager)
                 .environmentObject(notificationManager)
                 .tabItem {
@@ -663,6 +663,276 @@ struct ProfileEditSheet: View {
                     }
                 }
             }
+        }
+    }
+}
+
+struct FunctionalHomeView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var notificationManager: NotificationManager
+    
+    var body: some View {
+        NavigationView {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: geometry.size.height * 0.03) {
+                        // Welcome Header
+                        welcomeHeader(geometry: geometry)
+                        
+                        // Quick Stats
+                        quickStats(geometry: geometry)
+                        
+                        // Quick Actions
+                        quickActions(geometry: geometry)
+                        
+                        // Recent Activity
+                        recentActivity(geometry: geometry)
+                    }
+                    .padding(.horizontal, geometry.size.width * 0.05)
+                    .padding(.top, geometry.size.height * 0.02)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarHidden(true)
+        }
+        .refreshable {
+            // Refresh data
+        }
+    }
+    
+    private func welcomeHeader(geometry: GeometryProxy) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(greetingText)
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                
+                Text("Bienvenue sur Manounou")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+            
+            Circle()
+                .fill(Color.blue.opacity(0.2))
+                .frame(width: 60, height: 60)
+                .overlay {
+                    Text("U")
+                        .font(.title)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                }
+        }
+        .padding(.vertical, 20)
+    }
+    
+    private func quickStats(geometry: GeometryProxy) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Aperçu")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack(spacing: 16) {
+                statCard(
+                    title: "Enfants",
+                    value: "0",
+                    icon: "person.2.fill",
+                    color: .green,
+                    geometry: geometry
+                )
+                
+                statCard(
+                    title: "Événements",
+                    value: "0",
+                    icon: "calendar",
+                    color: .orange,
+                    geometry: geometry
+                )
+                
+                statCard(
+                    title: "Documents",
+                    value: "0",
+                    icon: "doc.fill",
+                    color: .purple,
+                    geometry: geometry
+                )
+            }
+        }
+    }
+    
+    private func statCard(
+        title: String,
+        value: String,
+        icon: String,
+        color: Color,
+        geometry: GeometryProxy
+    ) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+            
+            VStack(spacing: 4) {
+                Text(value)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+        )
+    }
+    
+    private func quickActions(geometry: GeometryProxy) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Actions rapides")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                actionButton(
+                    title: "Ajouter un enfant",
+                    icon: "person.badge.plus",
+                    color: .green,
+                    geometry: geometry
+                ) {
+                    // Action
+                }
+                
+                actionButton(
+                    title: "Nouvel événement",
+                    icon: "calendar.badge.plus",
+                    color: .orange,
+                    geometry: geometry
+                ) {
+                    // Action
+                }
+                
+                actionButton(
+                    title: "Ajouter document",
+                    icon: "doc.badge.plus",
+                    color: .purple,
+                    geometry: geometry
+                ) {
+                    // Action
+                }
+                
+                actionButton(
+                    title: "Voir paramètres",
+                    icon: "gearshape.fill",
+                    color: .gray,
+                    geometry: geometry
+                ) {
+                    // Action
+                }
+            }
+        }
+    }
+    
+    private func actionButton(
+        title: String,
+        icon: String,
+        color: Color,
+        geometry: GeometryProxy,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(color)
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func recentActivity(geometry: GeometryProxy) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Activité récente")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            VStack(spacing: 12) {
+                activityItem(
+                    icon: "checkmark.circle.fill",
+                    title: "Application initialisée",
+                    subtitle: "Toutes les fonctionnalités sont prêtes",
+                    color: .green
+                )
+                
+                activityItem(
+                    icon: "info.circle.fill",
+                    title: "Commencez par ajouter un enfant",
+                    subtitle: "Créez le profil de votre premier enfant",
+                    color: .blue
+                )
+            }
+        }
+    }
+    
+    private func activityItem(
+        icon: String,
+        title: String,
+        subtitle: String,
+        color: Color
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private var greetingText: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        
+        switch hour {
+        case 5..<12:
+            return "Bonjour"
+        case 12..<17:
+            return "Bon après-midi"
+        case 17..<22:
+            return "Bonsoir"
+        default:
+            return "Bonne nuit"
         }
     }
 }
