@@ -248,7 +248,7 @@ struct ChildrenListView: View {
                         },
                         onEdit: {
                             // TODO: Implement edit functionality
-                            print("Edit \(child.fullName)")
+                            Logger.info("Edit action triggered for child", category: .ui)
                         }
                     )
                 }

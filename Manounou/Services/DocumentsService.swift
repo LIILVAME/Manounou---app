@@ -123,16 +123,10 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
         do {
             let filePath = "documents/\(UUID().uuidString)_\(fileName)"
             
-            let file = File(
-                name: fileName,
-                data: data,
-                fileName: fileName,
-                contentType: mimeType
-            )
-            
+            // Supabase Storage API expects Data in recent versions
             try await supabaseClient.storage
                 .from("documents")
-                .upload(path: filePath, file: file)
+                .upload(filePath, data: data)
             
             let publicURL = try supabaseClient.storage
                 .from("documents")
@@ -149,7 +143,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
             // Extract file path from URL
             guard let urlComponents = URLComponents(string: url),
                   let path = urlComponents.path.components(separatedBy: "/documents/").last else {
-                throw ServiceError.invalidData("URL de fichier invalide")
+                throw ServiceError.validationError("URL de fichier invalide")
             }
             
             try await supabaseClient.storage
@@ -279,7 +273,7 @@ class MockDocumentsService: DocumentsServiceProtocol, ObservableObject {
             return document
         }
         
-        throw ServiceError.notFound("Document non trouvé")
+        throw ServiceError.validationError("Document non trouvé")
     }
     
     func deleteDocument(id: UUID) async throws {

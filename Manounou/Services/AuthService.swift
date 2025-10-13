@@ -30,12 +30,19 @@ class AuthService: AuthServiceProtocol, ObservableObject {
                 password: password
             )
             
+            // Convert Supabase User to our custom User model
+            let customUser = User(
+                email: email,
+                firstName: "User", // TODO: Get from profile
+                lastName: "Name"   // TODO: Get from profile
+            )
+            
             await MainActor.run {
-                self.currentUser = response.user
+                self.currentUser = customUser
                 self.isAuthenticated = true
             }
             
-            return response.user
+            return customUser
         } catch {
             throw ServiceError.authenticationError("Échec de la connexion: \(error.localizedDescription)")
         }
@@ -48,16 +55,22 @@ class AuthService: AuthServiceProtocol, ObservableObject {
                 password: password
             )
             
-            guard let user = response.user else {
-                throw ServiceError.authenticationError("Aucun utilisateur retourné après l'inscription")
-            }
+            // User is always present in successful response
+            let supabaseUser = response.user
+            
+            // Convert to our custom User model
+            let customUser = User(
+                email: email,
+                firstName: "New", // TODO: Get from registration form
+                lastName: "User"  // TODO: Get from registration form
+            )
             
             await MainActor.run {
-                self.currentUser = user
+                self.currentUser = customUser
                 self.isAuthenticated = true
             }
             
-            return user
+            return customUser
         } catch {
             throw ServiceError.authenticationError("Échec de l'inscription: \(error.localizedDescription)")
         }
@@ -86,14 +99,21 @@ class AuthService: AuthServiceProtocol, ObservableObject {
     
     func getCurrentUser() async throws -> User? {
         do {
-            let user = try await supabaseClient.auth.user()
+            let supabaseUser = try await supabaseClient.auth.user()
             
-            await MainActor.run {
-                self.currentUser = user
-                self.isAuthenticated = user != nil
-            }
-            
-            return user
+            // Convert to our custom User model
+            let customUser = User(
+                email: supabaseUser.email ?? "unknown@example.com",
+                firstName: "Current", // TODO: Get from profile
+                lastName: "User"      // TODO: Get from profile
+                )
+                
+                await MainActor.run {
+                    self.currentUser = customUser
+                    self.isAuthenticated = true
+                }
+                
+                return customUser
         } catch {
             await MainActor.run {
                 self.currentUser = nil
@@ -139,12 +159,9 @@ class MockAuthService: AuthServiceProtocol, ObservableObject {
         }
         
         let mockUser = User(
-            id: UUID(),
-            appMetadata: [:],
-            userMetadata: [:],
-            aud: "authenticated",
-            createdAt: Date(),
-            updatedAt: Date()
+            email: email,
+            firstName: "Test",
+            lastName: "User"
         )
         
         await MainActor.run {

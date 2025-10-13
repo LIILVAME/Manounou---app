@@ -149,7 +149,8 @@ struct EventDTO: Codable {
             description: description,
             startDate: startDate,
             endDate: endDate,
-            childId: childId,
+            eventType: EventType(name: "Générique", icon: "calendar", color: .blue),
+            childrenIds: childId.map { [$0] } ?? [],
             createdAt: createdAt ?? Date(),
             updatedAt: updatedAt ?? Date()
         )
@@ -162,7 +163,7 @@ struct EventDTO: Codable {
             description: event.description,
             startDate: event.startDate,
             endDate: event.endDate,
-            childId: event.childId,
+            childId: event.childrenIds.first,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt
         )
@@ -200,7 +201,8 @@ class MockEventsService: EventsServiceProtocol, ObservableObject {
             description: event.description,
             startDate: event.startDate,
             endDate: event.endDate,
-            childId: event.childId,
+            eventType: event.eventType,
+            childrenIds: event.childrenIds,
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -234,7 +236,7 @@ class MockEventsService: EventsServiceProtocol, ObservableObject {
             throw ServiceError.networkError("Mock fetch failure")
         }
         
-        return events.filter { $0.childId == childId }
+        return events.filter { $0.childrenIds.contains(childId) }
     }
     
     func fetchEventsForDateRange(from: Date, to: Date) async throws -> [Event] {
@@ -258,7 +260,8 @@ class MockEventsService: EventsServiceProtocol, ObservableObject {
             description: "Visite de contrôle mensuelle",
             startDate: Date(),
             endDate: Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date(),
-            childId: UUID(),
+            eventType: EventType(name: "Médical", icon: "stethoscope", color: .red),
+            childrenIds: [UUID()],
             createdAt: Date(),
             updatedAt: Date()
         ),
@@ -268,7 +271,8 @@ class MockEventsService: EventsServiceProtocol, ObservableObject {
             description: "Rappel vaccin ROR",
             startDate: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
             endDate: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
-            childId: UUID(),
+            eventType: EventType(name: "Médical", icon: "stethoscope", color: .red),
+            childrenIds: [UUID()],
             createdAt: Date(),
             updatedAt: Date()
         )

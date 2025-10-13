@@ -228,10 +228,10 @@ struct EventCardView_Previews: PreviewProvider {
                         event: event,
                         geometry: geometry,
                         onTap: {
-                            print("Tapped \(event.title)")
+                            Logger.info("Event tapped", category: .ui)
                         },
                         onEdit: {
-                            print("Edit \(event.title)")
+                            Logger.info("Event edit action triggered", category: .ui)
                         }
                     )
                 }

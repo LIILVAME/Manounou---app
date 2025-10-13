@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Supabase
+import UserNotifications
 
 /// Container principal pour l'injection de dépendances
 @MainActor
@@ -18,13 +19,12 @@ class AppContainer: ObservableObject {
     static let shared = AppContainer()
     
     // MARK: - Services
-    
     let supabaseClient: SupabaseClient
     let authService: AuthServiceProtocol
-    let eventsService: EventsServiceProtocol
-    let childrenService: ChildrenServiceProtocol
-    let documentsService: DocumentsServiceProtocol
-    let cacheService: CacheServiceProtocol
+    let cacheService: CacheService
+    let eventsService: EventsService
+    let childrenService: ChildrenService
+    let documentsService: DocumentsService
     
     // MARK: - ViewModels
     
@@ -50,14 +50,13 @@ class AppContainer: ObservableObject {
         )
         
         // Initialisation des services
+        self.cacheService = CacheService.shared
         if isTestMode {
             self.authService = MockAuthService()
-            self.cacheService = MockCacheService()
-            self.eventsService = MockEventsService()
-            self.childrenService = MockChildrenService()
-            self.documentsService = MockDocumentsService()
+            self.eventsService = EventsService(supabaseClient: supabaseClient, cacheService: cacheService)
+            self.childrenService = ChildrenService(supabaseClient: supabaseClient, cacheService: cacheService)
+            self.documentsService = DocumentsService(supabaseClient: supabaseClient, cacheService: cacheService)
         } else {
-            self.cacheService = CacheService.shared
             self.authService = AuthService(supabaseClient: supabaseClient)
             self.eventsService = EventsService(supabaseClient: supabaseClient, cacheService: cacheService)
             self.childrenService = ChildrenService(supabaseClient: supabaseClient, cacheService: cacheService)
@@ -127,6 +126,7 @@ class AppContainer: ObservableObject {
 @MainActor
 class AuthViewModel: ObservableObject {
     @Published var currentUser: User?
+    @Published var userProfile: UserProfile?
     @Published var isAuthenticated: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
@@ -145,6 +145,16 @@ class AuthViewModel: ObservableObject {
             let user = try await authService.signIn(email: email, password: password)
             currentUser = user
             isAuthenticated = true
+            // Convert User to UserProfile for compatibility
+            userProfile = UserProfile(
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            )
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -160,6 +170,16 @@ class AuthViewModel: ObservableObject {
             let user = try await authService.signUp(email: email, password: password)
             currentUser = user
             isAuthenticated = true
+            // Convert User to UserProfile for compatibility
+            userProfile = UserProfile(
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            )
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -173,6 +193,7 @@ class AuthViewModel: ObservableObject {
         do {
             try await authService.signOut()
             currentUser = nil
+            userProfile = nil
             isAuthenticated = false
         } catch {
             errorMessage = error.localizedDescription
@@ -186,10 +207,77 @@ class AuthViewModel: ObservableObject {
             let user = try await authService.getCurrentUser()
             currentUser = user
             isAuthenticated = user != nil
+            // Convert User to UserProfile for compatibility
+            if let user = user {
+                userProfile = UserProfile(
+                    id: user.id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    avatarUrl: user.avatarUrl,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
+                )
+            } else {
+                userProfile = nil
+            }
         } catch {
             currentUser = nil
+            userProfile = nil
             isAuthenticated = false
         }
+    }
+    
+    func resetPassword(email: String) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await authService.resetPassword(email: email)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
+    }
+    
+    func updateProfile(firstName: String, lastName: String) async throws {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            // TODO: Implement actual profile update with Supabase
+            // For now, simulate a successful update
+            if let currentUser = currentUser {
+                let updatedUser = User(
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    avatarUrl: currentUser.avatarUrl,
+                    createdAt: currentUser.createdAt,
+                    updatedAt: Date()
+                )
+                
+                self.currentUser = updatedUser
+                
+                // Update userProfile for compatibility
+                self.userProfile = UserProfile(
+                    id: updatedUser.id,
+                    firstName: updatedUser.firstName,
+                    lastName: updatedUser.lastName,
+                    email: updatedUser.email,
+                    avatarUrl: updatedUser.avatarUrl,
+                    createdAt: updatedUser.createdAt,
+                    updatedAt: updatedUser.updatedAt
+                )
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
+        
+        isLoading = false
     }
     
     func clearError() {
@@ -203,13 +291,13 @@ class EventsViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let eventsService: EventsServiceProtocol
+    private let eventsService: EventsService
     
     var todayEvents: [Event] {
         events.filter { Calendar.current.isDateInToday($0.startDate) }
     }
     
-    init(eventsService: EventsServiceProtocol) {
+    init(eventsService: EventsService) {
         self.eventsService = eventsService
     }
     
@@ -229,7 +317,7 @@ class EventsViewModel: ObservableObject {
     func createEvent(_ event: Event) async {
         do {
             let newEvent = try await eventsService.createEvent(event)
-            events.append(newEvent)
+            await loadEvents() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -237,10 +325,8 @@ class EventsViewModel: ObservableObject {
     
     func updateEvent(_ event: Event) async {
         do {
-            let updatedEvent = try await eventsService.updateEvent(event)
-            if let index = events.firstIndex(where: { $0.id == event.id }) {
-                events[index] = updatedEvent
-            }
+            _ = try await eventsService.updateEvent(event)
+            await loadEvents() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -249,7 +335,7 @@ class EventsViewModel: ObservableObject {
     func deleteEvent(_ event: Event) async {
         do {
             try await eventsService.deleteEvent(id: event.id)
-            events.removeAll { $0.id == event.id }
+            await loadEvents() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -270,9 +356,9 @@ class ChildrenViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let childrenService: ChildrenServiceProtocol
+    private let childrenService: ChildrenService
     
-    init(childrenService: ChildrenServiceProtocol) {
+    init(childrenService: ChildrenService) {
         self.childrenService = childrenService
     }
     
@@ -292,7 +378,7 @@ class ChildrenViewModel: ObservableObject {
     func createChild(_ child: Child) async {
         do {
             let newChild = try await childrenService.createChild(child)
-            children.append(newChild)
+            await loadChildren() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -300,10 +386,8 @@ class ChildrenViewModel: ObservableObject {
     
     func updateChild(_ child: Child) async {
         do {
-            let updatedChild = try await childrenService.updateChild(child)
-            if let index = children.firstIndex(where: { $0.id == child.id }) {
-                children[index] = updatedChild
-            }
+            _ = try await childrenService.updateChild(child)
+            await loadChildren() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -312,7 +396,7 @@ class ChildrenViewModel: ObservableObject {
     func deleteChild(_ child: Child) async {
         do {
             try await childrenService.deleteChild(id: child.id)
-            children.removeAll { $0.id == child.id }
+            await loadChildren() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -320,6 +404,67 @@ class ChildrenViewModel: ObservableObject {
     
     func clearChildren() {
         children.removeAll()
+    }
+    
+    func clearError() {
+        errorMessage = nil
+    }
+}
+
+@MainActor
+class DocumentsViewModel: ObservableObject {
+    @Published var documents: [Document] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    
+    private let documentsService: DocumentsService
+    
+    init(documentsService: DocumentsService) {
+        self.documentsService = documentsService
+    }
+    
+    func loadDocuments() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            documents = try await documentsService.fetchDocuments()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
+    }
+    
+    func createDocument(_ document: Document) async {
+        do {
+            let newDocument = try await documentsService.createDocument(document)
+            await loadDocuments() // Reload to get updated list
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func updateDocument(_ document: Document) async {
+        do {
+            _ = try await documentsService.updateDocument(document)
+            await loadDocuments() // Reload to get updated list
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func deleteDocument(_ document: Document) async {
+        do {
+            try await documentsService.deleteDocument(id: document.id)
+            await loadDocuments() // Reload to get updated list
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func clearDocuments() {
+        documents.removeAll()
     }
     
     func clearError() {

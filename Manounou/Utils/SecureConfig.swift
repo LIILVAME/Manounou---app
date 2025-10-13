@@ -18,7 +18,7 @@ struct SecureConfig {
               let url = URL(string: urlString) else {
             // Fallback vers la configuration existante en développement
             #if DEBUG
-            return AppConfig.Supabase.apiURL
+            return Config.supabaseAPIURL
             #else
             fatalError("SUPABASE_URL manquante dans Info.plist")
             #endif
@@ -31,7 +31,7 @@ struct SecureConfig {
         guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String else {
             // Fallback vers la configuration existante en développement
             #if DEBUG
-            return AppConfig.Supabase.anonKey
+            return Config.supabaseAnonKey
             #else
             fatalError("SUPABASE_ANON_KEY manquante dans Info.plist")
             #endif
@@ -105,14 +105,14 @@ struct SecureConfig {
     static var secureHeaders: [String: String] {
         var headers = [
             "Content-Type": "application/json",
-            "User-Agent": "\(AppConfig.App.name)/\(AppConfig.App.version)",
+            "User-Agent": "\(Config.App.name)/\(Config.App.version)",
             "apikey": supabaseAnonKey
         ]
         
         // Ajouter des headers de sécurité en production
         if currentEnvironment.isProduction {
             headers["X-Environment"] = "production"
-            headers["X-App-Version"] = AppConfig.App.version
+            headers["X-App-Version"] = Config.App.version
         }
         
         return headers
@@ -128,7 +128,7 @@ extension SecureConfig {
     static var needsSecurityMigration: Bool {
         // Vérifier si les clés sont encore hardcodées dans AppConfig
         let hardcodedKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI"
-        return AppConfig.Supabase.anonKey.hasPrefix(hardcodedKey)
+        return Config.supabaseAnonKey.hasPrefix(hardcodedKey)
     }
     
     /// Instructions pour la migration de sécurité
@@ -161,14 +161,14 @@ extension SecureConfig {
     
     /// Affiche les informations de configuration en mode debug
     static func printDebugInfo() {
-        print("🔧 Configuration Manounou")
+        print("Configuration Manounou")
         print("Environment: \(currentEnvironment.displayName)")
-        print("Supabase URL: \(supabaseURL.absoluteString)")
+        print("Supabase URL configurée")
         print("Anon Key: \(supabaseAnonKey.prefix(20))...")
         print("Migration needed: \(needsSecurityMigration)")
         
         if needsSecurityMigration {
-            print("⚠️ \(migrationInstructions)")
+            print("⚠️ Migration de sécurité requise")
         }
     }
 }

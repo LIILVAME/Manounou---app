@@ -182,10 +182,10 @@ struct ChildCardView_Previews: PreviewProvider {
                         child: child,
                         geometry: geometry,
                         onTap: {
-                            print("Tapped on \(child.fullName)")
+                            Logger.info("Child card tapped", category: .ui)
                         },
                         onEdit: {
-                            print("Edit \(child.fullName)")
+                            Logger.info("Child edit action triggered", category: .ui)
                         }
                     )
                 }

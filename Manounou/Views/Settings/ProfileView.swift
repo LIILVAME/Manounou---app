@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingEditProfile = false
     @State private var showingChangePassword = false
     @State private var showingSignOutConfirmation = false
@@ -49,7 +49,7 @@ struct ProfileView: View {
         .alert("Déconnexion", isPresented: $showingSignOutConfirmation) {
             Button("Déconnexion", role: .destructive) {
                 Task {
-                    await authManager.signOut()
+                    await authViewModel.signOut()
                 }
             }
             Button("Annuler", role: .cancel) { }
@@ -76,7 +76,7 @@ struct ProfileView: View {
                         height: geometry.size.width * 0.25
                     )
                 
-                if let avatarUrl = authManager.userProfile?.avatarUrl {
+                if let avatarUrl = authViewModel.userProfile?.avatarUrl {
                     // TODO: Load image from URL
                     AsyncImage(url: URL(string: avatarUrl)) { image in
                         image
@@ -124,7 +124,7 @@ struct ProfileView: View {
                     .font(.system(size: geometry.size.width * 0.06, weight: .bold))
                     .foregroundColor(.primary)
                 
-                Text(authManager.currentUser?.email ?? "")
+                Text(authViewModel.currentUser?.email ?? "")
                     .font(.system(size: geometry.size.width * 0.04, weight: .regular))
                     .foregroundColor(.secondary)
                 
@@ -159,19 +159,19 @@ struct ProfileView: View {
             VStack(spacing: geometry.size.height * 0.015) {
                 informationRow(
                     label: "Prénom",
-                    value: authManager.userProfile?.firstName ?? "Non renseigné",
+                    value: authViewModel.userProfile?.firstName ?? "Non renseigné",
                     geometry: geometry
                 )
                 
                 informationRow(
                     label: "Nom",
-                    value: authManager.userProfile?.lastName ?? "Non renseigné",
+                    value: authViewModel.userProfile?.lastName ?? "Non renseigné",
                     geometry: geometry
                 )
                 
                 informationRow(
                     label: "Email",
-                    value: authManager.currentUser?.email ?? "Non renseigné",
+                    value: authViewModel.currentUser?.email ?? "Non renseigné",
                     geometry: geometry
                 )
                 
@@ -443,16 +443,16 @@ struct ProfileView: View {
     
     // MARK: - Computed Properties
     private var initials: String {
-        let firstName = authManager.userProfile?.firstName ?? ""
-        let lastName = authManager.userProfile?.lastName ?? ""
+        let firstName = authViewModel.userProfile?.firstName ?? ""
+        let lastName = authViewModel.userProfile?.lastName ?? ""
         let firstInitial = firstName.first?.uppercased() ?? "U"
         let lastInitial = lastName.first?.uppercased() ?? "S"
         return "\(firstInitial)\(lastInitial)"
     }
     
     private var displayName: String {
-        let firstName = authManager.userProfile?.firstName ?? ""
-        let lastName = authManager.userProfile?.lastName ?? ""
+        let firstName = authViewModel.userProfile?.firstName ?? ""
+        let lastName = authViewModel.userProfile?.lastName ?? ""
         
         if firstName.isEmpty && lastName.isEmpty {
             return "Utilisateur"
@@ -462,7 +462,7 @@ struct ProfileView: View {
     }
     
     private var memberSinceText: String {
-        guard let createdAt = authManager.userProfile?.createdAt else {
+        guard let createdAt = authViewModel.userProfile?.createdAt else {
             return "Récemment"
         }
         
@@ -475,13 +475,13 @@ struct ProfileView: View {
     // MARK: - Integrated Edit Profile Sheet
     
     private func editProfileSheet() -> some View {
-        EditProfileIntegratedView(authManager: authManager)
+        EditProfileIntegratedView(authViewModel: authViewModel)
     }
     
     // MARK: - Integrated Change Password Sheet
     
     private func changePasswordSheet() -> some View {
-        ChangePasswordIntegratedView(authManager: authManager)
+        ChangePasswordIntegratedView(authViewModel: authViewModel)
     }
 }
 
@@ -489,7 +489,7 @@ struct ProfileView: View {
 
 struct EditProfileIntegratedView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var authManager: AuthManager
+    @ObservedObject var authViewModel: AuthViewModel
     
     @State private var firstName = ""
     @State private var lastName = ""
@@ -591,18 +591,26 @@ struct EditProfileIntegratedView: View {
     }
     
     private func loadCurrentData() {
-        firstName = authManager.userProfile?.firstName ?? ""
-        lastName = authManager.userProfile?.lastName ?? ""
-        email = authManager.currentUser?.email ?? ""
+        firstName = authViewModel.userProfile?.firstName ?? ""
+        lastName = authViewModel.userProfile?.lastName ?? ""
+        email = authViewModel.currentUser?.email ?? ""
     }
     
     private func saveProfile() {
         Task {
             isLoading = true
-            // Save logic here
-            await Task.sleep(nanoseconds: 1_000_000_000)
+            
+            do {
+                try await authViewModel.updateProfile(
+                    firstName: firstName,
+                    lastName: lastName
+                )
+                dismiss()
+            } catch {
+                // Handle error if needed
+            }
+            
             isLoading = false
-            dismiss()
         }
     }
     
@@ -622,7 +630,7 @@ struct EditProfileIntegratedView: View {
 
 struct ChangePasswordIntegratedView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var authManager: AuthManager
+    @ObservedObject var authViewModel: AuthViewModel
     
     @State private var currentPassword = ""
     @State private var newPassword = ""
@@ -783,10 +791,18 @@ struct ChangePasswordIntegratedView: View {
     private func changePassword() {
         Task {
             isLoading = true
-            // Change password logic here
-            await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            do {
+                try await authViewModel.changePassword(
+                    currentPassword: currentPassword,
+                    newPassword: newPassword
+                )
+                showSuccessAlert = true
+            } catch {
+                // Handle error if needed
+            }
+            
             isLoading = false
-            showSuccessAlert = true
         }
     }
     
@@ -844,7 +860,7 @@ enum PasswordStrength {
 struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
         ProfileView()
-            .environmentObject(AuthManager())
+            .environmentObject(AuthViewModel())
     }
 }
 #endif

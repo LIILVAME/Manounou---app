@@ -226,10 +226,10 @@ struct DocumentCardView_Previews: PreviewProvider {
                         document: document,
                         geometry: geometry,
                         onTap: {
-                            print("Tapped \(document.title)")
+                            Logger.info("Document tapped", category: .ui)
                         },
                         onEdit: {
-                            print("Edit \(document.title)")
+                            Logger.info("Document edit action triggered", category: .ui)
                         }
                     )
                 }

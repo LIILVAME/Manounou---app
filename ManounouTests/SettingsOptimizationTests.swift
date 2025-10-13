@@ -7,7 +7,7 @@
 
 import XCTest
 import SwiftUI
-@testable import Manounou
+@testable import ManounouApp
 
 @MainActor
 class SettingsOptimizationTests: XCTestCase {
@@ -29,10 +29,10 @@ class SettingsOptimizationTests: XCTestCase {
     
     func testEditProfileIntegratedViewCreation() {
         // Given
-        let authManager = AuthManager()
+        let authViewModel = AuthViewModel()
         
         // When
-        let editProfileView = EditProfileIntegratedView(authManager: authManager)
+        let editProfileView = EditProfileIntegratedView(authViewModel: authViewModel)
         
         // Then
         XCTAssertNotNil(editProfileView)
@@ -41,10 +41,10 @@ class SettingsOptimizationTests: XCTestCase {
     
     func testChangePasswordIntegratedViewCreation() {
         // Given
-        let authManager = AuthManager()
+        let authViewModel = AuthViewModel()
         
         // When
-        let changePasswordView = ChangePasswordIntegratedView(authManager: authManager)
+        let changePasswordView = ChangePasswordIntegratedView(authViewModel: authViewModel)
         
         // Then
         XCTAssertNotNil(changePasswordView)
@@ -55,8 +55,8 @@ class SettingsOptimizationTests: XCTestCase {
     
     func testPasswordStrengthEvaluation() {
         // Given
-        let authManager = AuthManager()
-        let changePasswordView = ChangePasswordIntegratedView(authManager: authManager)
+        let authViewModel = AuthViewModel()
+        let changePasswordView = ChangePasswordIntegratedView(authViewModel: authViewModel)
         
         // When & Then
         // Test weak password
@@ -102,8 +102,8 @@ class SettingsOptimizationTests: XCTestCase {
     
     func testEditProfileFormValidation() {
         // Given
-        let authManager = AuthManager()
-        let editProfileView = EditProfileIntegratedView(authManager: authManager)
+        let authViewModel = AuthViewModel()
+        let editProfileView = EditProfileIntegratedView(authViewModel: authViewModel)
         
         // When & Then
         // Test email validation

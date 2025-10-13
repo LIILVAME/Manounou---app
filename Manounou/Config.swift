@@ -136,7 +136,7 @@ extension Config {
         if Debug.enableLogging {
             print("✅ Configuration validée avec succès")
             print("🌍 Environnement: \(Environment.current)")
-            print("🔗 URL Supabase: \(supabaseURL)")
+            print("🔗 URL Supabase configurée")
         }
     }
 }

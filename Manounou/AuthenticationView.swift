@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AuthenticationView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var isSignUp = false
     @State private var email = ""
     @State private var password = ""
@@ -24,18 +24,7 @@ struct AuthenticationView: View {
                 VStack(spacing: 30) {
                     // Header
                     VStack(spacing: 16) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.pink)
-                        
-                        Text("Manounou")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        Text("Votre carnet de famille numérique")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                        LogoView(size: .large, style: .full)
                     }
                     .padding(.top, 40)
                     
@@ -50,7 +39,7 @@ struct AuthenticationView: View {
                         // Action Button
                         Button(action: handleAuthentication) {
                             HStack {
-                                if authManager.isLoading {
+                                if authViewModel.isLoading {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                         .scaleEffect(0.8)
@@ -65,7 +54,7 @@ struct AuthenticationView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                         }
-                        .disabled(authManager.isLoading || !isFormValid)
+                        .disabled(authViewModel.isLoading || !isFormValid)
                         
                         // Toggle Sign In/Up
                         Button(action: { isSignUp.toggle() }) {
@@ -90,12 +79,12 @@ struct AuthenticationView: View {
             }
             .navigationBarHidden(true)
         }
-        .alert("Erreur", isPresented: .constant(authManager.errorMessage != nil)) {
+        .alert("Erreur", isPresented: .constant(authViewModel.errorMessage != nil)) {
             Button("OK") {
-                authManager.clearError()
+                authViewModel.clearError()
             }
         } message: {
-            Text(authManager.errorMessage ?? "")
+            Text(authViewModel.errorMessage ?? "")
         }
         .sheet(isPresented: $showingForgotPassword) {
             ForgotPasswordView()
@@ -168,17 +157,17 @@ struct AuthenticationView: View {
     private func handleAuthentication() {
         Task {
             if isSignUp {
-                await authManager.signUp(
+                await authViewModel.signUp(
                     email: email,
                     password: password
                 )
             } else {
-                await authManager.signIn(email: email, password: password)
+                await authViewModel.signIn(email: email, password: password)
             }
             
             // Vider les champs après tentative d'authentification
             await MainActor.run {
-                if authManager.isAuthenticated {
+                if authViewModel.isAuthenticated {
                     clearFields()
                 }
             }
@@ -236,7 +225,7 @@ struct CustomSecureField: View {
 
 // MARK: - Forgot Password View
 struct ForgotPasswordView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var isLoading = false
@@ -314,7 +303,7 @@ struct ForgotPasswordView: View {
         isLoading = true
         
         Task {
-            await authManager.resetPassword(email: email)
+            await authViewModel.resetPassword(email: email)
             
             await MainActor.run {
                 isLoading = false
@@ -326,5 +315,5 @@ struct ForgotPasswordView: View {
 
 #Preview {
     AuthenticationView()
-        .environmentObject(AuthManager())
+        .environmentObject(AppContainer.shared.authViewModel)
 }

@@ -10,14 +10,14 @@ import Supabase
 
 @main
 struct ManounouApp: App {
-    @StateObject private var authManager = AuthManager()
+    @StateObject private var appContainer = AppContainer.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authManager)
-                .onAppear {
-                    authManager.checkAuthStatus()
+                .environmentObject(appContainer)
+                .task {
+                    await appContainer.initialize()
                 }
         }
     }
@@ -25,16 +25,18 @@ struct ManounouApp: App {
 
 // MARK: - ContentView
 struct ContentView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var appContainer: AppContainer
     
     var body: some View {
         Group {
-            if authManager.isLoading {
+            if appContainer.authViewModel.isLoading {
                 LoadingView()
-            } else if authManager.isAuthenticated {
-                MainTabView()
+            } else if appContainer.authViewModel.isAuthenticated {
+                ModernMainTabView()
+                    .environmentObject(appContainer)
             } else {
                 AuthenticationView()
+                    .environmentObject(appContainer.authViewModel)
             }
         }
     }
@@ -46,23 +48,12 @@ struct LoadingView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.pink)
-                .scaleEffect(isAnimating ? 1.2 : 1.0)
-                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: isAnimating)
+            LogoView(size: .large, style: .full)
+                .scaleEffect(isAnimating ? 1.05 : 1.0)
+                .animation(Animation.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
                 .onAppear {
                     isAnimating = true
                 }
-            
-            Text("Manounou")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-            
-            Text("Votre carnet de famille numérique")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
             
             ProgressView()
                 .scaleEffect(1.2)
@@ -75,5 +66,5 @@ struct LoadingView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AuthManager())
+        .environmentObject(AppContainer.shared)
 }

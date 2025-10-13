@@ -513,14 +513,24 @@ extension View {
     }
     
     func errorSheet(errorManager: ErrorStateManager, onRetry: (() -> Void)? = nil) -> some View {
-        self.sheet(isPresented: $errorManager.isShowingError) {
-            if let error = errorManager.currentError {
-                ErrorView(
-                    error: error,
-                    onRetry: onRetry,
-                    onDismiss: errorManager.clearError
-                )
+        self.modifier(ErrorSheetModifier(errorManager: errorManager, onRetry: onRetry))
+    }
+}
+
+struct ErrorSheetModifier: ViewModifier {
+    @ObservedObject var errorManager: ErrorStateManager
+    let onRetry: (() -> Void)?
+    
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $errorManager.isShowingError) {
+                if let error = errorManager.currentError {
+                    ErrorView(
+                        error: error,
+                        onRetry: onRetry,
+                        onDismiss: errorManager.clearError
+                    )
+                }
             }
-        }
     }
 }

@@ -7,7 +7,7 @@
 
 import XCTest
 import SwiftUI
-@testable import Manounou
+@testable import ManounouApp
 
 @MainActor
 class NavigationTests: XCTestCase {

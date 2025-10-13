@@ -44,37 +44,6 @@ struct Child: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Gender Enum
-
-enum Gender: String, CaseIterable, Codable {
-    case male = "male"
-    case female = "female"
-    case other = "other"
-    
-    var displayName: String {
-        switch self {
-        case .male: return "Garçon"
-        case .female: return "Fille"
-        case .other: return "Autre"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .male: return "person.fill"
-        case .female: return "person.fill"
-        case .other: return "person.fill"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .male: return .blue
-        case .female: return .pink
-        case .other: return .purple
-        }
-    }
-}
 
 // MARK: - Child Extensions
 
@@ -154,9 +123,9 @@ extension Child {
         if isBaby {
             return .baby
         } else if isPreschooler {
-            return .preschooler
+            return .preschool
         } else {
-            return .schoolAge
+            return .school
         }
     }
     
@@ -166,37 +135,6 @@ extension Child {
     }
 }
 
-// MARK: - Age Category
-
-enum AgeCategory: String, CaseIterable {
-    case baby = "baby"
-    case preschooler = "preschooler"
-    case schoolAge = "schoolAge"
-    
-    var displayName: String {
-        switch self {
-        case .baby: return "Bébé"
-        case .preschooler: return "Préscolaire"
-        case .schoolAge: return "Scolaire"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .baby: return "figure.child"
-        case .preschooler: return "figure.walk"
-        case .schoolAge: return "figure.run"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .baby: return .green
-        case .preschooler: return .orange
-        case .schoolAge: return .blue
-        }
-    }
-}
 
 // MARK: - Child Validation
 

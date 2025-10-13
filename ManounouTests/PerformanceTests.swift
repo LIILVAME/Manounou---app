@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import Manounou
+@testable import ManounouApp
 
 @MainActor
 class PerformanceTests: XCTestCase {

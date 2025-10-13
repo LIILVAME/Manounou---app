@@ -223,23 +223,7 @@ struct FilterState {
 }
 
 // MARK: - Child Extensions for Filtering
-extension TemporaryChild {
-    var gender: Gender {
-        // Pour l'instant, on assigne aléatoirement basé sur le prénom
-        let femaleNames = ["Emma", "Léa", "Chloé", "Manon", "Sarah", "Jade", "Lola", "Anaïs", "Lucie", "Océane"]
-        return femaleNames.contains(firstName) ? .female : .male
-    }
-    
-    var ageInYears: Int {
-        let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year], from: birthDate, to: Date())
-        return ageComponents.year ?? 0
-    }
-    
-    var ageCategory: AgeCategory {
-        return AgeCategory.category(for: ageInYears)
-    }
-    
+extension Child {
     func matches(filter: FilterState) -> Bool {
         // Recherche textuelle
         if !filter.searchText.isEmpty {
@@ -269,8 +253,8 @@ extension TemporaryChild {
 }
 
 // MARK: - Array Extensions for Sorting
-extension Array where Element == TemporaryChild {
-    func sorted(by option: SortOption) -> [TemporaryChild] {
+extension Array where Element == Child {
+    func sorted(by option: SortOption) -> [Child] {
         switch option {
         case .nameAscending:
             return self.sorted { $0.fullName.localizedCaseInsensitiveCompare($1.fullName) == .orderedAscending }
@@ -283,11 +267,11 @@ extension Array where Element == TemporaryChild {
         }
     }
     
-    func filtered(by filterState: FilterState) -> [TemporaryChild] {
+    func filtered(by filterState: FilterState) -> [Child] {
         return self.filter { $0.matches(filter: filterState) }
     }
     
-    func filteredAndSorted(by filterState: FilterState) -> [TemporaryChild] {
+    func filteredAndSorted(by filterState: FilterState) -> [Child] {
         return self.filtered(by: filterState).sorted(by: filterState.sortOption)
     }
 }

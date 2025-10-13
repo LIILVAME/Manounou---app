@@ -11,10 +11,19 @@ struct HomeView: View {
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @EnvironmentObject var eventsViewModel: EventsViewModel
     @EnvironmentObject var documentsViewModel: DocumentsViewModel
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModel
+    
+    // Navigation states
+    @State private var showingProfile = false
+    @State private var showingAddChild = false
+    @State private var showingAddEvent = false
+    @State private var showingAddDocument = false
+    @State private var navigateToCalendar = false
+    @State private var navigateToChildren = false
+    @State private var navigateToDocuments = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: geometry.size.height * 0.03) {
@@ -39,6 +48,19 @@ struct HomeView: View {
             }
             .navigationTitle("")
             .navigationBarHidden(true)
+            .navigationDestination(isPresented: $navigateToChildren) {
+                ModernChildrenView()
+                    .environmentObject(childrenViewModel)
+            }
+            .navigationDestination(isPresented: $navigateToCalendar) {
+                ModernCalendarView()
+                    .environmentObject(eventsViewModel)
+            }
+            .navigationDestination(isPresented: $navigateToDocuments) {
+                ModernDocumentsView()
+                    .environmentObject(documentsViewModel)
+                    .environmentObject(childrenViewModel)
+            }
         }
         .onAppear {
             Task {
@@ -47,6 +69,18 @@ struct HomeView: View {
         }
         .refreshable {
             await loadData()
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileEditSheet()
+        }
+        .sheet(isPresented: $showingAddChild) {
+            AddChildSheet()
+        }
+        .sheet(isPresented: $showingAddEvent) {
+            AddEventSheet()
+        }
+        .sheet(isPresented: $showingAddDocument) {
+            AddDocumentSheet()
         }
     }
     
@@ -68,7 +102,7 @@ struct HomeView: View {
                 
                 // Profile Avatar
                 Button(action: {
-                    // TODO: Navigate to profile
+                    showingProfile = true
                 }) {
                     ZStack {
                         Circle()
@@ -90,6 +124,8 @@ struct HomeView: View {
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("Profil utilisateur")
+                .accessibilityHint("Appuyez pour modifier votre profil")
             }
             
             Text("Voici un aperçu de votre famille")
@@ -107,32 +143,38 @@ struct HomeView: View {
                 .foregroundColor(.primary)
             
             HStack(spacing: geometry.size.width * 0.04) {
-                // Children Count
-                statCard(
-                    title: "Enfants",
-                    value: "\(childrenViewModel.children.count)",
-                    icon: "person.2.fill",
-                    color: .blue,
-                    geometry: geometry
-                )
+                Button(action: { navigateToChildren = true }) {
+                    statCard(
+                        title: "Enfants",
+                        value: "\(childrenViewModel.children.count)",
+                        icon: "person.2.fill",
+                        color: .blue,
+                        geometry: geometry
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
                 
-                // Events Count
-                statCard(
-                    title: "Événements",
-                    value: "\(upcomingEventsCount)",
-                    icon: "calendar",
-                    color: .green,
-                    geometry: geometry
-                )
+                Button(action: { navigateToCalendar = true }) {
+                    statCard(
+                        title: "Événements",
+                        value: "\(upcomingEventsCount)",
+                        icon: "calendar.badge.clock",
+                        color: .green,
+                        geometry: geometry
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
                 
-                // Documents Count
-                statCard(
-                    title: "Documents",
-                    value: "\(documentsViewModel.documents.count)",
-                    icon: "doc.fill",
-                    color: .purple,
-                    geometry: geometry
-                )
+                Button(action: { navigateToDocuments = true }) {
+                    statCard(
+                        title: "Documents",
+                        value: "\(documentsViewModel.documents.count)",
+                        icon: "doc.text.fill",
+                        color: .purple,
+                        geometry: geometry
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
@@ -145,32 +187,32 @@ struct HomeView: View {
         color: Color,
         geometry: GeometryProxy
     ) -> some View {
-        VStack(spacing: geometry.size.height * 0.015) {
+        VStack(spacing: geometry.size.height * 0.01) {
             HStack {
                 Image(systemName: icon)
-                    .font(.system(size: geometry.size.width * 0.06, weight: .medium))
                     .foregroundColor(color)
+                    .font(.system(size: geometry.size.width * 0.05, weight: .medium))
                 
                 Spacer()
+                
+                Text(value)
+                    .font(.system(size: geometry.size.width * 0.06, weight: .bold))
+                    .foregroundColor(.primary)
             }
             
-            VStack(alignment: .leading, spacing: geometry.size.height * 0.005) {
-                Text(value)
-                    .font(.system(size: geometry.size.width * 0.08, weight: .bold))
-                    .foregroundColor(.primary)
-                
-                Text(title)
-                    .font(.system(size: geometry.size.width * 0.035, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(title)
+                .font(.system(size: geometry.size.width * 0.035, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(geometry.size.width * 0.04)
-        .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: geometry.size.width * 0.04)
-                .fill(Color(.systemGray6))
+            RoundedRectangle(cornerRadius: geometry.size.width * 0.03)
+                .fill(color.opacity(0.1))
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
+        .accessibilityHint("Appuyez pour voir les détails")
     }
     
     // MARK: - Upcoming Events
@@ -184,10 +226,11 @@ struct HomeView: View {
                 Spacer()
                 
                 Button("Voir tout") {
-                    // TODO: Navigate to calendar
+                    navigateToCalendar = true
                 }
                 .font(.system(size: geometry.size.width * 0.035, weight: .medium))
                 .foregroundColor(.blue)
+                .accessibilityLabel("Voir tous les événements")
             }
             
             if upcomingEvents.isEmpty {
@@ -195,7 +238,10 @@ struct HomeView: View {
             } else {
                 VStack(spacing: geometry.size.height * 0.015) {
                     ForEach(Array(upcomingEvents.prefix(3)), id: \.id) { event in
-                        eventRow(event: event, geometry: geometry)
+                        Button(action: { navigateToCalendar = true }) {
+                            eventRow(event: event, geometry: geometry)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }
@@ -275,7 +321,7 @@ struct HomeView: View {
                 .foregroundColor(.secondary)
             
             Button("Ajouter un événement") {
-                // TODO: Navigate to add event
+                showingAddEvent = true
             }
             .font(.system(size: geometry.size.width * 0.035, weight: .medium))
             .foregroundColor(.blue)
@@ -303,7 +349,7 @@ struct HomeView: View {
                     color: .blue,
                     geometry: geometry
                 ) {
-                    // TODO: Navigate to add child
+                    showingAddChild = true
                 }
                 
                 // Add Event
@@ -313,7 +359,7 @@ struct HomeView: View {
                     color: .green,
                     geometry: geometry
                 ) {
-                    // TODO: Navigate to add event
+                    showingAddEvent = true
                 }
             }
             
@@ -325,7 +371,7 @@ struct HomeView: View {
                     color: .purple,
                     geometry: geometry
                 ) {
-                    // TODO: Navigate to add document
+                    showingAddDocument = true
                 }
                 
                 // View Calendar
@@ -335,7 +381,7 @@ struct HomeView: View {
                     color: .orange,
                     geometry: geometry
                 ) {
-                    // TODO: Navigate to calendar
+                    navigateToCalendar = true
                 }
             }
         }
@@ -386,7 +432,7 @@ struct HomeView: View {
                 Spacer()
                 
                 Button("Voir tout") {
-                    // TODO: Navigate to documents
+                    navigateToDocuments = true
                 }
                 .font(.system(size: geometry.size.width * 0.035, weight: .medium))
                 .foregroundColor(.blue)
@@ -397,7 +443,10 @@ struct HomeView: View {
             } else {
                 VStack(spacing: geometry.size.height * 0.01) {
                     ForEach(Array(recentDocuments.prefix(3)), id: \.id) { document in
-                        documentRow(document: document, geometry: geometry)
+                        Button(action: { navigateToDocuments = true }) {
+                            documentRow(document: document, geometry: geometry)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }
@@ -463,7 +512,7 @@ struct HomeView: View {
                 .foregroundColor(.secondary)
             
             Button("Ajouter un document") {
-                // TODO: Navigate to add document
+                showingAddDocument = true
             }
             .font(.system(size: geometry.size.width * 0.03, weight: .medium))
             .foregroundColor(.blue)
@@ -525,15 +574,15 @@ struct HomeView: View {
     }
     
     private var displayName: String {
-        if let firstName = authManager.userProfile?.firstName, !firstName.isEmpty {
+        if let firstName = authViewModel.currentUser?.firstName, !firstName.isEmpty {
             return firstName
         }
         return "Utilisateur"
     }
     
     private var userInitials: String {
-        let firstName = authManager.userProfile?.firstName ?? ""
-        let lastName = authManager.userProfile?.lastName ?? ""
+        let firstName = authViewModel.currentUser?.firstName ?? ""
+        let lastName = authViewModel.currentUser?.lastName ?? ""
         let firstInitial = firstName.first?.uppercased() ?? "U"
         let lastInitial = lastName.first?.uppercased() ?? "S"
         return "\(firstInitial)\(lastInitial)"
@@ -564,7 +613,7 @@ struct HomeView_Previews: PreviewProvider {
             .environmentObject(ChildrenViewModel(childrenService: MockChildrenService()))
             .environmentObject(EventsViewModel(eventsService: MockEventsService()))
             .environmentObject(DocumentsViewModel(documentsService: MockDocumentsService()))
-            .environmentObject(AuthManager())
+            .environmentObject(AuthViewModel(authService: MockAuthService()))
     }
 }
 #endif

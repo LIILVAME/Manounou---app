@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import Manounou
+@testable import ManounouApp
 
 @MainActor
 class DocumentsViewModelTests: XCTestCase {
@@ -203,66 +203,5 @@ class DocumentsViewModelTests: XCTestCase {
         // Then
         XCTAssertTrue(viewModel.documents.isEmpty)
         XCTAssertEqual(viewModel.documentsCount, 0)
-    }
-}
-
-// MARK: - Mock Service
-
-class MockDocumentsService: DocumentsServiceProtocol {
-    var mockDocuments: [Document] = []
-    var shouldFail = false
-    
-    func fetchDocuments() async throws -> [Document] {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return mockDocuments
-    }
-    
-    func createDocument(_ document: Document) async throws -> Document {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return document
-    }
-    
-    func updateDocument(_ document: Document) async throws -> Document {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return document
-    }
-    
-    func deleteDocument(id: UUID) async throws {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-    }
-    
-    func fetchDocumentsForChild(childId: UUID) async throws -> [Document] {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return mockDocuments.filter { $0.childId == childId }
-    }
-    
-    func fetchDocumentsByType(_ type: DocumentType) async throws -> [Document] {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return mockDocuments.filter { $0.documentType == type }
-    }
-    
-    func uploadFile(data: Data, fileName: String, mimeType: String) async throws -> String {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return "mock-url"
-    }
-    
-    func deleteFile(url: String) async throws {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
     }
 }
