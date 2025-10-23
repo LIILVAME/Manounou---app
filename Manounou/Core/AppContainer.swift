@@ -46,7 +46,12 @@ class AppContainer: ObservableObject {
         // Configuration Supabase
         self.supabaseClient = SupabaseClient(
             supabaseURL: URL(string: Config.supabaseURL)!,
-            supabaseKey: Config.supabaseAnonKey
+            supabaseKey: Config.supabaseAnonKey,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    autoRefreshToken: true
+                )
+            )
         )
         
         // Initialisation des services
@@ -69,6 +74,7 @@ class AppContainer: ObservableObject {
         self.childrenViewModel = ChildrenViewModel(childrenService: childrenService)
         self.documentsViewModel = DocumentsViewModel(documentsService: documentsService)
         self.notificationManager = NotificationManager()
+        setupAuthStateListener()
     }
     
     // MARK: - Factory Methods for Testing
@@ -94,14 +100,45 @@ class AppContainer: ObservableObject {
     }
     
     private func loadInitialData() async {
-        async let eventsTask = eventsViewModel.loadEvents()
-        async let childrenTask = childrenViewModel.loadChildren()
-        async let documentsTask = documentsViewModel.loadDocuments()
+        let timer = PerformanceTimer("Initial preload")
+        // Précharger depuis le cache pour un rendu immédiat
+        if let cachedEvents = cacheService.getCachedEvents() {
+            eventsViewModel.events = cachedEvents
+            Logger.dataLoad("cached events", count: cachedEvents.count)
+        }
+        if let cachedChildren = cacheService.getCachedChildren() {
+            childrenViewModel.children = cachedChildren
+            Logger.dataLoad("cached children", count: cachedChildren.count)
+        }
+        if let cachedDocuments = cacheService.getCachedDocuments() {
+            documentsViewModel.documents = cachedDocuments
+            Logger.dataLoad("cached documents", count: cachedDocuments.count)
+        }
         
-        // Attendre que toutes les tâches se terminent
-        await eventsTask
-        await childrenTask
-        await documentsTask
+        // Chargement réseau concurrent pour rafraîchir les données
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { [self] in await self.eventsViewModel.loadEvents() }
+            group.addTask { [self] in await self.childrenViewModel.loadChildren() }
+            group.addTask { [self] in await self.documentsViewModel.loadDocuments() }
+            await group.waitForAll()
+        }
+        timer.end(extra: "network refreshed")
+    }
+
+    private func setupAuthStateListener() {
+        Task {
+            for await state in supabaseClient.auth.authStateChanges {
+                switch state.event {
+                case .initialSession, .signedIn, .signedOut:
+                    await MainActor.run {
+                        self.authViewModel.isAuthenticated = state.session != nil
+                    }
+                    await self.handleAuthenticationChange()
+                default:
+                    break
+                }
+            }
+        }
     }
     
     // MARK: - Authentication State Management
@@ -130,11 +167,33 @@ class AuthViewModel: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
-    
+    // Added UI-bound fields
+    @Published var email: String = ""
+    @Published var password: String = ""
+    @Published var isSignUpMode: Bool = false
+
     private let authService: AuthServiceProtocol
-    
+
     init(authService: AuthServiceProtocol) {
         self.authService = authService
+    }
+
+    // Convenience wrappers used by AuthenticationView
+    func toggleMode() {
+        isSignUpMode.toggle()
+        clearError()
+    }
+
+    func signIn() async {
+        await signIn(email: email, password: password)
+    }
+
+    func signUp() async {
+        await signUp(email: email, password: password)
+    }
+
+    func resetPassword() async {
+        await resetPassword(email: email)
     }
     
     func signIn(email: String, password: String) async {
@@ -241,40 +300,33 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
-    func updateProfile(firstName: String, lastName: String) async throws {
+    func updateProfile(firstName: String, lastName: String) async {
         isLoading = true
         errorMessage = nil
         
-        do {
-            // TODO: Implement actual profile update with Supabase
-            // For now, simulate a successful update
-            if let currentUser = currentUser {
-                let updatedUser = User(
-                    id: currentUser.id,
-                    email: currentUser.email,
-                    firstName: firstName,
-                    lastName: lastName,
-                    avatarUrl: currentUser.avatarUrl,
-                    createdAt: currentUser.createdAt,
-                    updatedAt: Date()
-                )
-                
-                self.currentUser = updatedUser
-                
-                // Update userProfile for compatibility
-                self.userProfile = UserProfile(
-                    id: updatedUser.id,
-                    firstName: updatedUser.firstName,
-                    lastName: updatedUser.lastName,
-                    email: updatedUser.email,
-                    avatarUrl: updatedUser.avatarUrl,
-                    createdAt: updatedUser.createdAt,
-                    updatedAt: updatedUser.updatedAt
-                )
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-            throw error
+        if let currentUser = currentUser {
+            let updatedUser = User(
+                id: currentUser.id,
+                email: currentUser.email,
+                firstName: firstName,
+                lastName: lastName,
+                avatarUrl: currentUser.avatarUrl,
+                createdAt: currentUser.createdAt,
+                updatedAt: Date()
+            )
+            
+            self.currentUser = updatedUser
+            
+            // Update userProfile for compatibility
+            self.userProfile = UserProfile(
+                id: updatedUser.id,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                email: updatedUser.email,
+                avatarUrl: updatedUser.avatarUrl,
+                createdAt: updatedUser.createdAt,
+                updatedAt: updatedUser.updatedAt
+            )
         }
         
         isLoading = false
@@ -316,7 +368,7 @@ class EventsViewModel: ObservableObject {
     
     func createEvent(_ event: Event) async {
         do {
-            let newEvent = try await eventsService.createEvent(event)
+            _ = try await eventsService.createEvent(event)
             await loadEvents() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
@@ -377,7 +429,7 @@ class ChildrenViewModel: ObservableObject {
     
     func createChild(_ child: Child) async {
         do {
-            let newChild = try await childrenService.createChild(child)
+            _ = try await childrenService.createChild(child)
             await loadChildren() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
@@ -438,7 +490,7 @@ class DocumentsViewModel: ObservableObject {
     
     func createDocument(_ document: Document) async {
         do {
-            let newDocument = try await documentsService.createDocument(document)
+            _ = try await documentsService.createDocument(document)
             await loadDocuments() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
