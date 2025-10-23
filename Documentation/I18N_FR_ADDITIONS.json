@@ -1,0 +1,54 @@
+{
+  "common": {
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "success_toast": "Action réussie",
+    "error_toast": "Une erreur est survenue",
+    "offline_banner": "Hors connexion — certaines fonctionnalités sont limitées",
+    "loading_skeleton": "Chargement…"
+  },
+  "home": {
+    "empty_title": "Bienvenue 👋",
+    "empty_desc": "Commencez par ajouter un enfant ou créer votre premier événement.",
+    "empty_cta": "Créer un événement"
+  },
+  "children": {
+    "empty_title": "Aucun enfant pour l’instant",
+    "empty_desc": "Ajoutez votre premier enfant pour personnaliser l’organisation familiale.",
+    "empty_cta": "Ajouter un enfant",
+    "form_required_name": "Le nom complet est requis",
+    "form_required_birthdate": "La date de naissance est requise",
+    "delete_confirm_title": "Supprimer l’enfant ?",
+    "delete_confirm_desc": "Cette action est irréversible. L’enfant et ses liens seront retirés."
+  },
+  "calendar": {
+    "empty_title": "Aucun événement prévu",
+    "empty_desc": "Planifiez une garde, un rendez-vous ou une activité pour commencer.",
+    "empty_cta": "Créer un événement",
+    "invalid_time_error": "L’heure de fin doit être après l’heure de début",
+    "repeat_weekly_label": "Répéter chaque semaine",
+    "event_created_toast": "Événement créé",
+    "event_deleted_toast": "Événement supprimé"
+  },
+  "documents": {
+    "empty_title": "Aucun document",
+    "empty_desc": "Ajoutez une photo ou un PDF et associez-le à un enfant ou à la famille.",
+    "empty_cta": "Ajouter un document",
+    "upload_progress_label": "Téléversement en cours…",
+    "upload_error_network": "Échec du téléversement — vérifiez votre connexion",
+    "delete_confirm_title": "Supprimer le document ?"
+  },
+  "notifications": {
+    "enable_prompt": "Activer les rappels pour les événements à venir ?",
+    "enabled_success": "Notifications activées",
+    "disabled_success": "Notifications désactivées",
+    "reminder_title": "Rappel d’événement",
+    "reminder_body": "Votre événement commence dans 15 minutes"
+  },
+  "permissions": {
+    "restricted_nanny_children": "Accès limité — enfants assignés uniquement",
+    "restricted_nanny_delete_child": "Action interdite — la nounou ne peut pas supprimer un enfant",
+    "restricted_member_roles": "Accès refusé — la gestion des rôles est réservée au parent propriétaire"
+  }
+}

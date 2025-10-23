@@ -19,7 +19,12 @@ class AuthManager: ObservableObject {
     
     private let supabase = SupabaseClient(
         supabaseURL: Config.supabaseAPIURL,
-        supabaseKey: Config.supabaseAnonKey
+        supabaseKey: Config.supabaseAnonKey,
+        options: SupabaseClientOptions(
+            auth: SupabaseClientOptions.AuthOptions(
+                autoRefreshToken: true
+            )
+        )
     )
     
     init() {

@@ -1,0 +1,222 @@
+name: 🚀 Déploiement - Manounou
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      version:
+        description: 'Version à déployer'
+        required: true
+        default: '1.0.0'
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  prepare-deployment:
+    name: 🔧 Préparation du Déploiement
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.env.outputs.environment }}
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 🏷️ Détermination de la version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION="${{ github.event.release.tag_name }}"
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "🏷️ Version: ${VERSION}"
+    
+    - name: 🌍 Détermination de l'environnement
+      id: env
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          ENV="production"
+        else
+          ENV="${{ github.event.inputs.environment }}"
+        fi
+        echo "environment=${ENV}" >> $GITHUB_OUTPUT
+        echo "🌍 Environnement: ${ENV}"
+
+  build-for-deployment:
+    name: 🔨 Build pour Déploiement
+    runs-on: macos-latest
+    needs: prepare-deployment
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+    
+    - name: 🔧 Configuration Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: 🔑 Configuration des certificats
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        # Création du keychain temporaire
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        
+        # Import du certificat
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode --output $CERTIFICATE_PATH
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+        
+        # Installation du profil de provisioning
+        PROVISION_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode --output $PROVISION_PATH
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PROVISION_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+    
+    - name: 📦 Résolution des dépendances
+      run: |
+        xcodebuild -resolvePackageDependencies -project Manounou.xcodeproj
+    
+    - name: 🔨 Build Release
+      run: |
+        xcodebuild -project Manounou.xcodeproj \
+                   -scheme Manounou \
+                   -configuration Release \
+                   -destination generic/platform=iOS \
+                   -archivePath $RUNNER_TEMP/Manounou.xcarchive \
+                   archive
+    
+    - name: 📦 Export IPA
+      run: |
+        # Création du plist d'export
+        cat > $RUNNER_TEMP/ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+        </dict>
+        </plist>
+        EOF
+        
+        # Export de l'IPA
+        xcodebuild -exportArchive \
+                   -archivePath $RUNNER_TEMP/Manounou.xcarchive \
+                   -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+                   -exportPath $RUNNER_TEMP/export
+    
+    - name: 📤 Upload des artefacts de déploiement
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-artifacts-${{ needs.prepare-deployment.outputs.version }}
+        path: |
+          ${{ runner.temp }}/export/
+          ${{ runner.temp }}/Manounou.xcarchive/
+        retention-days: 90
+
+  deploy-to-testflight:
+    name: ✈️ Déploiement TestFlight
+    runs-on: macos-latest
+    needs: [prepare-deployment, build-for-deployment]
+    if: needs.prepare-deployment.outputs.environment == 'staging'
+    
+    steps:
+    - name: 📥 Téléchargement des artefacts
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-artifacts-${{ needs.prepare-deployment.outputs.version }}
+        path: ./artifacts
+    
+    - name: ✈️ Upload vers TestFlight
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        # Installation d'altool si nécessaire
+        xcrun altool --upload-app \
+                     --type ios \
+                     --file "./artifacts/Manounou.ipa" \
+                     --username "$APPLE_ID" \
+                     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                     --asc-provider "$APPLE_TEAM_ID"
+
+  deploy-to-app-store:
+    name: 🏪 Déploiement App Store
+    runs-on: macos-latest
+    needs: [prepare-deployment, build-for-deployment]
+    if: needs.prepare-deployment.outputs.environment == 'production'
+    environment: production
+    
+    steps:
+    - name: 📥 Téléchargement des artefacts
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-artifacts-${{ needs.prepare-deployment.outputs.version }}
+        path: ./artifacts
+    
+    - name: 🏪 Soumission à l'App Store
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        echo "🏪 Soumission à l'App Store pour révision..."
+        xcrun altool --upload-app \
+                     --type ios \
+                     --file "./artifacts/Manounou.ipa" \
+                     --username "$APPLE_ID" \
+                     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                     --asc-provider "$APPLE_TEAM_ID"
+
+  notify-deployment:
+    name: 📢 Notification de Déploiement
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, deploy-to-testflight, deploy-to-app-store]
+    if: always()
+    
+    steps:
+    - name: 📢 Notification de succès
+      if: needs.deploy-to-testflight.result == 'success' || needs.deploy-to-app-store.result == 'success'
+      run: |
+        echo "✅ Déploiement réussi!"
+        echo "🏷️ Version: ${{ needs.prepare-deployment.outputs.version }}"
+        echo "🌍 Environnement: ${{ needs.prepare-deployment.outputs.environment }}"
+    
+    - name: 📢 Notification d'échec
+      if: needs.deploy-to-testflight.result == 'failure' || needs.deploy-to-app-store.result == 'failure'
+      run: |
+        echo "❌ Échec du déploiement!"
+        echo "🏷️ Version: ${{ needs.prepare-deployment.outputs.version }}"
+        echo "🌍 Environnement: ${{ needs.prepare-deployment.outputs.environment }}"
+        exit 1

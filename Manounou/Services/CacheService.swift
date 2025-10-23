@@ -1,182 +1,193 @@
-//
-//  CacheService.swift
-//  Manounou
-//
-//  Created by Assistant on 16/08/2025.
-//
-
 import Foundation
-import SwiftUI
+import Combine
 
-/// Service de cache simplifié pour le POC
-@MainActor
-class CacheService: CacheServiceProtocol, ObservableObject {
-    
-    // MARK: - Singleton
-    
+/// Service de cache simple pour l'application Manounou
+class CacheService: CacheServiceProtocol {
     static let shared = CacheService()
     
-    // MARK: - Simple Cache Properties
+    // MARK: - Cached data
+    @Published var cachedEvents: [Event]? = nil
+    @Published var cachedChildren: [Child]? = nil
+    @Published var cachedDocuments: [Document]? = nil
+    @Published var lastSyncDate: Date? = nil
     
-    @Published private var cachedEvents: [Event]?
-    @Published private var cachedChildren: [Child]?
-    @Published private var cachedDocuments: [Document]?
-    @Published private var lastSyncDate: Date?
+    // MARK: - TTL & LRU configuration
+    private let defaultTTL: TimeInterval = 300 // 5 minutes par défaut
+    private let maxListItems: Int = 200 // Limiter la taille des listes en cache
     
-    // MARK: - Initialization
+    private var eventsExpiry: Date? = nil
+    private var childrenExpiry: Date? = nil
+    private var documentsExpiry: Date? = nil
     
-    private init() {
-        // Simple initialization - no complex setup needed for POC
-    }
+    // Petit KV store avec LRU
+    private var kvCapacity: Int = 100
+    private var kvStore: [String: (value: Any, expiresAt: Date)] = [:]
+    private var lruKeys: [String] = []
     
-    // MARK: - CacheServiceProtocol Implementation
-    
-    var cacheStatistics: CacheStatistics {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "fr_FR")
-        
-        let lastSyncFormatted: String
-        if let lastSync = lastSyncDate {
-            lastSyncFormatted = formatter.localizedString(for: lastSync, relativeTo: Date())
-        } else {
-            lastSyncFormatted = "Jamais"
-        }
-        
-        return CacheStatistics(
-            formattedLastSync: lastSyncFormatted,
-            hasEventsCache: cachedEvents != nil,
-            hasChildrenCache: cachedChildren != nil,
-            cacheSize: "En mémoire",
-            lastSyncDate: lastSyncDate
-        )
-    }
-    
-    // MARK: - Events Cache
-    
+    // MARK: - Caching operations
     func cacheEvents(_ events: [Event]) {
-        cachedEvents = events
+        cachedEvents = Array(events.prefix(maxListItems))
         lastSyncDate = Date()
+        eventsExpiry = Date().addingTimeInterval(defaultTTL)
+        Logger.cache("Events cached: \(cachedEvents?.count ?? 0), ttl \(Int(defaultTTL))s", level: .info)
     }
     
     func getCachedEvents() -> [Event]? {
+        if let expiry = eventsExpiry, expiry < Date() {
+            Logger.cache("Events cache expired", level: .debug)
+            cachedEvents = nil
+            eventsExpiry = nil
+            return nil
+        }
         return cachedEvents
     }
     
-    // MARK: - Children Cache
-    
     func cacheChildren(_ children: [Child]) {
-        cachedChildren = children
+        cachedChildren = Array(children.prefix(maxListItems))
         lastSyncDate = Date()
+        childrenExpiry = Date().addingTimeInterval(defaultTTL)
+        Logger.cache("Children cached: \(cachedChildren?.count ?? 0), ttl \(Int(defaultTTL))s", level: .info)
     }
     
     func getCachedChildren() -> [Child]? {
+        if let expiry = childrenExpiry, expiry < Date() {
+            Logger.cache("Children cache expired", level: .debug)
+            cachedChildren = nil
+            childrenExpiry = nil
+            return nil
+        }
         return cachedChildren
     }
     
-    // MARK: - Documents Cache
-    
     func cacheDocuments(_ documents: [Document]) {
-        cachedDocuments = documents
+        cachedDocuments = Array(documents.prefix(maxListItems))
         lastSyncDate = Date()
+        documentsExpiry = Date().addingTimeInterval(defaultTTL)
+        Logger.cache("Documents cached: \(cachedDocuments?.count ?? 0), ttl \(Int(defaultTTL))s", level: .info)
     }
     
     func getCachedDocuments() -> [Document]? {
+        if let expiry = documentsExpiry, expiry < Date() {
+            Logger.cache("Documents cache expired", level: .debug)
+            cachedDocuments = nil
+            documentsExpiry = nil
+            return nil
+        }
         return cachedDocuments
     }
     
-    // MARK: - Cache Management
+    // MARK: - KV LRU API
+    func setValue(_ value: Any, forKey key: String, ttl: TimeInterval? = nil) {
+        let expiresAt = Date().addingTimeInterval(ttl ?? defaultTTL)
+        kvStore[key] = (value, expiresAt)
+        if let idx = lruKeys.firstIndex(of: key) { lruKeys.remove(at: idx) }
+        lruKeys.insert(key, at: 0)
+        evictLRUIfNeeded()
+        Logger.cache("KV set: \(key) (ttl: \(Int(ttl ?? defaultTTL))s)", level: .debug)
+    }
     
+    func getValue(forKey key: String) -> Any? {
+        guard let entry = kvStore[key] else { return nil }
+        if entry.expiresAt < Date() {
+            Logger.cache("KV expired: \(key)", level: .debug)
+            kvStore[key] = nil
+            if let idx = lruKeys.firstIndex(of: key) { lruKeys.remove(at: idx) }
+            return nil
+        }
+        if let idx = lruKeys.firstIndex(of: key) {
+            lruKeys.remove(at: idx)
+            lruKeys.insert(key, at: 0)
+        }
+        return entry.value
+    }
+    
+    func removeValue(forKey key: String) {
+        kvStore[key] = nil
+        if let idx = lruKeys.firstIndex(of: key) { lruKeys.remove(at: idx) }
+        Logger.cache("KV removed: \(key)", level: .debug)
+    }
+    
+    private func evictLRUIfNeeded() {
+        while lruKeys.count > kvCapacity {
+            if let lastKey = lruKeys.last {
+                lruKeys.removeLast()
+                kvStore[lastKey] = nil
+                Logger.cache("KV evicted LRU: \(lastKey)", level: .debug)
+            }
+        }
+    }
+    
+    // MARK: - Cache management
     func clearCache() {
         cachedEvents = nil
         cachedChildren = nil
         cachedDocuments = nil
         lastSyncDate = nil
+        eventsExpiry = nil
+        childrenExpiry = nil
+        documentsExpiry = nil
+        kvStore.removeAll()
+        lruKeys.removeAll()
+        Logger.cache("Cache cleared", level: .info)
     }
     
     func clearEventsCache() {
         cachedEvents = nil
+        eventsExpiry = nil
+        Logger.cache("Events cache cleared", level: .debug)
     }
     
     func clearChildrenCache() {
         cachedChildren = nil
+        childrenExpiry = nil
+        Logger.cache("Children cache cleared", level: .debug)
     }
     
     func clearDocumentsCache() {
         cachedDocuments = nil
+        documentsExpiry = nil
+        Logger.cache("Documents cache cleared", level: .debug)
     }
-}
-
-// MARK: - Mock Implementation for Testing
-
-class MockCacheService: CacheServiceProtocol, ObservableObject {
-    private var eventsCache: [Event]?
-    private var childrenCache: [Child]?
-    private var documentsCache: [Document]?
-    private var mockLastSyncDate: Date?
     
+    // MARK: - Statistics (protocol property)
     var cacheStatistics: CacheStatistics {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "fr_FR")
+        let eventsCount = cachedEvents?.count ?? 0
+        let childrenCount = cachedChildren?.count ?? 0
+        let documentsCount = cachedDocuments?.count ?? 0
         
-        let lastSyncFormatted: String
-        if let lastSync = mockLastSyncDate {
-            lastSyncFormatted = formatter.localizedString(for: lastSync, relativeTo: Date())
-        } else {
-            lastSyncFormatted = "Jamais"
+        let totalItems = eventsCount + childrenCount + documentsCount
+        let cacheSize = "\(totalItems) éléments"
+        
+        var lastSyncFormatted = "Jamais"
+        if let lastSync = lastSyncDate {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "fr_FR")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            lastSyncFormatted = formatter.string(from: lastSync)
         }
         
         return CacheStatistics(
             formattedLastSync: lastSyncFormatted,
-            hasEventsCache: eventsCache != nil,
-            hasChildrenCache: childrenCache != nil,
-            cacheSize: "1.2 MB",
-            lastSyncDate: mockLastSyncDate
+            hasEventsCache: eventsCount > 0,
+            hasChildrenCache: childrenCount > 0,
+            cacheSize: cacheSize,
+            lastSyncDate: lastSyncDate
         )
     }
-    
-    func cacheEvents(_ events: [Event]) {
-        eventsCache = events
-        mockLastSyncDate = Date()
+}
+
+// Service de cache Mock pour les tests ou le mode démo
+class MockCacheService: CacheService {
+    override func cacheEvents(_ events: [Event]) {
+        super.cacheEvents(events)
     }
     
-    func getCachedEvents() -> [Event]? {
-        return eventsCache
+    override func cacheChildren(_ children: [Child]) {
+        super.cacheChildren(children)
     }
     
-    func cacheChildren(_ children: [Child]) {
-        childrenCache = children
-        mockLastSyncDate = Date()
-    }
-    
-    func getCachedChildren() -> [Child]? {
-        return childrenCache
-    }
-    
-    func clearCache() {
-        eventsCache = nil
-        childrenCache = nil
-        mockLastSyncDate = nil
-    }
-    
-    func clearEventsCache() {
-        eventsCache = nil
-    }
-    
-    func clearChildrenCache() {
-        childrenCache = nil
-    }
-    
-    func cacheDocuments(_ documents: [Document]) {
-        documentsCache = documents
-        mockLastSyncDate = Date()
-    }
-    
-    func getCachedDocuments() -> [Document]? {
-        return documentsCache
-    }
-    
-    func clearDocumentsCache() {
-        documentsCache = nil
-        mockLastSyncDate = Date()
+    override func cacheDocuments(_ documents: [Document]) {
+        super.cacheDocuments(documents)
     }
 }

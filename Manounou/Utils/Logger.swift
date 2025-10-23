@@ -279,3 +279,30 @@ extension Logger {
         #endif
     }
 }
+
+// MARK: - Performance Timer Helper
+
+struct PerformanceTimer {
+    private let label: String
+    private let category: Logger.Category
+    private let start: DispatchTime
+    
+    init(_ label: String, category: Logger.Category = .performance) {
+        self.label = label
+        self.category = category
+        self.start = DispatchTime.now()
+        Logger.debug("⏱️ Start: \(label)", category: category)
+    }
+    
+    func end(extra: String? = nil) {
+        let end = DispatchTime.now()
+        let nanos = end.uptimeNanoseconds - start.uptimeNanoseconds
+        let ms = Double(nanos) / 1_000_000
+        let durationMsg = String(format: "%.2f ms", ms)
+        if let extra = extra {
+            Logger.performance("⏱️ End: \(label) — \(durationMsg) — \(extra)")
+        } else {
+            Logger.performance("⏱️ End: \(label) — \(durationMsg)")
+        }
+    }
+}

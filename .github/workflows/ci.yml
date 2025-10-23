@@ -1,0 +1,141 @@
+name: 🚀 Intégration Continue - Manounou
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  IOS_SIMULATOR_UDID: "89C4A3F8-8F3E-4F3E-8F3E-8F3E8F3E8F3E"
+
+jobs:
+  validation:
+    name: 🔍 Validation du Code
+    runs-on: macos-latest
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: 🔧 Configuration Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: 📋 Informations système
+      run: |
+        echo "🖥️  macOS version: $(sw_vers -productVersion)"
+        echo "🔨 Xcode version: $(xcodebuild -version)"
+        echo "📱 Simulateurs disponibles:"
+        xcrun simctl list devices available
+    
+    - name: 🧹 Nettoyage cache Xcode
+      run: |
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        rm -rf ~/Library/Caches/com.apple.dt.Xcode
+    
+    - name: 📦 Résolution des dépendances
+      run: |
+        xcodebuild -resolvePackageDependencies -project Manounou.xcodeproj
+    
+    - name: ✅ Validation syntaxe Swift
+      run: |
+        echo "🔍 Vérification de la syntaxe Swift..."
+        find . -name "*.swift" -not -path "./Manounou/.build/*" -exec swift -frontend -parse {} \; || true
+    
+    - name: 🔨 Build pour simulateur
+      run: |
+        chmod +x ./build_simulator_only.sh
+        ./build_simulator_only.sh
+    
+    - name: 🧪 Exécution des tests
+      run: |
+        chmod +x ./run_tests.sh
+        ./run_tests.sh
+    
+    - name: 📊 Génération des artefacts
+      run: |
+        chmod +x ./generate_artifacts.sh
+        ./generate_artifacts.sh
+    
+    - name: 📤 Upload des artefacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-artifacts-${{ github.run_number }}
+        path: |
+          build.log
+          tests.log
+          artifacts/
+        retention-days: 30
+    
+    - name: 📤 Upload des logs en cas d'échec
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: failure-logs-${{ github.run_number }}
+        path: |
+          *.log
+          ~/Library/Developer/Xcode/DerivedData/*/Logs/
+        retention-days: 7
+
+  security-scan:
+    name: 🔒 Analyse de Sécurité
+    runs-on: macos-latest
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+    
+    - name: 🔍 Scan des secrets
+      run: |
+        echo "🔐 Recherche d'informations sensibles..."
+        # Recherche de clés API, mots de passe, etc.
+        if grep -r -i "password\|secret\|key\|token" --include="*.swift" --include="*.plist" . | grep -v "// TODO\|// FIXME"; then
+          echo "⚠️  Informations sensibles détectées!"
+          exit 1
+        else
+          echo "✅ Aucune information sensible détectée"
+        fi
+    
+    - name: 🔍 Vérification des dépendances
+      run: |
+        echo "📦 Analyse des dépendances..."
+        if [ -f "Package.resolved" ]; then
+          echo "✅ Package.resolved trouvé"
+          cat Package.resolved
+        fi
+
+  code-quality:
+    name: 📏 Qualité du Code
+    runs-on: macos-latest
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+    
+    - name: 📊 Métriques de code
+      run: |
+        echo "📈 Calcul des métriques..."
+        echo "📁 Nombre de fichiers Swift: $(find . -name "*.swift" -not -path "./Manounou/.build/*" | wc -l)"
+        echo "📝 Lignes de code: $(find . -name "*.swift" -not -path "./Manounou/.build/*" -exec cat {} \; | wc -l)"
+        echo "🔍 TODOs: $(grep -r "TODO" --include="*.swift" . | wc -l)"
+        echo "🐛 FIXMEs: $(grep -r "FIXME" --include="*.swift" . | wc -l)"
+    
+    - name: 🎯 Vérification des standards
+      run: |
+        echo "📋 Vérification des standards de code..."
+        # Vérification des print() statements
+        if grep -r "print(" --include="*.swift" . | grep -v "// DEBUG\|// TODO"; then
+          echo "⚠️  Statements print() détectés (à retirer en production)"
+        fi
+        
+        # Vérification des force unwrapping
+        if grep -r "!" --include="*.swift" . | grep -v "// SAFE\|IBOutlet\|IBAction"; then
+          echo "⚠️  Force unwrapping détecté (à éviter)"
+        fi

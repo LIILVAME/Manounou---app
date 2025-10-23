@@ -370,7 +370,7 @@ enum ErrorSeverity {
 
 // MARK: - Error Views
 
-struct ErrorView: View {
+struct AppErrorView: View {
     let error: AppError
     let onRetry: (() -> Void)?
     let onDismiss: () -> Void
@@ -501,7 +501,7 @@ extension View {
     func errorAlert(errorManager: ErrorStateManager) -> some View {
         self.alert(
             "Erreur",
-            isPresented: .constant(errorManager.currentError != nil),
+            isPresented: Binding(get: { errorManager.isShowingError }, set: { errorManager.isShowingError = $0 }),
             presenting: errorManager.currentError
         ) { error in
             Button("OK") {
@@ -525,7 +525,7 @@ struct ErrorSheetModifier: ViewModifier {
         content
             .sheet(isPresented: $errorManager.isShowingError) {
                 if let error = errorManager.currentError {
-                    ErrorView(
+                    AppErrorView(
                         error: error,
                         onRetry: onRetry,
                         onDismiss: errorManager.clearError

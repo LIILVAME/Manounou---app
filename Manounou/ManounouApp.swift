@@ -16,6 +16,7 @@ struct ManounouApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appContainer)
+                .environmentObject(appContainer.authViewModel)
                 .task {
                     await appContainer.initialize()
                 }
@@ -26,17 +27,18 @@ struct ManounouApp: App {
 // MARK: - ContentView
 struct ContentView: View {
     @EnvironmentObject var appContainer: AppContainer
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     var body: some View {
         Group {
-            if appContainer.authViewModel.isLoading {
+            if authViewModel.isLoading {
                 LoadingView()
-            } else if appContainer.authViewModel.isAuthenticated {
+            } else if authViewModel.isAuthenticated {
                 ModernMainTabView()
                     .environmentObject(appContainer)
             } else {
                 AuthenticationView()
-                    .environmentObject(appContainer.authViewModel)
+                    .environmentObject(authViewModel)
             }
         }
     }
@@ -67,4 +69,5 @@ struct LoadingView: View {
 #Preview {
     ContentView()
         .environmentObject(AppContainer.shared)
+        .environmentObject(AppContainer.shared.authViewModel)
 }

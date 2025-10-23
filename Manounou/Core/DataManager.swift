@@ -32,8 +32,13 @@ class DataManager: ObservableObject {
         } else {
             // Default Supabase configuration using Config values
             self.supabaseClient = SupabaseClient(
-                supabaseURL: Config.supabaseAPIURL,
-                supabaseKey: Config.supabaseAnonKey
+                supabaseURL: URL(string: Config.supabaseURL)!,
+                supabaseKey: Config.supabaseAnonKey,
+                options: SupabaseClientOptions(
+                    auth: SupabaseClientOptions.AuthOptions(
+                        autoRefreshToken: true
+                    )
+                )
             )
         }
     }

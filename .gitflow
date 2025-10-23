@@ -1,0 +1,17 @@
+# Configuration Git Flow pour Manounou
+# Stratégie de branchement standardisée
+
+[gitflow "branch"]
+    master = main
+    develop = develop
+
+[gitflow "prefix"]
+    feature = feature/
+    bugfix = bugfix/
+    release = release/
+    hotfix = hotfix/
+    support = support/
+    versiontag = v
+
+[gitflow "path"]
+    hooks = .git/hooks

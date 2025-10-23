@@ -1,72 +1,88 @@
 #!/bin/bash
 
-# Script simplifié pour compilation simulateur uniquement
-# Évite les modifications du projet et utilise des paramètres de build spécifiques
+# Script de build automatisé pour simulateur iOS
+# Partie du pipeline de build automatisé
 
 set -e
 
-echo "🔧 Compilation Manounou pour simulateur uniquement..."
+echo "🔧 Build automatisé Manounou - Simulateur iOS"
+echo "================================================"
 
 PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
 cd "$PROJECT_DIR"
 
-# Nettoyer le cache
-echo "🧹 Nettoyage du cache..."
+# Étape 1: Nettoyage
+echo "🧹 Nettoyage du cache et des artefacts précédents..."
 rm -rf ~/Library/Developer/Xcode/DerivedData/Manounou-* || true
+rm -rf build/ || true
 
-# Lister les simulateurs disponibles
-echo "📱 Simulateurs disponibles :"
-xcrun simctl list devices available | grep "iPhone 15" | head -3
+# Étape 2: Vérification des dépendances
+echo "📦 Vérification des dépendances Swift Package Manager..."
+if [ -f "Manounou/Package.swift" ]; then
+    cd Manounou
+    swift package resolve
+    cd ..
+fi
 
-# Paramètres de build pour éviter les problèmes de signature
+# Étape 3: Détection automatique du simulateur
+echo "📱 Détection du simulateur disponible..."
+SIMULATOR=$(xcrun simctl list devices available | grep "iPhone" | grep -E "(16 Pro|SE)" | head -1 | sed 's/.*name:\([^}]*\).*/\1/' | xargs)
+
+if [ -z "$SIMULATOR" ]; then
+    echo "❌ Aucun simulateur iPhone disponible"
+    exit 1
+fi
+
+echo "✅ Simulateur sélectionné: $SIMULATOR"
+
+# Étape 4: Configuration de build pour simulateur
 BUILD_SETTINGS=(
     "CODE_SIGN_IDENTITY="
     "CODE_SIGN_STYLE=Manual"
     "DEVELOPMENT_TEAM="
     "PROVISIONING_PROFILE_SPECIFIER="
     "ONLY_ACTIVE_ARCH=YES"
+    "SKIP_INSTALL=NO"
 )
 
-# Construire la chaîne de paramètres
 BUILD_PARAMS=""
 for setting in "${BUILD_SETTINGS[@]}"; do
     BUILD_PARAMS="$BUILD_PARAMS $setting"
 done
 
-echo "🔨 Compilation pour simulateur..."
-echo "Paramètres utilisés : $BUILD_PARAMS"
+# Étape 5: Compilation
+echo "🔨 Compilation en cours..."
+echo "Destination: platform=iOS Simulator,name=$SIMULATOR"
 
-# Compilation avec paramètres spécifiques
 if xcodebuild clean build \
     -project Manounou.xcodeproj \
     -scheme Manounou \
-    -destination 'platform=iOS Simulator,name=iPhone 15' \
+    -destination "platform=iOS Simulator,name=$SIMULATOR" \
     $BUILD_PARAMS \
     -quiet; then
     
-    echo "✅ Compilation réussie !"
     echo ""
-    echo "🚀 Pour lancer l'application :"
-    echo "   1. Ouvrez Xcode"
-    echo "   2. Sélectionnez un simulateur iPhone"
-    echo "   3. Appuyez sur Cmd+R pour lancer"
+    echo "✅ BUILD RÉUSSI !"
+    echo "================================================"
+    echo "📊 Résumé du build:"
+    echo "   • Projet: Manounou"
+    echo "   • Plateforme: iOS Simulator"
+    echo "   • Simulateur: $SIMULATOR"
+    echo "   • Configuration: Debug"
     echo ""
-    echo "📱 Ou utilisez le script de test :"
-    echo "   ./test_modern_app.sh"
+    echo "🚀 Prochaines étapes:"
+    echo "   1. Exécuter les tests: ./run_tests.sh"
+    echo "   2. Lancer dans Xcode pour test manuel"
+    echo ""
     
 else
-    echo "❌ Échec de compilation"
     echo ""
-    echo "🔍 Solutions possibles :"
-    echo "1. Ouvrez Xcode et configurez manuellement :"
-    echo "   - Allez dans Project Settings > Signing & Capabilities"
-    echo "   - Décochez 'Automatically manage signing'"
-    echo "   - Laissez 'Provisioning Profile' vide"
-    echo "   - Sélectionnez un simulateur comme destination"
-    echo ""
-    echo "2. Ou ajoutez votre compte développeur Apple :"
-    echo "   - Xcode > Preferences > Accounts"
-    echo "   - Cliquez sur '+' et ajoutez votre Apple ID"
+    echo "❌ ÉCHEC DE COMPILATION"
+    echo "================================================"
+    echo "🔍 Solutions possibles:"
+    echo "   1. Vérifiez les erreurs de compilation dans Xcode"
+    echo "   2. Assurez-vous que toutes les dépendances sont installées"
+    echo "   3. Vérifiez la configuration de signature"
     echo ""
     exit 1
 fi

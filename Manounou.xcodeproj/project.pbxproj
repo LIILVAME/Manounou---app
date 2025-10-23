@@ -32,6 +32,7 @@
 		9AC23C1599CB4C42A03957F9 /* DateFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697B6B89AEA94E46A045168A /* DateFormatters.swift */; };
 		643654AD96B049078D424965 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1035273F76B4E6DBB93CFE6 /* UserProfile.swift */; };
 		4BDFBCE5DA754313AA01BD01 /* ModernMainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9535523DCC48A3AB5A1047 /* ModernMainTabView.swift */; };
+F0A1B2C3D4E5F60718293A4C /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A4B /* Logger.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		2F3B8D9B08B24E61A7DE195D /* SecureConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/SecureConfig.swift; sourceTree = "<group>"; };
 		697B6B89AEA94E46A045168A /* DateFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/DateFormatters.swift; sourceTree = "<group>"; };
 		3D9535523DCC48A3AB5A1047 /* ModernMainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Views/ModernMainTabView.swift; sourceTree = "<group>"; };
+F0A1B2C3D4E5F60718293A4B /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/Logger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +203,7 @@ A1234567890123456789012A /* ManounouApp.swift in Sources */,
 				4BDFBCE5DA754313AA01BD01 /* ModernMainTabView.swift in Sources */,
 				A1234567890123456789013A /* AuthManager.swift in Sources */,
 				A1234567890123456789013C /* Config.swift in Sources */,
+				F0A1B2C3D4E5F60718293A4C /* Logger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -358,6 +361,7 @@ A1234567890123456789012A /* ManounouApp.swift in Sources */,
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_DISABLE_INCREMENTAL_COMPILATION = YES;
 			};
 			name = Debug;
 		};
