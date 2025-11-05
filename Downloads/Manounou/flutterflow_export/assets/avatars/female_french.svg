@@ -1,0 +1,48 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Visage Studio Ghibli - Fille française -->
+  <defs>
+    <linearGradient id="skinGradientFrenchFemale" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F9E5D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8D0B8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hairGradientBlondFemale" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8C4A8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D4A574;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cheveux longs blonds -->
+  <ellipse cx="100" cy="75" rx="70" ry="55" fill="url(#hairGradientBlondFemale)"/>
+  <path d="M 50 90 Q 45 100, 50 110 Q 55 120, 60 130 Q 65 140, 70 150" stroke="url(#hairGradientBlondFemale)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M 150 90 Q 155 100, 150 110 Q 145 120, 140 130 Q 135 140, 130 150" stroke="url(#hairGradientBlondFemale)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  
+  <!-- Visage -->
+  <ellipse cx="100" cy="110" rx="65" ry="75" fill="url(#skinGradientFrenchFemale)"/>
+  
+  <!-- Yeux bleus -->
+  <ellipse cx="80" cy="100" rx="7" ry="10" fill="#4A90E2"/>
+  <ellipse cx="120" cy="100" rx="7" ry="10" fill="#4A90E2"/>
+  <ellipse cx="80" cy="100" rx="4" ry="7" fill="#1A1A1A"/>
+  <ellipse cx="120" cy="100" rx="4" ry="7" fill="#1A1A1A"/>
+  <ellipse cx="79" cy="99" rx="2" ry="3" fill="#FFFFFF"/>
+  <ellipse cx="119" cy="99" rx="2" ry="3" fill="#FFFFFF"/>
+  
+  <!-- Sourcils fins -->
+  <path d="M 70 88 Q 80 85, 90 88" stroke="#B8935F" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 110 88 Q 120 85, 130 88" stroke="#B8935F" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Nez -->
+  <ellipse cx="100" cy="115" rx="3" ry="5" fill="#E8D0B8"/>
+  
+  <!-- Bouche souriante -->
+  <path d="M 85 130 Q 100 135, 115 130" stroke="#E85A7A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Joues rosées -->
+  <ellipse cx="60" cy="120" rx="10" ry="12" fill="#F8B4A0" opacity="0.6"/>
+  <ellipse cx="140" cy="120" rx="10" ry="12" fill="#F8B4A0" opacity="0.6"/>
+  
+  <!-- Ruban dans les cheveux -->
+  <path d="M 70 70 Q 75 65, 80 70" stroke="#FF6B9D" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 120 70 Q 125 65, 130 70" stroke="#FF6B9D" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>
+

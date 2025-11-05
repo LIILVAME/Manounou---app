@@ -1,0 +1,93 @@
+name: 🧪 CI - Tests & Analyse
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  analyze:
+    name: 📊 Analyse du Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: 'stable'
+
+      - name: 📦 Install dependencies
+        working-directory: ./flutterflow_export
+        run: flutter pub get
+
+      - name: 🔍 Analyse statique
+        working-directory: ./flutterflow_export
+        run: flutter analyze --no-fatal-infos
+
+  test:
+    name: 🧪 Tests Unitaires
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: 'stable'
+
+      - name: 📦 Install dependencies
+        working-directory: ./flutterflow_export
+        run: flutter pub get
+
+      - name: 🧪 Run tests
+        working-directory: ./flutterflow_export
+        run: flutter test --coverage
+
+      - name: 📊 Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./flutterflow_export/coverage/lcov.info
+          flags: unittests
+          name: manounou-coverage
+
+  build-check:
+    name: 🔨 Vérification Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ios, android, web]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: 'stable'
+
+      - name: 📦 Install dependencies
+        working-directory: ./flutterflow_export
+        run: flutter pub get
+
+      - name: 🔨 Build check ${{ matrix.platform }}
+        working-directory: ./flutterflow_export
+        run: |
+          case "${{ matrix.platform }}" in
+            ios)
+              flutter build ios --no-codesign --release
+              ;;
+            android)
+              flutter build apk --release
+              ;;
+            web)
+              flutter build web --release
+              ;;
+          esac
+

@@ -1,0 +1,59 @@
+name: 🚀 CD - Synchronisation FlutterFlow
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'flutterflow_export/**'
+  workflow_dispatch:
+
+jobs:
+  sync-flutterflow:
+    name: 🔄 Sync avec FlutterFlow
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📊 Vérifier changements FlutterFlow
+        run: |
+          echo "## 📋 Changements détectés dans flutterflow_export/" >> sync_report.md
+          git diff --name-only HEAD~1 HEAD -- flutterflow_export/ | head -20 >> sync_report.md || echo "Aucun changement détecté" >> sync_report.md
+          echo "" >> sync_report.md
+          echo "**Note:** Les modifications doivent être synchronisées manuellement dans FlutterFlow." >> sync_report.md
+
+      - name: 📝 Créer issue de synchronisation
+        uses: actions/github-script@v6
+        if: github.event_name == 'push'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('sync_report.md', 'utf8');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔄 Synchronisation FlutterFlow requise',
+              body: report + '\n\n**Action requise:**\n- [ ] Exporter le projet depuis FlutterFlow\n- [ ] Vérifier les changements\n- [ ] Tester sur les plateformes cibles',
+              labels: ['flutterflow', 'sync', 'documentation']
+            });
+
+      - name: 💬 Comment PR
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('sync_report.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: report
+            });
+

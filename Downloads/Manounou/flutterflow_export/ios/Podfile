@@ -1,0 +1,143 @@
+# Uncomment this line to define a global platform for your project
+platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
+  # Exclure sqflite_darwin si possible (solution alternative)
+  # pod 'sqflite_darwin', :modular_headers => false
+  
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  require 'xcodeproj'
+  
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    
+    target.build_configurations.each do |config|
+      # Forcer iOS 12.0 minimum pour tous les pods
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+      
+      # SOLUTION PÉRENNE : Désactiver VerifyModule mais garder le module actif pour le linking
+      if target.name == 'sqflite_darwin'
+        # GARDER DEFINES_MODULE = YES pour permettre le linking (sinon erreurs undefined symbol)
+        config.build_settings['DEFINES_MODULE'] = 'YES'
+        
+        # Permettre les includes non-modulaires pour Flutter headers
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        
+        # DÉSACTIVER UNIQUEMENT la phase VerifyModule (pas les modules)
+        config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
+        config.build_settings['CLANG_ENABLE_MODULE_DEBUGGING'] = 'NO'
+        config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+        
+        # GARDER CLANG_ENABLE_MODULES = YES pour le linking (sinon erreurs undefined symbol)
+        # Ne pas désactiver CLANG_ENABLE_MODULES car cela casse le linking de SQLite
+        
+        # Ajouter tous les chemins possibles pour Flutter headers
+        flutter_headers = [
+          "$(PODS_CONFIGURATION_BUILD_DIR)/Flutter/Flutter.framework/Headers",
+          "$(PODS_ROOT)/../Flutter/Flutter.framework/Headers",
+          "$(SRCROOT)/../Flutter/Flutter.framework/Headers",
+        ]
+        
+        config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+        flutter_headers.each do |path|
+          config.build_settings['HEADER_SEARCH_PATHS'] << path
+        end
+        
+        # sqflite_darwin gère déjà le linking de sqlite3 automatiquement
+        # Ne pas ajouter -lsqlite3 manuellement car cela crée des conflits
+      end
+    end
+    
+    # SOLUTION PÉRENNE : Supprimer TOUTES les phases VerifyModule de sqflite_darwin
+    if target.name == 'sqflite_darwin'
+      # Supprimer toutes les phases shell script contenant modules-verifier
+      phases_to_delete = []
+      target.build_phases.each do |phase|
+        if phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
+          script = phase.shell_script || ''
+          if script.include?('modules-verifier') || 
+             script.include?('VerifyModule') || 
+             script.include?('/usr/bin/modules-verifier')
+            phases_to_delete << phase
+          end
+        end
+      end
+      
+      phases_to_delete.each do |phase|
+        target.build_phases.delete(phase)
+        puts "✅ Phase VerifyModule supprimée pour #{target.name}"
+      end
+      
+      # Forcer les settings pour empêcher la recréation (mais garder le module actif)
+      target.build_configurations.each do |config|
+        config.build_settings['DEFINES_MODULE'] = 'YES'  # GARDER YES pour le linking
+        config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'  # Désactiver uniquement la vérification
+        # Ne pas désactiver CLANG_ENABLE_MODULES car cela casse le linking
+        config.build_settings['CLANG_ENABLE_MODULE_DEBUGGING'] = 'NO'
+      end
+    end
+  end
+  
+  # Modifier directement les fichiers .xcconfig pour sqflite_darwin (PÉRENNE)
+  ['debug', 'release'].each do |config_type|
+    xcconfig_path = File.join(installer.sandbox.root, 'Target Support Files', 'sqflite_darwin', "sqflite_darwin.#{config_type}.xcconfig")
+    if File.exist?(xcconfig_path)
+      content = File.read(xcconfig_path)
+      
+      # GARDER DEFINES_MODULE = YES (pour le linking) mais désactiver uniquement la vérification
+      content.gsub!(/^DEFINES_MODULE = NO$/, 'DEFINES_MODULE = YES')  # S'assurer que c'est YES
+      content += "\nDEFINES_MODULE = YES\n" unless content.include?('DEFINES_MODULE = YES')
+      
+      # Ajouter les paramètres nécessaires
+      content += "\nCLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES\n" unless content.include?('CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES')
+      content += "\nENABLE_MODULE_VERIFIER = NO\n" unless content.include?('ENABLE_MODULE_VERIFIER')
+      content += "\nCLANG_ENABLE_MODULE_DEBUGGING = NO\n" unless content.include?('CLANG_ENABLE_MODULE_DEBUGGING')
+      # Ne pas désactiver CLANG_ENABLE_MODULES car cela casse le linking
+      
+      unless content.include?('HEADER_SEARCH_PATHS')
+        content += "\nHEADER_SEARCH_PATHS = $(inherited) \"$(PODS_CONFIGURATION_BUILD_DIR)/Flutter/Flutter.framework/Headers\" \"$(PODS_ROOT)/../Flutter/Flutter.framework/Headers\" \"$(SRCROOT)/../Flutter/Flutter.framework/Headers\"\n"
+      end
+      
+      File.write(xcconfig_path, content)
+    end
+  end
+  
+  # Sauvegarder le projet modifié
+  installer.pods_project.save
+end

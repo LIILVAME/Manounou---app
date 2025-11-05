@@ -1,0 +1,90 @@
+name: 🚀 CD - Déploiement iOS
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (ex: 1.0.0)'
+        required: true
+
+jobs:
+  build-and-deploy-ios:
+    name: 📱 Build & Deploy iOS
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: 'stable'
+
+      - name: 📦 Install dependencies
+        working-directory: ./flutterflow_export
+        run: flutter pub get
+
+      - name: 🍎 Install CocoaPods
+        working-directory: ./flutterflow_export/ios
+        run: pod install
+
+      - name: 🔨 Build iOS
+        working-directory: ./flutterflow_export
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: 📝 Extract version
+        id: version
+        working-directory: ./flutterflow_export
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/\+.*//')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: 📦 Create IPA
+        working-directory: ./flutterflow_export
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ../../../manounou-${{ steps.version.outputs.version }}+${{ steps.version.outputs.build }}.ipa Payload
+          cd ../../..
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-ipa-${{ steps.version.outputs.version }}
+          path: flutterflow_export/manounou-*.ipa
+          retention-days: 30
+
+      - name: 📝 Release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "## 🚀 Manounou iOS v${{ steps.version.outputs.version }}" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**Build:** ${{ steps.version.outputs.build }}" >> release_notes.md
+          echo "**Date:** $(date +'%Y-%m-%d %H:%M:%S')" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 📋 Changements" >> release_notes.md
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release_notes.md || echo "- Version initiale" >> release_notes.md
+
+      - name: 🏷️ Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: flutterflow_export/manounou-*.ipa
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
