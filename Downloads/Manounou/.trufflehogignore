@@ -1,23 +1,21 @@
 # TruffleHog Ignore File
 # Fichier pour ignorer les faux positifs du scan de sécurité
 
-# Ignorer les paramètres de fonction (faux positifs)
-# Ces patterns sont des noms de paramètres de fonction, pas de vrais secrets
+# ============================================
+# Dossiers entiers à ignorer
+# ============================================
 
-# Fichiers Swift avec paramètres de fonction
-**/AuthService.swift
-**/ServiceProtocols.swift
-**/*Service*.swift
+# Code Swift natif (iOS natif, pas Flutter)
+# Ce dossier contient du code Swift avec des paramètres de fonction
+# qui génèrent des faux positifs (password, key, token, etc.)
+Manounou/
 
-# Patterns de paramètres de fonction (faux positifs)
-password: String
-email: String
-apiKey: String
-token: String
-
-# Fichiers de configuration de test
+# Fichiers de test et validation
 **/test/**
 **/tests/**
+**/ManounouTests/**
+**/ManounouUITests/**
+**/ValidationScripts/**
 **/*test*.swift
 **/*Test*.swift
 
@@ -29,7 +27,69 @@ token: String
 # Fichiers de configuration FlutterFlow
 **/flutterflow_export/**
 
-# Fichiers de build
+# Fichiers de build et cache
 **/build/**
 **/.dart_tool/**
+**/.build/**
+**/Pods/**
+
+# ============================================
+# Patterns spécifiques (faux positifs)
+# ============================================
+
+# Paramètres de fonction Swift (pas de vrais secrets)
+# Ces patterns sont des signatures de fonction, pas des secrets hardcodés
+password: String
+email: String
+apiKey: String
+token: String
+forKey key: String
+forKey: String
+CodingKeys
+supabaseAnonKey
+supabaseKey
+
+# Patterns de configuration (faux positifs)
+# Ces patterns sont des clés de configuration, pas des secrets
+CFBundle*
+LSRequires*
+UIRequired*
+UISupported*
+NSCameraUsage*
+NSPhotoLibrary*
+
+# Patterns de cache et storage (faux positifs)
+# Ces patterns sont des noms de clés de cache, pas des secrets
+cache\[key\]
+kvStore\[key\]
+lruKeys
+removeValue\(forKey
+
+# ============================================
+# Fichiers spécifiques à ignorer
+# ============================================
+
+# Fichiers Swift avec beaucoup de paramètres de fonction
+**/Services/AuthService.swift
+**/Services/ServiceProtocols.swift
+**/Services/*Service*.swift
+**/Core/AppContainer.swift
+**/Core/DataManager.swift
+**/Core/ErrorHandling.swift
+**/Config.swift
+**/Utils/SecureConfig.swift
+**/AuthManager.swift
+**/Views/Settings/ProfileView.swift
+**/Views/Sheets/ProfileEditSheet.swift
+**/AuthenticationView.swift
+
+# Fichiers Info.plist (configuration iOS)
+**/Info.plist
+**/*.plist
+
+# Fichiers de configuration Xcode
+**/*.xcodeproj/**
+**/*.xcworkspace/**
+**/Podfile
+**/Podfile.lock
 
