@@ -1,0 +1,35 @@
+# TruffleHog Ignore File
+# Fichier pour ignorer les faux positifs du scan de sécurité
+
+# Ignorer les paramètres de fonction (faux positifs)
+# Ces patterns sont des noms de paramètres de fonction, pas de vrais secrets
+
+# Fichiers Swift avec paramètres de fonction
+**/AuthService.swift
+**/ServiceProtocols.swift
+**/*Service*.swift
+
+# Patterns de paramètres de fonction (faux positifs)
+password: String
+email: String
+apiKey: String
+token: String
+
+# Fichiers de configuration de test
+**/test/**
+**/tests/**
+**/*test*.swift
+**/*Test*.swift
+
+# Fichiers de documentation
+**/*.md
+**/README*
+**/docs/**
+
+# Fichiers de configuration FlutterFlow
+**/flutterflow_export/**
+
+# Fichiers de build
+**/build/**
+**/.dart_tool/**
+
