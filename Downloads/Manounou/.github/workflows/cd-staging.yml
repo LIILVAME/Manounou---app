@@ -1,0 +1,163 @@
+name: 🚀 CD - Déploiement Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement (staging)'
+        required: true
+        default: 'staging'
+
+env:
+  FLUTTER_VERSION: '3.35.7'
+  WORKING_DIRECTORY: ./flutterflow_export
+
+jobs:
+  build-staging-ios:
+    name: 📱 Build iOS Staging
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: flutter pub get
+
+      - name: 🍎 Install CocoaPods
+        working-directory: ${{ env.WORKING_DIRECTORY }}/ios
+        run: pod install
+
+      - name: 🔨 Build iOS Staging
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL_STAGING || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY_STAGING || secrets.SUPABASE_ANON_KEY }}
+        run: flutter build ios --release --no-codesign --dart-define=ENV=staging
+
+      - name: 📝 Extract version
+        id: version
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/\+.*//')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: 📦 Create IPA
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ../../../manounou-staging-${{ steps.version.outputs.version }}+${{ steps.version.outputs.build }}.ipa Payload
+          cd ../../..
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-staging-${{ steps.version.outputs.version }}
+          path: ${{ env.WORKING_DIRECTORY }}/manounou-staging-*.ipa
+          retention-days: 7
+
+  build-staging-android:
+    name: 📱 Build Android Staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: 🔧 Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: flutter pub get
+
+      - name: 🔨 Build APK Staging
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL_STAGING || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY_STAGING || secrets.SUPABASE_ANON_KEY }}
+        run: flutter build apk --release --dart-define=ENV=staging
+
+      - name: 🔨 Build App Bundle Staging
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL_STAGING || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY_STAGING || secrets.SUPABASE_ANON_KEY }}
+        run: flutter build appbundle --release --dart-define=ENV=staging
+
+      - name: 📝 Extract version
+        id: version
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/\+.*//')
+          BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: 📤 Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-staging-apk-${{ steps.version.outputs.version }}
+          path: ${{ env.WORKING_DIRECTORY }}/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+
+      - name: 📤 Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-staging-aab-${{ steps.version.outputs.version }}
+          path: ${{ env.WORKING_DIRECTORY }}/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 7
+
+  notify-staging:
+    name: 📢 Notification Staging
+    runs-on: ubuntu-latest
+    needs: [build-staging-ios, build-staging-android]
+    if: always()
+    steps:
+      - name: 📢 Create deployment notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `🚀 **Déploiement Staging terminé**
+            
+            **Version:** ${{ needs.build-staging-ios.outputs.version || needs.build-staging-android.outputs.version }}
+            **Build:** ${{ needs.build-staging-ios.outputs.build || needs.build-staging-android.outputs.build }}
+            **Commit:** ${{ github.sha }}
+            **Branche:** ${{ github.ref_name }}
+            
+            **Artifacts disponibles:**
+            - iOS IPA: [Télécharger](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - Android APK/AAB: [Télécharger](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            **Prochaine étape:** Tests manuels requis avant déploiement en production.`;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Staging Deployment - ${{ github.ref_name }}`,
+              body: message,
+              labels: ['staging', 'deployment']
+            });
+

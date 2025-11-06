@@ -24,6 +24,7 @@ jobs:
         with:
           flutter-version: '3.35.7'
           channel: 'stable'
+          cache: true
 
       - name: 📦 Install dependencies
         working-directory: ./flutterflow_export
