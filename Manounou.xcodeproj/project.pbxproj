@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		01403D4ADB9942FC83FAEF53 /* ChildrenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71F7E2C2D30421BA8D27153 /* ChildrenService.swift */; };
+		14DB14389705B87BAAF668B7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E62604755C7C54F51015EDD6 /* Foundation.framework */; };
+		1809A09D420325C2663496BB /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F58B399C76BAC459644DC5 /* SmokeTests.swift */; };
 		184D22FF391641EF99ABE3BF /* FilterTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88988B6FC9EC4D41BB7F24B2 /* FilterTypes.swift */; };
 		4BDFBCE5DA754313AA01BD01 /* ModernMainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9535523DCC48A3AB5A1047 /* ModernMainTabView.swift */; };
 		4C886F1669F248A4AEF22CEC /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17EA7FAFA8146ABAFF2B109 /* User.swift */; };
@@ -40,8 +42,19 @@
 		F2BA37EEE475441AABEB1BB3 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59332336662B40318442EA47 /* AuthService.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		37865E6E3444AEC562E0D0B3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1234567890123456789015D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1234567890123456789014F;
+			remoteInfo = Manounou;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		019A504BFAFD48AAA8528B08 /* ServiceProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/ServiceProtocols.swift; sourceTree = "<group>"; };
+		24517F7365D21CB5418F5230 /* ManounouTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = ManounouTests.xctest; path = ManounouTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModernDocumentsView.swift; path = Views/Documents/ModernDocumentsView.swift; sourceTree = "<group>"; };
 		2F3B8D9B08B24E61A7DE195D /* SecureConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/SecureConfig.swift; sourceTree = "<group>"; };
 		35167E770DEC41C1B8B16613 /* ErrorHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Core/ErrorHandling.swift; sourceTree = "<group>"; };
@@ -69,9 +82,11 @@
 		DAECDFBF276149AB9F9721D9 /* DocumentsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/DocumentsService.swift; sourceTree = "<group>"; };
 		DCB8E6B73FE0AF6E3B3C3623 /* OnboardingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = Views/Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
 		E1035273F76B4E6DBB93CFE6 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Models/UserProfile.swift; sourceTree = "<group>"; };
+		E62604755C7C54F51015EDD6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		E71F7E2C2D30421BA8D27153 /* ChildrenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/ChildrenService.swift; sourceTree = "<group>"; };
 		EC538ACAB64D459FBAE0181C /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/CacheService.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F60718293A4B /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/Logger.swift; sourceTree = "<group>"; };
+		F8F58B399C76BAC459644DC5 /* SmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmokeTests.swift; path = ManounouTests/SmokeTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,9 +98,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B1C37D8BE703D4978800BA1D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14DB14389705B87BAAF668B7 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		18095CF67976A1F976743909 /* ManounouTests */ = {
+			isa = PBXGroup;
+			children = (
+				F8F58B399C76BAC459644DC5 /* SmokeTests.swift */,
+			);
+			name = ManounouTests;
+			sourceTree = SOURCE_ROOT;
+		};
 		A1234567890123456789014C /* Manounou */ = {
 			isa = PBXGroup;
 			children = (
@@ -107,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				A1234567890123456789014A /* Manounou.app */,
+				24517F7365D21CB5418F5230 /* ManounouTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,7 +148,25 @@
 			children = (
 				A1234567890123456789014C /* Manounou */,
 				A1234567890123456789014D /* Products */,
+				B219BCBB5A7A7C181033B948 /* Frameworks */,
+				18095CF67976A1F976743909 /* ManounouTests */,
 			);
+			sourceTree = "<group>";
+		};
+		B219BCBB5A7A7C181033B948 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BF9E0B5EE15449C8566935A4 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BF9E0B5EE15449C8566935A4 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				E62604755C7C54F51015EDD6 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -141,6 +191,24 @@
 			productName = Manounou;
 			productReference = A1234567890123456789014A /* Manounou.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F16662BD49FAD2FC68A1FBBA /* ManounouTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 25EDA7C3FEDCD7F42DE217E4 /* Build configuration list for PBXNativeTarget "ManounouTests" */;
+			buildPhases = (
+				054754A230FB5495E82116D7 /* Sources */,
+				B1C37D8BE703D4978800BA1D /* Frameworks */,
+				825D31C8EFDE13F3F98A82E8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9B9A74913A74DBB284BA2F11 /* PBXTargetDependency */,
+			);
+			name = ManounouTests;
+			productName = ManounouTests;
+			productReference = 24517F7365D21CB5418F5230 /* ManounouTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -174,11 +242,19 @@
 			projectRoot = "";
 			targets = (
 				A1234567890123456789014F /* Manounou */,
+				F16662BD49FAD2FC68A1FBBA /* ManounouTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		825D31C8EFDE13F3F98A82E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A1234567890123456789015C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -189,6 +265,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		054754A230FB5495E82116D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1809A09D420325C2663496BB /* SmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A1234567890123456789015B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -228,7 +312,53 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		9B9A74913A74DBB284BA2F11 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Manounou;
+			target = A1234567890123456789014F /* Manounou */;
+			targetProxy = 37865E6E3444AEC562E0D0B3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		5A6171128F739DA32FFAA39C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vametoure.manounou.ManounouTests;
+				PRODUCT_NAME = ManounouTests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Manounou.app/Manounou";
+			};
+			name = Debug;
+		};
+		61D8E5D821F8CA767D58E324 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vametoure.manounou.ManounouTests;
+				PRODUCT_NAME = ManounouTests;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Manounou.app/Manounou";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		A1234567890123456789015F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -419,6 +549,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		25EDA7C3FEDCD7F42DE217E4 /* Build configuration list for PBXNativeTarget "ManounouTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61D8E5D821F8CA767D58E324 /* Release */,
+				5A6171128F739DA32FFAA39C /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A1234567890123456789015A /* Build configuration list for PBXNativeTarget "Manounou" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

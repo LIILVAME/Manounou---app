@@ -43,7 +43,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "CE992BE2C8F1454CAF423A1A"
+               BlueprintIdentifier = "F16662BD49FAD2FC68A1FBBA"
                BuildableName = "ManounouTests.xctest"
                BlueprintName = "ManounouTests"
                ReferencedContainer = "container:Manounou.xcodeproj">

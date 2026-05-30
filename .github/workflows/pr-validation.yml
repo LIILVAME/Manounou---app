@@ -37,8 +37,10 @@ jobs:
         TITLE="${{ github.event.pull_request.title }}"
         echo "📝 Validation du titre: $TITLE"
         
-        # Vérification du format conventionnel
-        if [[ ! "$TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+ ]]; then
+        # Vérification du format conventionnel (regex en variable pour préserver
+        # l'espace dans le motif — sinon bash lève "syntax error in conditional expression")
+        CONVENTIONAL='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?:[[:space:]].+'
+        if [[ ! "$TITLE" =~ $CONVENTIONAL ]]; then
           echo "❌ Le titre de la PR doit suivre le format conventionnel:"
           echo "   feat(scope): description"
           echo "   fix(scope): description"
@@ -89,8 +91,9 @@ jobs:
         while IFS= read -r message; do
           echo "🔍 Validation: $message"
           
-          # Vérification du format conventionnel
-          if [[ ! "$message" =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+ ]]; then
+          # Vérification du format conventionnel (regex en variable, cf. plus haut)
+          CONVENTIONAL='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?:[[:space:]].+'
+          if [[ ! "$message" =~ $CONVENTIONAL ]]; then
             echo "❌ Message non conforme: $message"
             echo "   Format attendu: type(scope): description"
             exit 1

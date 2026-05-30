@@ -8,7 +8,7 @@ set -e
 echo "🧪 Pipeline de Tests Automatisés - Manounou"
 echo "============================================"
 
-PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 # Étape 1: Nettoyage des artefacts de test
@@ -19,10 +19,10 @@ mkdir -p test-results
 
 # Étape 2: Détection du simulateur pour les tests
 echo "📱 Configuration du simulateur de test..."
-SIMULATOR=$(xcrun simctl list devices available | grep "iPhone SE (3rd generation)" | head -1 | sed 's/.*name:\([^}]*\).*/\1/' | xargs)
+SIMULATOR=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+( Pro( Max)?| Plus| mini)?" | head -1)
 
 if [ -z "$SIMULATOR" ]; then
-    echo "❌ Simulateur iPhone SE non disponible pour les tests"
+    echo "❌ Aucun simulateur iPhone disponible pour les tests"
     exit 1
 fi
 
