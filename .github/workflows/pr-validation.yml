@@ -2,7 +2,7 @@ name: 🔍 Validation Pull Request - Manounou
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
     branches: [ main, dev ]
 
 # Least privilege (best practice 2026) : lecture seule, juste ce qu'il faut pour lire la PR
