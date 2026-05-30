@@ -62,10 +62,10 @@ Avant `git add`, Claude vérifie :
 
 Avant chaque `git push` :
 
-1. La branche **n'est pas** `main` (cf. `CONTRIBUTING.md` §1 — modèle trunk-based).
+1. La branche **n'est pas** `main` ni `dev` (cf. `CONTRIBUTING.md` §1).
 2. Le nom de branche respecte `prefix/kebab-case` (cf. §2 du CONTRIBUTING).
 3. Tous les commits de la branche respectent le format Conventional Commits (validé aussi par `pr-validation.yml`).
-4. La PR cible **`main`** (tronc unique).
+4. La PR cible **`dev`** (sauf hotfix → `main`).
 5. Re-rouler build + tests si plusieurs commits ont été ajoutés depuis le dernier check.
 
 ---
@@ -77,7 +77,7 @@ Après push réussi, Claude rapporte **dans ce format exact** :
 ```
 ✅ Branche [prefix/nom] poussée
    Checks : build ✓ · tests ✓ · secrets ✓
-   PR à créer : [prefix/nom] → main
+   PR à créer : [prefix/nom] → dev
 ```
 
 Si un check a été skip pour cause de scope (ex : changement doc-only), le préciser :
@@ -85,7 +85,7 @@ Si un check a été skip pour cause de scope (ex : changement doc-only), le pré
 ```
 ✅ Branche docs/readme-cleanup poussée
    Checks : doc-only (git diff --check ✓)
-   PR à créer : docs/readme-cleanup → main
+   PR à créer : docs/readme-cleanup → dev
 ```
 
 ---
@@ -96,8 +96,8 @@ Pour rendre ces règles applicables côté CI/CD sans dépendre de Claude :
 
 - **SwiftLint + swift-format** : ajouter un `.swiftlint.yml` à la racine et une phase de build (ou un hook pre-commit) qui les exécute sur les fichiers Swift staged.
 - **Séparation multi-environnement (optionnel)** : si besoin de cibler dev/staging/prod avec des projets Supabase distincts, externaliser URL + clé `anon` dans des `.xcconfig` par configuration, lus via `SecureConfig`. Non requis pour la sécurité (la clé `anon` est publique) — seule la séparation d'environnement le justifie.
-- **GitHub Actions** : les workflows `ci.yml` et `pr-validation.yml` exécutent build + tests + scan de secrets sur chaque PR vers `main`. Aucun merge possible si rouge.
-- **Branch protection** sur `main` : require status checks + require PR review.
+- **GitHub Actions** : les workflows `ci.yml` et `pr-validation.yml` exécutent build + tests + scan de secrets sur chaque PR vers `dev` et `main`. Aucun merge possible si rouge.
+- **Branch protection** sur `main` et `dev` : require status checks + require PR review.
 - **Secret scanning + push protection** activés côté GitHub.
 
 Quand ces garde-fous sont en place, ils deviennent la source de vérité ; Claude continue de tourner les checks localement pour rapport immédiat, mais le CI tranche.
