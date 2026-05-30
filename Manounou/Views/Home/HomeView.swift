@@ -162,7 +162,7 @@ struct HomeView: View {
             MessagesView()
         }
         .sheet(isPresented: $showingDeclaration) {
-            DeclarationOverlay()
+            PajemploiView(declaration: .sample)
         }
     }
 
@@ -1126,124 +1126,5 @@ struct NotificationsOverlay: View {
         }
         .padding(11)
         .background(RoundedRectangle(cornerRadius: 14).fill(item.unread ? AppTheme.Colors.brandGhost : Color.clear))
-    }
-}
-
-// MARK: Déclaration Pajemploi
-
-/// Overlay Déclaration : net du mois calculé + extrait copiable (cf. « Focus Overlays »).
-/// Montants représentatifs tant que le calcul Pajemploi réel n'est pas branché.
-struct DeclarationOverlay: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var declared = false
-
-    private let lines: [(String, String)] = [
-        ("Heures d'accueil", "86 h"),
-        ("Salaire net", "387,00 €"),
-        ("Indemnités d'entretien", "70,00 €")
-    ]
-
-    private func monthName(_ offset: Int) -> String {
-        let d = Calendar.current.date(byAdding: .month, value: offset, to: Date()) ?? Date()
-        let f = DateFormatter(); f.locale = Locale(identifier: "fr_FR"); f.dateFormat = "LLLL yyyy"
-        return f.string(from: d).capitalized
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    // Hero
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("NET À PAYER À FATOU")
-                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white.opacity(0.92)).tracking(1)
-                        Text("472,00 €")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        HStack(spacing: 18) {
-                            heroStat("Heures", "86 h")
-                            heroStat("Jours", "20")
-                            Spacer()
-                            Text("avant le 5 \(monthName(1).components(separatedBy: " ").first ?? "")")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.9))
-                        }
-                    }
-                    .padding(18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 22).fill(AppTheme.Colors.brand))
-                    .shadow(color: AppTheme.Colors.brand.opacity(0.45), radius: 16, y: 10)
-
-                    // À reporter
-                    HStack {
-                        Text("À REPORTER SUR PAJEMPLOI")
-                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                            .foregroundColor(AppTheme.Colors.muted).tracking(1)
-                        Spacer()
-                        Button {
-                            UIPasteboard.general.string =
-                                "Heures: 86 h\nSalaire net: 387,00 €\nIndemnités: 70,00 €\nNet à payer: 472,00 €"
-                        } label: {
-                            Label("Copier", systemImage: "doc.on.doc")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(AppTheme.Colors.brand)
-                        }
-                    }
-                    .padding(.top, 4)
-
-                    VStack(spacing: 0) {
-                        ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
-                            extractLine(l.0, l.1, total: false)
-                            Rectangle().fill(AppTheme.Colors.divider).frame(height: 1)
-                        }
-                        extractLine("Net à payer", "472,00 €", total: true)
-                    }
-                    .padding(.horizontal, 14)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(AppTheme.Colors.surface))
-                    .shadow(color: AppTheme.Shadow.small.color, radius: AppTheme.Shadow.small.radius, y: 1)
-
-                    Button {
-                        declared = true
-                    } label: {
-                        Text(declared ? "Déclaré ✓" : "Marquer comme déclaré")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity).frame(height: 48)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(declared ? AppTheme.Colors.green : AppTheme.Colors.brand))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 4)
-                }
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.md)
-            }
-            .background(AppTheme.Colors.paper.ignoresSafeArea())
-            .navigationTitle(monthName(0))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Fermer") { dismiss() }.foregroundColor(AppTheme.Colors.brand)
-                }
-            }
-        }
-    }
-
-    private func heroStat(_ k: String, _ v: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(k).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.85))
-            Text(v).font(.system(size: 17, weight: .bold, design: .rounded)).foregroundColor(.white)
-        }
-    }
-
-    private func extractLine(_ label: String, _ value: String, total: Bool) -> some View {
-        HStack {
-            Text(label).font(.system(size: total ? 14 : 13.5, weight: total ? .heavy : .bold, design: .rounded))
-                .foregroundColor(AppTheme.Colors.ink)
-            Spacer()
-            Text(value).font(.system(size: total ? 17 : 14, weight: .bold, design: .rounded))
-                .foregroundColor(total ? AppTheme.Colors.brand : AppTheme.Colors.ink)
-        }
-        .padding(.vertical, 11)
     }
 }
