@@ -80,6 +80,7 @@ struct HomeView: View {
     @State private var showingAddEvent      = false
     @State private var showingAddDocument   = false
     @State private var showingMessages      = false
+    @State private var showingDeclaration   = false
 
     @State private var navigateToCalendar   = false
     @State private var navigateToDocuments  = false
@@ -102,6 +103,9 @@ struct HomeView: View {
                             .padding(.top, AppTheme.Spacing.md)
 
                         heroCard
+                            .padding(.horizontal, AppTheme.Spacing.screenPadding)
+
+                        declarationCard
                             .padding(.horizontal, AppTheme.Spacing.screenPadding)
 
                         weeklyStrip
@@ -142,7 +146,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showingNotifications) {
-            notificationsPlaceholder
+            NotificationsOverlay()
         }
         .sheet(isPresented: $showingAddEvent) {
             AddEventSheet()
@@ -155,7 +159,10 @@ struct HomeView: View {
                 .environmentObject(childrenViewModel)
         }
         .sheet(isPresented: $showingMessages) {
-            messagesPlaceholder
+            MessagesView()
+        }
+        .sheet(isPresented: $showingDeclaration) {
+            DeclarationOverlay()
         }
     }
 
@@ -176,8 +183,34 @@ struct HomeView: View {
 
             Spacer()
 
-            notificationButton
+            HStack(spacing: 10) {
+                messagesButton
+                notificationButton
+            }
         }
+    }
+
+    // Messagerie = overlay transverse (cf. « Carte de navigation »), ouvert
+    // depuis l'accueil plutôt que via un onglet dédié.
+    private var messagesButton: some View {
+        Button {
+            showingMessages = true
+        } label: {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.ink)
+                .frame(width: 44, height: 44)
+                .background(AppTheme.Colors.surface)
+                .clipShape(Circle())
+                .shadow(
+                    color: AppTheme.Shadow.small.color,
+                    radius: AppTheme.Shadow.small.radius,
+                    x: AppTheme.Shadow.small.x,
+                    y: AppTheme.Shadow.small.y
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Messagerie")
     }
 
     private var notificationButton: some View {
@@ -207,6 +240,50 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Notifications")
+    }
+
+    // MARK: - Déclaration Pajemploi (rappel)
+
+    /// Rappel de déclaration mensuelle (cf. « Focus Accueil », carte ambre).
+    /// Montants représentatifs tant que le calcul Pajemploi réel n'est pas branché.
+    private var declarationCard: some View {
+        Button { showingDeclaration = true } label: {
+            HStack(spacing: 11) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 11)
+                        .fill(AppTheme.Colors.amber)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "eurosign")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Déclaration \(Self.monthName(offset: 0)) à faire")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.ink)
+                    Text("86 h · 472,00 € — avant le 5 \(Self.monthName(offset: 1))")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(hex: "B07D00"))
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color(hex: "B07D00").opacity(0.7))
+            }
+            .padding(13)
+            .background(RoundedRectangle(cornerRadius: 16).fill(AppTheme.Colors.amber.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.Colors.amber.opacity(0.45), lineWidth: 1.6))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Nom du mois en français, décalé de `offset` mois (0 = mois courant).
+    private static func monthName(offset: Int) -> String {
+        let date = Calendar.current.date(byAdding: .month, value: offset, to: Date()) ?? Date()
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "fr_FR")
+        fmt.dateFormat = "LLLL"
+        return fmt.string(from: date)
     }
 
     // MARK: - Hero Card
@@ -324,8 +401,8 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
 
-        // 3-step progress bar
-        statusProgressBar
+        // 3-segment progress bar
+        heroSegmentBar
 
         // Next info line
         HStack(spacing: AppTheme.Spacing.xs) {
@@ -337,6 +414,10 @@ struct HomeView: View {
                 .font(AppTheme.Typography.callout)
                 .foregroundColor(.white.opacity(0.88))
         }
+
+        // Timeline dépôt → garde → récup (avatars P / F / M)
+        heroTimeline
+            .padding(.top, 4)
     }
 
     private var noChildHeroContent: some View {
@@ -376,60 +457,53 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Status Progress Bar
+    // MARK: Hero progress + timeline (cf. « Focus Accueil »)
 
-    private var statusProgressBar: some View {
-        let steps   = ["Dépôt", "Chez Fatou", "Récup"]
-        let active  = currentStatus.stepIndex
-
-        return HStack(spacing: 0) {
-            ForEach(Array(steps.enumerated()), id: \.offset) { index, label in
-                stepDot(index: index, label: label, activeIndex: active,
-                        isLast: index == steps.count - 1)
+    /// Barre à 3 segments (design `.pgr`).
+    private var heroSegmentBar: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule()
+                    .fill(i <= currentStatus.stepIndex ? Color.white : Color.white.opacity(0.32))
+                    .frame(height: 5)
             }
         }
     }
 
-    @ViewBuilder
-    private func stepDot(
-        index: Int,
-        label: String,
-        activeIndex: Int,
-        isLast: Bool
-    ) -> some View {
-        let isCompleted = index < activeIndex
-        let isCurrent   = index == activeIndex
+    /// Timeline humanisée dépôt → garde → récup avec avatars (design `.stages`).
+    /// Données représentatives en l'absence de modèle de planning ; à brancher
+    /// sur le planning réel quand il existera.
+    private var heroTimeline: some View {
+        HStack(alignment: .top) {
+            heroStage(initial: "P", color: AppTheme.Colors.blue,
+                      title: "Dépôt", time: "8h30", align: .leading)
+            Spacer(minLength: 0)
+            heroStage(initial: "F", color: AppTheme.Colors.brand,
+                      title: "Chez Fatou", time: nil, align: .center)
+            Spacer(minLength: 0)
+            heroStage(initial: "M", color: AppTheme.Colors.purple,
+                      title: "Récup.", time: "17h00", align: .trailing)
+        }
+    }
 
-        HStack(spacing: 0) {
-            VStack(spacing: 5) {
-                ZStack {
-                    if isCurrent {
-                        Circle()
-                            .stroke(Color.white.opacity(0.6), lineWidth: 2)
-                            .frame(width: 18, height: 18)
-                    }
-                    Circle()
-                        .fill(isCompleted || isCurrent
-                              ? Color.white
-                              : Color.white.opacity(0.30))
-                        .frame(width: 10, height: 10)
-                }
-
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(
-                        isCompleted || isCurrent
-                            ? .white
-                            : .white.opacity(0.45)
-                    )
-                    .fixedSize()
+    private func heroStage(initial: String, color: Color, title: String,
+                           time: String?, align: HorizontalAlignment) -> some View {
+        VStack(alignment: align, spacing: 5) {
+            ZStack {
+                Circle().fill(color).frame(width: 30, height: 30)
+                // Bord blanc pour détacher l'avatar du fond rose
+                Circle().stroke(Color.white.opacity(0.85), lineWidth: 1.5).frame(width: 30, height: 30)
+                Text(initial)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
             }
-
-            if !isLast {
-                Rectangle()
-                    .fill(isCompleted ? Color.white : Color.white.opacity(0.28))
-                    .frame(height: 2)
-                    .padding(.bottom, 16)   // visually align with dot center
+            Text(title)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            if let time {
+                Text(time)
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.85))
             }
         }
     }
@@ -447,51 +521,85 @@ struct HomeView: View {
     }
 
     private var weeklyStrip: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<7, id: \.self) { index in
-                let isToday = index == todayWeekdayIndex
-                let isGarde = Self.gardeIndices.contains(index)
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { index in
+                    let isToday = index == todayWeekdayIndex
+                    let isGarde = Self.gardeIndices.contains(index)
 
-                VStack(spacing: 6) {
-                    Text(Self.dayLetters[index])
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(
-                            isToday ? .white : (isGarde ? AppTheme.Colors.ink : AppTheme.Colors.muted)
-                        )
+                    VStack(spacing: 6) {
+                        Text(Self.dayLetters[index])
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(
+                                isToday ? .white : (isGarde ? AppTheme.Colors.ink : AppTheme.Colors.muted)
+                            )
 
-                    Circle()
-                        .fill(
-                            isGarde
-                                ? (isToday ? Color.white : AppTheme.Colors.brand)
-                                : Color.clear
-                        )
-                        .frame(width: 6, height: 6)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    isGarde
-                                        ? (isToday ? Color.white : AppTheme.Colors.brand)
-                                        : AppTheme.Colors.border,
-                                    lineWidth: 1.5
-                                )
-                        )
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.sm)
-                .background(
-                    Group {
-                        if isToday {
-                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                                .fill(AppTheme.Colors.brand)
-                        } else {
-                            Color.clear
-                        }
+                        Circle()
+                            .fill(
+                                isGarde
+                                    ? (isToday ? Color.white : AppTheme.Colors.brand)
+                                    : Color.clear
+                            )
+                            .frame(width: 6, height: 6)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        isGarde
+                                            ? (isToday ? Color.white : AppTheme.Colors.brand)
+                                            : AppTheme.Colors.border,
+                                        lineWidth: 1.5
+                                    )
+                            )
                     }
-                )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .background(
+                        Group {
+                            if isToday {
+                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
+                                    .fill(AppTheme.Colors.brand)
+                            } else {
+                                Color.clear
+                            }
+                        }
+                    )
+                }
             }
+            .padding(.horizontal, AppTheme.Spacing.xs)
+            .padding(.top, AppTheme.Spacing.xs)
+
+            // Footer : type de garde + horaires + raccourci Planning (cf. « Focus Accueil »)
+            HStack(spacing: 8) {
+                Text("Routine")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.brand)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Colors.brandGhost))
+
+                Text("8h30–17h00")
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.ink)
+
+                Spacer(minLength: 0)
+
+                Button { navigateToCalendar = true } label: {
+                    Text("Planning ›")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.brand)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .overlay(
+                Rectangle()
+                    .fill(AppTheme.Colors.divider)
+                    .frame(height: 1),
+                alignment: .top
+            )
+            .padding(.top, 5)
         }
-        .padding(.horizontal, AppTheme.Spacing.xs)
-        .padding(.vertical, AppTheme.Spacing.xs)
         .background(AppTheme.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
         .shadow(
@@ -600,50 +708,6 @@ struct HomeView: View {
     }
 
     // MARK: - Placeholder Sheets
-
-    private var notificationsPlaceholder: some View {
-        NavigationStack {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                Spacer()
-                Image(systemName: "bell.slash")
-                    .font(.system(size: 52, weight: .light, design: .rounded))
-                    .foregroundColor(AppTheme.Colors.muted)
-                Text("Aucune notification")
-                    .font(AppTheme.Typography.title3)
-                    .foregroundColor(AppTheme.Colors.ink)
-                Text("Vos notifications apparaîtront ici")
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.muted)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AppTheme.Colors.paper.ignoresSafeArea())
-            .navigationTitle("Notifications")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    private var messagesPlaceholder: some View {
-        NavigationStack {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                Spacer()
-                Image(systemName: "bubble.left.and.bubble.right")
-                    .font(.system(size: 52, weight: .light, design: .rounded))
-                    .foregroundColor(AppTheme.Colors.muted)
-                Text("Messages")
-                    .font(AppTheme.Typography.title3)
-                    .foregroundColor(AppTheme.Colors.ink)
-                Text("Fonctionnalité disponible prochainement")
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.muted)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AppTheme.Colors.paper.ignoresSafeArea())
-            .navigationTitle("Messages")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
 
     // MARK: - Data Loading
 
@@ -972,3 +1036,214 @@ struct HomeView_Previews: PreviewProvider {
     }
 }
 #endif
+
+// =====================================================================
+// MARK: - Overlays (handoff « Focus Overlays »)
+// =====================================================================
+
+// MARK: Notifications
+
+private struct NotifItem: Identifiable {
+    let id = UUID()
+    let icon: String
+    let color: Color
+    let title: String
+    let time: String
+    let body: String
+    let unread: Bool
+}
+
+/// Overlay Notifications : fil d'activité groupé par moment, actionnable.
+/// Données représentatives (le flux réel viendra du backend).
+struct NotificationsOverlay: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let today: [NotifItem] = [
+        NotifItem(icon: "clock.fill", color: AppTheme.Colors.brand,
+                  title: "Récupération dans 30 min", time: "5 min", body: "Awa · 17h00 par Maman", unread: true),
+        NotifItem(icon: "eurosign", color: AppTheme.Colors.amber,
+                  title: "Déclaration à faire", time: "1 h", body: "Mai · récap prêt — avant le 5 juin", unread: true),
+        NotifItem(icon: "bubble.left.fill", color: AppTheme.Colors.blue,
+                  title: "Fatou", time: "12h10", body: "« Awa a bien dormi 😊 »", unread: true)
+    ]
+    private let yesterday: [NotifItem] = [
+        NotifItem(icon: "checkmark", color: AppTheme.Colors.green,
+                  title: "Awa a été récupérée", time: "Hier", body: "17h05 · par Maman", unread: false)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    section("Aujourd'hui", today)
+                    section("Hier", yesterday)
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.md)
+            }
+            .background(AppTheme.Colors.paper.ignoresSafeArea())
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") { dismiss() }.foregroundColor(AppTheme.Colors.brand)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Tout lire") {}.foregroundColor(AppTheme.Colors.brand)
+                }
+            }
+        }
+    }
+
+    private func section(_ label: String, _ items: [NotifItem]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label.uppercased())
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .foregroundColor(AppTheme.Colors.muted)
+                .tracking(1)
+                .padding(.leading, 4)
+            ForEach(items) { item in row(item) }
+        }
+    }
+
+    private func row(_ item: NotifItem) -> some View {
+        HStack(alignment: .top, spacing: 11) {
+            RoundedRectangle(cornerRadius: 11)
+                .fill(item.color)
+                .frame(width: 36, height: 36)
+                .overlay(Image(systemName: item.icon).font(.system(size: 16, weight: .bold)).foregroundColor(.white))
+            VStack(alignment: .leading, spacing: 1) {
+                HStack {
+                    Text(item.title).font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(AppTheme.Colors.ink)
+                    Spacer()
+                    Text(item.time).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(AppTheme.Colors.muted.opacity(0.8))
+                }
+                Text(item.body).font(.system(size: 12.5, weight: .semibold, design: .rounded)).foregroundColor(AppTheme.Colors.muted)
+            }
+            if item.unread {
+                Circle().fill(AppTheme.Colors.brand).frame(width: 8, height: 8).padding(.top, 6)
+            }
+        }
+        .padding(11)
+        .background(RoundedRectangle(cornerRadius: 14).fill(item.unread ? AppTheme.Colors.brandGhost : Color.clear))
+    }
+}
+
+// MARK: Déclaration Pajemploi
+
+/// Overlay Déclaration : net du mois calculé + extrait copiable (cf. « Focus Overlays »).
+/// Montants représentatifs tant que le calcul Pajemploi réel n'est pas branché.
+struct DeclarationOverlay: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var declared = false
+
+    private let lines: [(String, String)] = [
+        ("Heures d'accueil", "86 h"),
+        ("Salaire net", "387,00 €"),
+        ("Indemnités d'entretien", "70,00 €")
+    ]
+
+    private func monthName(_ offset: Int) -> String {
+        let d = Calendar.current.date(byAdding: .month, value: offset, to: Date()) ?? Date()
+        let f = DateFormatter(); f.locale = Locale(identifier: "fr_FR"); f.dateFormat = "LLLL yyyy"
+        return f.string(from: d).capitalized
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    // Hero
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("NET À PAYER À FATOU")
+                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white.opacity(0.92)).tracking(1)
+                        Text("472,00 €")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        HStack(spacing: 18) {
+                            heroStat("Heures", "86 h")
+                            heroStat("Jours", "20")
+                            Spacer()
+                            Text("avant le 5 \(monthName(1).components(separatedBy: " ").first ?? "")")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 22).fill(AppTheme.Colors.brand))
+                    .shadow(color: AppTheme.Colors.brand.opacity(0.45), radius: 16, y: 10)
+
+                    // À reporter
+                    HStack {
+                        Text("À REPORTER SUR PAJEMPLOI")
+                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.muted).tracking(1)
+                        Spacer()
+                        Button {
+                            UIPasteboard.general.string =
+                                "Heures: 86 h\nSalaire net: 387,00 €\nIndemnités: 70,00 €\nNet à payer: 472,00 €"
+                        } label: {
+                            Label("Copier", systemImage: "doc.on.doc")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.brand)
+                        }
+                    }
+                    .padding(.top, 4)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(lines.enumerated()), id: \.offset) { _, l in
+                            extractLine(l.0, l.1, total: false)
+                            Rectangle().fill(AppTheme.Colors.divider).frame(height: 1)
+                        }
+                        extractLine("Net à payer", "472,00 €", total: true)
+                    }
+                    .padding(.horizontal, 14)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(AppTheme.Colors.surface))
+                    .shadow(color: AppTheme.Shadow.small.color, radius: AppTheme.Shadow.small.radius, y: 1)
+
+                    Button {
+                        declared = true
+                    } label: {
+                        Text(declared ? "Déclaré ✓" : "Marquer comme déclaré")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity).frame(height: 48)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(declared ? AppTheme.Colors.green : AppTheme.Colors.brand))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 4)
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.md)
+            }
+            .background(AppTheme.Colors.paper.ignoresSafeArea())
+            .navigationTitle(monthName(0))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Fermer") { dismiss() }.foregroundColor(AppTheme.Colors.brand)
+                }
+            }
+        }
+    }
+
+    private func heroStat(_ k: String, _ v: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(k).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.85))
+            Text(v).font(.system(size: 17, weight: .bold, design: .rounded)).foregroundColor(.white)
+        }
+    }
+
+    private func extractLine(_ label: String, _ value: String, total: Bool) -> some View {
+        HStack {
+            Text(label).font(.system(size: total ? 14 : 13.5, weight: total ? .heavy : .bold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.ink)
+            Spacer()
+            Text(value).font(.system(size: total ? 17 : 14, weight: .bold, design: .rounded))
+                .foregroundColor(total ? AppTheme.Colors.brand : AppTheme.Colors.ink)
+        }
+        .padding(.vertical, 11)
+    }
+}

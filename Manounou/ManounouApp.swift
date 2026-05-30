@@ -42,12 +42,20 @@ struct RootView: View {
                     }
                     .transition(.opacity)
                 }
-            } else {
+            } else if authViewModel.isSignUpMode {
+                // Inscription / création de foyer (formulaire complet)
                 AuthenticationView()
                     .environmentObject(authViewModel)
+                    .transition(.opacity)
+            } else {
+                // Reconnexion (handoff « Connexion - Déconnecté ») : compte mémorisé + Face ID
+                ReconnectionView()
+                    .environmentObject(authViewModel)
+                    .transition(.opacity)
             }
         }
         .animation(AppTheme.Animation.standard, value: authViewModel.isAuthenticated)
+        .animation(AppTheme.Animation.standard, value: authViewModel.isSignUpMode)
         .animation(AppTheme.Animation.standard, value: hasCompletedOnboarding)
     }
 }
