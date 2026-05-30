@@ -3,7 +3,7 @@ name: 🔍 Validation Pull Request - Manounou
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [ main ]
+    branches: [ main, dev ]
 
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
