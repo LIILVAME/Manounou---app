@@ -1,5 +1,8 @@
 // ModernMainTabView.swift — Manounou
-// Tab navigation: Accueil · Planning · Messages · Documents · Profil
+// Tab navigation (cf. « Carte de navigation ») : 4 onglets
+// Accueil · Planning · Documents · Profil.
+// La Messagerie n'est PAS un onglet : c'est un overlay accessible depuis
+// l'accueil (cf. HomeView). Idem notifications.
 
 import SwiftUI
 import Foundation
@@ -26,24 +29,19 @@ struct ModernMainTabView: View {
                 .tabItem { Label("Planning",  systemImage: "calendar.badge.clock") }
                 .tag(1)
 
-            // 3 — Messages
-            MessagesView()
-                .tabItem { Label("Messages",  systemImage: "bubble.left.and.bubble.right.fill") }
-                .tag(2)
-
-            // 4 — Documents
+            // 3 — Documents
             ModernDocumentsView()
                 .environmentObject(appContainer.documentsViewModel)
                 .environmentObject(appContainer.childrenViewModel)
                 .tabItem { Label("Documents", systemImage: "doc.fill") }
-                .tag(3)
+                .tag(2)
 
-            // 5 — Profil
+            // 4 — Profil
             ProfilFoyerView()
                 .environmentObject(appContainer.authViewModel)
                 .environmentObject(appContainer.childrenViewModel)
                 .tabItem { Label("Profil",    systemImage: "person.crop.circle.fill") }
-                .tag(4)
+                .tag(3)
         }
         .tint(AppTheme.Colors.brand)
         .onAppear { setupTabBarAppearance() }
@@ -147,25 +145,23 @@ struct ProfilFoyerView: View {
 
     private var foyerCard: some View {
         HStack(spacing: 12) {
+            // Icône foyer (solide, cf. design .foyeric)
             Image(systemName: "house.fill")
-                .font(.system(size: 18))
-                .foregroundColor(AppTheme.Colors.brand)
-                .frame(width: 40, height: 40)
-                .background(AppTheme.Colors.brandGhost)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .font(.system(size: 20))
+                .foregroundColor(.white)
+                .frame(width: 46, height: 46)
+                .background(RoundedRectangle(cornerRadius: 13).fill(AppTheme.Colors.brand))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Famille \(authViewModel.currentUser?.lastName ?? "—")")
                     .font(AppTheme.Typography.bodyMedium)
                     .foregroundColor(AppTheme.Colors.ink)
-                Text("\(childrenViewModel.children.count) enfant\(childrenViewModel.children.count == 1 ? "" : "s")")
+                Text(foyerSubtitle)
                     .font(AppTheme.Typography.footnote)
                     .foregroundColor(AppTheme.Colors.muted)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(AppTheme.Colors.muted)
+            stackedMemberAvatars
         }
         .padding(16)
         .background(AppTheme.Colors.surface)
@@ -174,6 +170,31 @@ struct ProfilFoyerView: View {
                 radius: AppTheme.Shadow.card.radius,
                 x: AppTheme.Shadow.card.x,
                 y: AppTheme.Shadow.card.y)
+    }
+
+    private var foyerSubtitle: String {
+        let n = childrenViewModel.children.count
+        return "1 parent · \(n) enfant\(n == 1 ? "" : "s")"
+    }
+
+    /// Avatars empilés (cf. design .stack) : le parent + les enfants réels du foyer.
+    private var stackedMemberAvatars: some View {
+        let members: [(initial: String, color: Color)] =
+            [(initials, AppTheme.Colors.blue)]
+            + childrenViewModel.children.prefix(3).map {
+                (String($0.firstName.prefix(1)).uppercased(), AppTheme.Colors.brand)
+            }
+        return HStack(spacing: -10) {
+            ForEach(Array(members.enumerated()), id: \.offset) { _, m in
+                ZStack {
+                    Circle().fill(m.color).frame(width: 28, height: 28)
+                    Circle().stroke(Color.white, lineWidth: 2.5).frame(width: 28, height: 28)
+                    Text(m.initial)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+            }
+        }
     }
 
     // MARK: - Settings list
