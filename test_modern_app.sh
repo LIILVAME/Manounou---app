@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="Manounou.xcodeproj"
 SCHEME_NAME="Manounou"
 SIMULATOR_ID="4139A0AC-23BF-416E-B6E9-A9B9789E6B07" # iPhone 15

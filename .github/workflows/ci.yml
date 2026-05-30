@@ -2,9 +2,9 @@ name: 🚀 Intégration Continue - Manounou
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   workflow_dispatch:
 
 env:
@@ -95,12 +95,15 @@ jobs:
     - name: 🔍 Scan des secrets
       run: |
         echo "🔐 Recherche d'informations sensibles..."
-        # Recherche de clés API, mots de passe, etc.
-        if grep -r -i "password\|secret\|key\|token" --include="*.swift" --include="*.plist" . | grep -v "// TODO\|// FIXME"; then
-          echo "⚠️  Informations sensibles détectées!"
+        # Détecte de vrais secrets codés en dur (valeur littérale assignée à
+        # une variable au nom sensible), pas la simple présence des mots-clés.
+        PATTERN='(password|passwd|secret|api[_-]?key|apikey|access[_-]?token|auth[_-]?token|private[_-]?key|client[_-]?secret)[[:space:]]*[:=][[:space:]]*"[^"]{8,}"'
+        if grep -rEniH "$PATTERN" --include="*.swift" --include="*.plist" . \
+             | grep -vEi '(""|placeholder|example|your[_-]?|xxx|todo|fixme|<[^>]+>|process(info)?\.|environment|info\.|bundle\.)'; then
+          echo "⚠️  Secret potentiellement codé en dur détecté !"
           exit 1
         else
-          echo "✅ Aucune information sensible détectée"
+          echo "✅ Aucun secret codé en dur détecté"
         fi
     
     - name: 🔍 Vérification des dépendances

@@ -7,7 +7,7 @@ set -e
 
 echo "🔧 Configuration du projet Manounou pour simulateur uniquement..."
 
-PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_FILE="$PROJECT_DIR/Manounou.xcodeproj/project.pbxproj"
 
 # Backup du fichier de projet

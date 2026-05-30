@@ -8,25 +8,25 @@ set -e
 echo "🔧 Build automatisé Manounou - Simulateur iOS"
 echo "================================================"
 
-PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 # Étape 1: Nettoyage
 echo "🧹 Nettoyage du cache et des artefacts précédents..."
 rm -rf ~/Library/Developer/Xcode/DerivedData/Manounou-* || true
 rm -rf build/ || true
+# Le manifeste SPM Manounou/Package.swift est un résidu non utilisé par le
+# projet Xcode ; lancer 'swift package resolve' dessus crée un Manounou/.build
+# qui fait échouer la résolution de paquets d'xcodebuild. On nettoie par sûreté.
+rm -rf Manounou/.build Manounou/Package.resolved || true
 
-# Étape 2: Vérification des dépendances
-echo "📦 Vérification des dépendances Swift Package Manager..."
-if [ -f "Manounou/Package.swift" ]; then
-    cd Manounou
-    swift package resolve
-    cd ..
-fi
+# Étape 2: Résolution des dépendances du projet Xcode
+echo "📦 Résolution des dépendances Swift Package Manager..."
+xcodebuild -resolvePackageDependencies -project Manounou.xcodeproj -scheme Manounou || true
 
 # Étape 3: Détection automatique du simulateur
 echo "📱 Détection du simulateur disponible..."
-SIMULATOR=$(xcrun simctl list devices available | grep "iPhone" | grep -E "(16 Pro|SE)" | head -1 | sed 's/.*name:\([^}]*\).*/\1/' | xargs)
+SIMULATOR=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+( Pro( Max)?| Plus| mini)?" | head -1)
 
 if [ -z "$SIMULATOR" ]; then
     echo "❌ Aucun simulateur iPhone disponible"

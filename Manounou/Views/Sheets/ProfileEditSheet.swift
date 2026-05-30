@@ -107,5 +107,5 @@ struct ProfileEditSheet: View {
 
 #Preview {
     ProfileEditSheet()
-        .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel(authService: MockAuthService()))
 }

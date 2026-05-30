@@ -8,7 +8,7 @@ set -e
 echo "📦 Génération des Artefacts - Manounou"
 echo "======================================"
 
-PROJECT_DIR="/Users/vametoure/Library/Mobile Documents/com~apple~CloudDocs/VAM/PROJETS - STARTUP/Manounou - app"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 # Configuration

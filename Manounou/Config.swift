@@ -12,10 +12,14 @@ struct Config {
     
     // MARK: - Supabase Configuration
     // ✅ Configuration Supabase - Clés configurées
-    // Dashboard Supabase : https://app.supabase.com/project/emgrtgencepzainsknsb
-    
-    static let supabaseURL = "https://emgrtgencepzainsknsb.supabase.co"
-    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZ3J0Z2VuY2VwemFpbnNrbnNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjU3MzcsImV4cCI6MjA3MDc0MTczN30.2TtED_BEXHf6UqgPPcuOOd5YYTZlyqLSZRMoZtO93yM"
+    // Dashboard Supabase : https://app.supabase.com/project/mdrodvshrxvspelmjrhu
+    //
+    // NOTE SÉCURITÉ : la clé `anon` est PUBLIQUE par conception (embarquée dans
+    // le client, protégée côté serveur par les politiques RLS). Ce n'est pas un
+    // secret. Ne JAMAIS placer la clé `service_role` ici.
+
+    static let supabaseURL = "https://mdrodvshrxvspelmjrhu.supabase.co"
+    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kcm9kdnNocnh2c3BlbG1qcmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.EKVHy5aLp_xCo4yyHpA9b1SVFuBmsWY8UK45CvIzuF4"
     
     // URL complète pour l'API
     static var supabaseAPIURL: URL {
