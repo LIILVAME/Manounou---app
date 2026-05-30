@@ -3,7 +3,7 @@ name: 🔍 Validation Pull Request - Manounou
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [ main, develop ]
+    branches: [ main ]
 
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
@@ -81,8 +81,10 @@ jobs:
       run: |
         echo "🔍 Validation des messages de commit..."
         
-        # Récupération des commits de la PR
-        git log --pretty=format:"%s" origin/${{ github.event.pull_request.base.ref }}..HEAD > commit_messages.txt
+        # Récupération des commits de la PR (hors commits de merge : sur un
+        # pull_request, le HEAD est un merge commit auto « Merge X into Y » qui
+        # ne respecte pas le format conventionnel — on l'exclut avec --no-merges)
+        git log --no-merges --pretty=format:"%s" origin/${{ github.event.pull_request.base.ref }}..HEAD > commit_messages.txt
         
         echo "📝 Messages de commit:"
         cat commit_messages.txt
