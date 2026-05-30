@@ -7,11 +7,22 @@ import SwiftUI
 // MARK: - Models
 
 struct SitterSlot: Identifiable {
-    let id = UUID()
+    let id: UUID            // = id de l'événement Supabase sous-jacent
     var date: Date
     var name: String
     var arrive: String
     var leave: String
+
+    /// Construit un créneau d'affichage à partir d'un événement Supabase.
+    init(event: Event) {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        self.id = event.id
+        self.date = event.startDate
+        self.name = event.title
+        self.arrive = f.string(from: event.startDate)
+        self.leave = f.string(from: event.endDate)
+    }
 }
 
 // MARK: - Person colour helper
@@ -44,6 +55,12 @@ private let dayLetters = ["L", "M", "M", "J", "V", "S", "D"]
 
 struct PlanningView: View {
 
+    /// Marqueur (champ `description`) distinguant un créneau baby-sitter des
+    /// autres événements de la table `events`.
+    private static let babysitterTag = "babysitter"
+
+    @EnvironmentObject private var eventsViewModel: EventsViewModel
+
     // MARK: State — editing
 
     @State private var isEditing    = false
@@ -57,7 +74,14 @@ struct PlanningView: View {
     // MARK: State — baby-sitters
 
     @State private var showingAddSitter = false
-    @State private var sitters: [SitterSlot] = []
+
+    /// Créneaux baby-sitter dérivés des événements Supabase (source de vérité).
+    private var sitters: [SitterSlot] {
+        eventsViewModel.events
+            .filter { $0.description == Self.babysitterTag }
+            .sorted { $0.startDate < $1.startDate }
+            .map { SitterSlot(event: $0) }
+    }
 
     // MARK: Body
 
@@ -81,10 +105,48 @@ struct PlanningView: View {
             .background(AppTheme.Colors.paper.ignoresSafeArea())
             .navigationTitle("Planning")
             .navigationBarTitleDisplayMode(.large)
+            .task { await eventsViewModel.loadEvents() }
         }
         .sheet(isPresented: $showingAddSitter) {
-            AddSitterSheet(sitters: $sitters)
+            AddSitterSheet { date, name, arrive, leave in
+                addSitter(date: date, name: name, arrive: arrive, leave: leave)
+            }
         }
+        // Échec d'écriture/chargement Supabase : visible en dev, jamais en prod.
+        .debugErrorAlert($eventsViewModel.errorMessage)
+    }
+
+    // MARK: - Sitter persistence (Supabase events)
+
+    private func addSitter(date: Date, name: String, arrive: String, leave: String) {
+        let start = combine(date, arrive)
+        var end = combine(date, leave)
+        // Respecte la contrainte events_valid_range (end_date >= start_date) :
+        // un créneau qui « passe minuit » bascule la fin au lendemain.
+        if end <= start {
+            end = Calendar.current.date(byAdding: .day, value: 1, to: end) ?? start.addingTimeInterval(3600)
+        }
+        let event = Event(
+            title: name,
+            description: Self.babysitterTag,
+            startDate: start,
+            endDate: end,
+            eventType: EventType(name: "Baby-sitter", icon: "person.fill", color: AppTheme.Colors.brand)
+        )
+        Task { await eventsViewModel.createEvent(event) }
+    }
+
+    private func deleteSitter(_ slot: SitterSlot) {
+        guard let event = eventsViewModel.events.first(where: { $0.id == slot.id }) else { return }
+        Task { await eventsViewModel.deleteEvent(event) }
+    }
+
+    /// Combine un jour et une heure "HH:MM" en une Date.
+    private func combine(_ day: Date, _ hhmm: String) -> Date {
+        let parts = hhmm.split(separator: ":")
+        let h = min(max(Int(parts.first ?? "") ?? 9, 0), 23)
+        let m = parts.count > 1 ? min(max(Int(parts[1]) ?? 0, 0), 59) : 0
+        return Calendar.current.date(bySettingHour: h, minute: m, second: 0, of: day) ?? day
     }
 
     // MARK: - Cette semaine (strip compact, cohérent avec l'accueil)
@@ -283,9 +345,7 @@ struct PlanningView: View {
                     ForEach(Array(sitters.enumerated()), id: \.element.id) { idx, slot in
                         VStack(spacing: 0) {
                             SitterRow(slot: slot) {
-                                withAnimation(AppTheme.Animation.quick) {
-                                    sitters.removeAll { $0.id == slot.id }
-                                }
+                                deleteSitter(slot)
                             }
                             if idx < sitters.count - 1 {
                                 Rectangle()
@@ -354,7 +414,8 @@ struct PlanningView: View {
                         UpcomingCareRow(weekday: entry.weekday,
                                         dateStr: entry.dateStr,
                                         timeRange: entry.timeRange,
-                                        carer: entry.carer)
+                                        dropBy: entry.dropBy,
+                                        pickBy: entry.pickBy)
                         if idx < upcoming.count - 1 {
                             Rectangle()
                                 .fill(AppTheme.Colors.divider)
@@ -374,7 +435,8 @@ struct PlanningView: View {
         let weekday: String
         let dateStr: String
         let timeRange: String
-        let carer: String
+        let dropBy: String
+        let pickBy: String
     }
 
     private func nextCareDays() -> [UpcomingEntry] {
@@ -401,7 +463,8 @@ struct PlanningView: View {
                     weekday: wd,
                     dateStr: dt,
                     timeRange: "\(dropTime.replacingOccurrences(of: ":", with: "h"))–\(pickTime.replacingOccurrences(of: ":", with: "h"))",
-                    carer: "Fatou"
+                    dropBy: dropBy,
+                    pickBy: pickBy
                 ))
             }
         }
@@ -489,7 +552,8 @@ private struct UpcomingCareRow: View {
     let weekday: String
     let dateStr: String
     let timeRange: String
-    let carer: String
+    let dropBy: String
+    let pickBy: String
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
@@ -512,7 +576,14 @@ private struct UpcomingCareRow: View {
                 .background(AppTheme.Colors.brandLight)
                 .clipShape(Capsule())
 
-            PersonChip(name: carer)
+            // Dépose → récup (pilotés par l'éditeur d'horaires)
+            HStack(spacing: 3) {
+                PersonChip(name: dropBy)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(AppTheme.Colors.muted.opacity(0.6))
+                PersonChip(name: pickBy)
+            }
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, 12)
@@ -617,7 +688,8 @@ private struct PlanSectionLabel: View {
 // MARK: - AddSitterSheet
 
 private struct AddSitterSheet: View {
-    @Binding var sitters: [SitterSlot]
+    /// (date, nom, arrivée "HH:MM", départ "HH:MM")
+    let onAdd: (Date, String, String, String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var date       = Date()
@@ -681,14 +753,7 @@ private struct AddSitterSheet: View {
 
                     // Submit
                     Button {
-                        let slot = SitterSlot(
-                            date: date,
-                            name: name.trimmingCharacters(in: .whitespaces),
-                            arrive: arriveTime,
-                            leave: leaveTime
-                        )
-                        sitters.append(slot)
-                        sitters.sort { $0.date < $1.date }
+                        onAdd(date, name.trimmingCharacters(in: .whitespaces), arriveTime, leaveTime)
                         dismiss()
                     } label: {
                         Text("Ajouter")
@@ -736,13 +801,18 @@ private struct AddSitterSheet: View {
 #if DEBUG
 struct PlanningView_Previews: PreviewProvider {
     static var previews: some View {
-        PlanningView()
-            .preferredColorScheme(.light)
-            .previewDisplayName("Light")
+        let container = AppContainer.createForTesting()
+        return Group {
+            PlanningView()
+                .environmentObject(container.eventsViewModel)
+                .preferredColorScheme(.light)
+                .previewDisplayName("Light")
 
-        PlanningView()
-            .preferredColorScheme(.dark)
-            .previewDisplayName("Dark")
+            PlanningView()
+                .environmentObject(container.eventsViewModel)
+                .preferredColorScheme(.dark)
+                .previewDisplayName("Dark")
+        }
     }
 }
 #endif

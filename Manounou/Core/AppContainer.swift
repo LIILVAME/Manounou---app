@@ -154,6 +154,7 @@ class AppContainer: ObservableObject {
     private func clearUserData() {
         eventsViewModel.clearEvents()
         childrenViewModel.clearChildren()
+        documentsViewModel.clearDocuments()
         cacheService.clearCache()
     }
 }
@@ -261,6 +262,28 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
+    func signInWithApple(idToken: String) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let user = try await authService.signInWithApple(idToken: idToken)
+            currentUser = user
+            isAuthenticated = true
+            userProfile = UserProfile(
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
     func checkAuthenticationStatus() async {
         do {
             let user = try await authService.getCurrentUser()
@@ -489,26 +512,105 @@ class DocumentsViewModel: ObservableObject {
     }
     
     func createDocument(_ document: Document) async {
+        await createDocument(document, fileData: nil, fileName: nil, mimeType: nil)
+    }
+
+    /// Crée un document en uploadant d'abord la pièce jointe optionnelle dans
+    /// Supabase Storage (bucket privé `documents`). En cas de `fileData`, les
+    /// champs `file_url` (= chemin de l'objet), `file_name`, `file_size` et
+    /// `mime_type` sont renseignés avant l'insertion en base.
+    func createDocument(_ document: Document, fileData: Data?, fileName: String?, mimeType: String?) async {
+        isLoading = true
+        errorMessage = nil
+        var uploadedPath: String? = nil
         do {
-            _ = try await documentsService.createDocument(document)
+            var toCreate = document
+            if let fileData, let fileName {
+                let path = try await documentsService.uploadFile(
+                    data: fileData,
+                    fileName: fileName,
+                    mimeType: mimeType ?? "application/octet-stream"
+                )
+                uploadedPath = path
+                toCreate.fileUrl = path
+                toCreate.fileName = fileName
+                toCreate.fileSize = fileData.count
+                toCreate.mimeType = mimeType
+            }
+            _ = try await documentsService.createDocument(toCreate)
             await loadDocuments() // Reload to get updated list
         } catch {
+            // Compensation : l'upload a réussi mais l'insertion a échoué →
+            // on supprime l'objet Storage orphelin pour éviter une fuite.
+            if let uploadedPath {
+                try? await documentsService.deleteFile(url: uploadedPath)
+            }
             errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
-    
+
+    /// URL signée temporaire pour consulter la pièce jointe d'un document.
+    func signedURL(for document: Document) async -> URL? {
+        guard let path = document.fileUrl, !path.isEmpty else { return nil }
+        do {
+            return try await documentsService.signedURL(path: path)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func updateDocument(_ document: Document) async {
+        await updateDocument(document, fileData: nil, fileName: nil, mimeType: nil)
+    }
+
+    /// Met à jour un document, en remplaçant la pièce jointe si `fileData` est
+    /// fourni (upload du nouveau fichier puis suppression best-effort de l'ancien).
+    func updateDocument(_ document: Document, fileData: Data?, fileName: String?, mimeType: String?) async {
+        isLoading = true
+        errorMessage = nil
+        let oldPath = document.fileUrl
+        var uploadedPath: String? = nil
         do {
-            _ = try await documentsService.updateDocument(document)
+            var toUpdate = document
+            if let fileData, let fileName {
+                let path = try await documentsService.uploadFile(
+                    data: fileData,
+                    fileName: fileName,
+                    mimeType: mimeType ?? "application/octet-stream"
+                )
+                uploadedPath = path
+                toUpdate.fileUrl = path
+                toUpdate.fileName = fileName
+                toUpdate.fileSize = fileData.count
+                toUpdate.mimeType = mimeType
+            }
+            _ = try await documentsService.updateDocument(toUpdate)
+            // Succès : supprimer best-effort l'ancien fichier remplacé.
+            if uploadedPath != nil, let oldPath, !oldPath.isEmpty, oldPath != toUpdate.fileUrl {
+                try? await documentsService.deleteFile(url: oldPath)
+            }
             await loadDocuments() // Reload to get updated list
         } catch {
+            // Compensation : l'upload du NOUVEAU fichier a réussi mais la mise à
+            // jour a échoué → on supprime l'objet orphelin (l'ancien est conservé).
+            if let uploadedPath {
+                try? await documentsService.deleteFile(url: uploadedPath)
+            }
             errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
-    
+
     func deleteDocument(_ document: Document) async {
+        errorMessage = nil
         do {
             try await documentsService.deleteDocument(id: document.id)
+            // Nettoyage best-effort de la pièce jointe (le row est déjà supprimé).
+            if let path = document.fileUrl, !path.isEmpty {
+                try? await documentsService.deleteFile(url: path)
+            }
             await loadDocuments() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
@@ -529,9 +631,7 @@ class NotificationManager: ObservableObject {
     @Published var hasNotifications = false
     @Published var notificationCount = 0
     
-    init() {
-        requestPermission()
-    }
+    init() {}
     
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in

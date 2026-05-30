@@ -77,7 +77,7 @@ struct HomeView: View {
     // MARK: State
 
     @State private var showingNotifications = false
-    @State private var showingAddEvent      = false
+    @State private var showingAddChild      = false
     @State private var showingAddDocument   = false
     @State private var showingMessages      = false
     @State private var showingDeclaration   = false
@@ -128,7 +128,7 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $navigateToCalendar) {
-                ModernCalendarView()
+                PlanningView()
                     .environmentObject(eventsViewModel)
             }
             .navigationDestination(isPresented: $navigateToDocuments) {
@@ -148,15 +148,18 @@ struct HomeView: View {
         .sheet(isPresented: $showingNotifications) {
             NotificationsOverlay()
         }
-        .sheet(isPresented: $showingAddEvent) {
-            AddEventSheet()
-                .environmentObject(eventsViewModel)
+        .sheet(isPresented: $showingAddChild) {
+            AddChildSheet()
                 .environmentObject(childrenViewModel)
         }
         .sheet(isPresented: $showingAddDocument) {
-            AddDocumentSheet()
-                .environmentObject(documentsViewModel)
-                .environmentObject(childrenViewModel)
+            AddDocumentSheet(children: childrenViewModel.children) { newDocument, fileData, fileName, mimeType in
+                Task {
+                    await documentsViewModel.createDocument(
+                        newDocument, fileData: fileData, fileName: fileName, mimeType: mimeType
+                    )
+                }
+            }
         }
         .sheet(isPresented: $showingMessages) {
             MessagesView()
@@ -443,7 +446,7 @@ struct HomeView: View {
             }
 
             Button {
-                // Navigate to add child — surface this via tab selection or a sheet
+                showingAddChild = true
             } label: {
                 Label("Ajoutez votre enfant", systemImage: "plus.circle.fill")
                     .font(AppTheme.Typography.bodyMedium)
@@ -627,7 +630,7 @@ struct HomeView: View {
                 icon: "star.fill",
                 accentColor: AppTheme.Colors.orange
             ) {
-                showingAddEvent = true
+                navigateToCalendar = true
             }
         }
     }
@@ -647,7 +650,7 @@ struct HomeView: View {
                     message: "Pas d'événement à venir",
                     actionLabel: "Ajouter un événement"
                 ) {
-                    showingAddEvent = true
+                    navigateToCalendar = true
                 }
                 .padding(.horizontal, AppTheme.Spacing.screenPadding)
             } else {
@@ -712,9 +715,12 @@ struct HomeView: View {
     // MARK: - Data Loading
 
     private func loadData() async {
-        async let _ = childrenViewModel.loadChildren()
-        async let _ = eventsViewModel.loadEvents()
-        async let _ = documentsViewModel.loadDocuments()
+        // Chargement concurrent — on attend explicitement les trois, sinon les
+        // `async let` sont implicitement annulés à la sortie de scope.
+        async let children: Void = childrenViewModel.loadChildren()
+        async let events:   Void = eventsViewModel.loadEvents()
+        async let docs:     Void = documentsViewModel.loadDocuments()
+        _ = await (children, events, docs)
     }
 
     // MARK: - Computed Properties
@@ -992,47 +998,14 @@ private struct HomeEmptyStateCard: View {
 #if DEBUG
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            HomeView()
-                .environmentObject(AuthViewModel(authService: MockAuthService()))
-                .environmentObject(ChildrenViewModel(childrenService: MockChildrenService()))
-                .environmentObject(EventsViewModel(eventsService: MockEventsService()))
-                .environmentObject(DocumentsViewModel(documentsService: MockDocumentsService()))
-                .previewDisplayName("Accueil — Direction C (vide)")
-
-            HomeView()
-                .environmentObject(previewAuthVM)
-                .environmentObject(previewChildrenVM)
-                .environmentObject(previewEventsVM)
-                .environmentObject(previewDocsVM)
-                .previewDisplayName("Accueil — Direction C (données)")
-        }
-    }
-
-    // MARK: Preview helpers
-
-    static var previewAuthVM: AuthViewModel {
-        let vm = AuthViewModel(authService: MockAuthService())
-        vm.currentUser = User.sampleUser
-        return vm
-    }
-
-    static var previewChildrenVM: ChildrenViewModel {
-        let vm = ChildrenViewModel(childrenService: MockChildrenService())
-        vm.children = Child.sampleChildren
-        return vm
-    }
-
-    static var previewEventsVM: EventsViewModel {
-        let vm = EventsViewModel(eventsService: MockEventsService())
-        vm.events = Event.sampleEvents
-        return vm
-    }
-
-    static var previewDocsVM: DocumentsViewModel {
-        let vm = DocumentsViewModel(documentsService: MockDocumentsService())
-        vm.documents = Document.sampleDocuments
-        return vm
+        let container = AppContainer.createForTesting()
+        container.childrenViewModel.children = Child.sampleChildren
+        return HomeView()
+            .environmentObject(container.authViewModel)
+            .environmentObject(container.childrenViewModel)
+            .environmentObject(container.eventsViewModel)
+            .environmentObject(container.documentsViewModel)
+            .previewDisplayName("Accueil — Direction C")
     }
 }
 #endif
@@ -1050,7 +1023,7 @@ private struct NotifItem: Identifiable {
     let title: String
     let time: String
     let body: String
-    let unread: Bool
+    var unread: Bool
 }
 
 /// Overlay Notifications : fil d'activité groupé par moment, actionnable.
@@ -1058,7 +1031,7 @@ private struct NotifItem: Identifiable {
 struct NotificationsOverlay: View {
     @Environment(\.dismiss) private var dismiss
 
-    private let today: [NotifItem] = [
+    @State private var today: [NotifItem] = [
         NotifItem(icon: "clock.fill", color: AppTheme.Colors.brand,
                   title: "Récupération dans 30 min", time: "5 min", body: "Awa · 17h00 par Maman", unread: true),
         NotifItem(icon: "eurosign", color: AppTheme.Colors.amber,
@@ -1066,10 +1039,15 @@ struct NotificationsOverlay: View {
         NotifItem(icon: "bubble.left.fill", color: AppTheme.Colors.blue,
                   title: "Fatou", time: "12h10", body: "« Awa a bien dormi 😊 »", unread: true)
     ]
-    private let yesterday: [NotifItem] = [
+    @State private var yesterday: [NotifItem] = [
         NotifItem(icon: "checkmark", color: AppTheme.Colors.green,
                   title: "Awa a été récupérée", time: "Hier", body: "17h05 · par Maman", unread: false)
     ]
+
+    private func markAllRead() {
+        for i in today.indices { today[i].unread = false }
+        for i in yesterday.indices { yesterday[i].unread = false }
+    }
 
     var body: some View {
         NavigationStack {
@@ -1089,7 +1067,7 @@ struct NotificationsOverlay: View {
                     Button("Fermer") { dismiss() }.foregroundColor(AppTheme.Colors.brand)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Tout lire") {}.foregroundColor(AppTheme.Colors.brand)
+                    Button("Tout lire") { markAllRead() }.foregroundColor(AppTheme.Colors.brand)
                 }
             }
         }

@@ -7,6 +7,17 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
+
+/// Lit un fichier choisi via `.fileImporter` en (données, nom, type MIME).
+private func readPickedDocument(_ result: Result<[URL], Error>) -> (data: Data, name: String, mime: String?)? {
+    guard case .success(let urls) = result, let url = urls.first else { return nil }
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
+    return (data, url.lastPathComponent, mime)
+}
 
 struct ModernDocumentsView: View {
     @EnvironmentObject var documentsViewModel: DocumentsViewModel
@@ -48,21 +59,30 @@ struct ModernDocumentsView: View {
                 }
             }
             .sheet(isPresented: $showingAddDocument) {
-                AddDocumentSheet(children: childrenViewModel.children) { newDocument in
+                AddDocumentSheet(children: childrenViewModel.children) { newDocument, fileData, fileName, mimeType in
                     Task {
-                        await documentsViewModel.createDocument(newDocument)
+                        await documentsViewModel.createDocument(
+                            newDocument, fileData: fileData, fileName: fileName, mimeType: mimeType
+                        )
                     }
                 }
             }
             .sheet(item: $selectedDocument) { document in
                 DocumentDetailSheet(
                     document: document,
-                    children: childrenViewModel.children
-                ) { updatedDocument in
-                    Task {
-                        await documentsViewModel.updateDocument(updatedDocument)
+                    children: childrenViewModel.children,
+                    onOpen: { await documentsViewModel.signedURL(for: document) },
+                    onDelete: {
+                        Task { await documentsViewModel.deleteDocument(document) }
+                    },
+                    onSave: { updatedDocument, fileData, fileName, mimeType in
+                        Task {
+                            await documentsViewModel.updateDocument(
+                                updatedDocument, fileData: fileData, fileName: fileName, mimeType: mimeType
+                            )
+                        }
                     }
-                }
+                )
             }
             .task {
                 await loadData()
@@ -72,6 +92,8 @@ struct ModernDocumentsView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Rechercher des documents...")
+        // Échec d'écriture/upload/chargement Supabase : visible en dev, jamais en prod.
+        .debugErrorAlert($documentsViewModel.errorMessage)
     }
     
     private var filteredDocuments: [Document] {
@@ -405,14 +427,21 @@ struct AddDocumentButton: View {
 struct AddDocumentSheet: View {
     @Environment(\.dismiss) private var dismiss
     let children: [Child]
-    let onSave: (Document) -> Void
-    
+    /// (document, données fichier, nom fichier, type MIME)
+    let onSave: (Document, Data?, String?, String?) -> Void
+
     @State private var title = ""
     @State private var description = ""
     @State private var documentType = DocumentType.other
     @State private var selectedChildId: UUID? = nil
     @State private var isLoading = false
-    
+
+    // Pièce jointe choisie
+    @State private var showFileImporter = false
+    @State private var pickedFileData: Data? = nil
+    @State private var pickedFileName: String? = nil
+    @State private var pickedMimeType: String? = nil
+
     var body: some View {
         NavigationStack {
             Form {
@@ -444,10 +473,39 @@ struct AddDocumentSheet: View {
                 }
                 
                 Section("Fichier") {
-                    Button("Sélectionner un fichier") {
-                        // TODO: Implement file picker
+                    Button(pickedFileName == nil ? "Sélectionner un fichier" : "Changer de fichier") {
+                        showFileImporter = true
                     }
                     .foregroundColor(AppTheme.Colors.primary)
+
+                    if let name = pickedFileName {
+                        HStack {
+                            Image(systemName: "paperclip")
+                            Text(name).lineLimit(1)
+                            Spacer()
+                            Button(role: .destructive) {
+                                pickedFileData = nil
+                                pickedFileName = nil
+                                pickedMimeType = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                        }
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.pdf, .image, .plainText],
+                allowsMultipleSelection: false
+            ) { result in
+                if let picked = readPickedDocument(result) {
+                    pickedFileData = picked.data
+                    pickedFileName = picked.name
+                    pickedMimeType = picked.mime
                 }
             }
             .navigationTitle("Nouveau document")
@@ -474,23 +532,26 @@ struct AddDocumentSheet: View {
     
     private func saveDocument() {
         isLoading = true
-        
+
+        // Les champs fichier et user_id sont renseignés en aval :
+        // - file_* par l'upload Storage (DocumentsViewModel.createDocument)
+        // - user_id par la base via `default auth.uid()` (DTO l'omet).
         let newDocument = Document(
             id: UUID(),
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
             documentType: documentType,
             fileName: nil,
-            fileUrl: nil, // TODO: Implement file handling
+            fileUrl: nil,
             fileSize: nil,
             mimeType: nil,
             childId: selectedChildId,
-            userId: UUID(), // TODO: inject current user id
+            userId: UUID(),
             createdAt: Date(),
             updatedAt: Date()
         )
-        
-        onSave(newDocument)
+
+        onSave(newDocument, pickedFileData, pickedFileName, pickedMimeType)
         dismiss()
     }
 }
@@ -498,19 +559,35 @@ struct AddDocumentSheet: View {
 // MARK: - Document Detail Sheet Component
 struct DocumentDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     let document: Document
     let children: [Child]
-    let onSave: (Document) -> Void
-    
+    let onOpen: () async -> URL?
+    let onDelete: () -> Void
+    /// (document, données fichier, nom fichier, type MIME)
+    let onSave: (Document, Data?, String?, String?) -> Void
+
     @State private var title: String
     @State private var description: String
     @State private var documentType: DocumentType
     @State private var selectedChildId: UUID?
     @State private var isLoading = false
-    
-    init(document: Document, children: [Child], onSave: @escaping (Document) -> Void) {
+
+    // Remplacement de pièce jointe
+    @State private var showFileImporter = false
+    @State private var pickedFileData: Data? = nil
+    @State private var pickedFileName: String? = nil
+    @State private var pickedMimeType: String? = nil
+
+    init(document: Document,
+         children: [Child],
+         onOpen: @escaping () async -> URL?,
+         onDelete: @escaping () -> Void,
+         onSave: @escaping (Document, Data?, String?, String?) -> Void) {
         self.document = document
         self.children = children
+        self.onOpen = onOpen
+        self.onDelete = onDelete
         self.onSave = onSave
         self._title = State(initialValue: document.title)
         self._description = State(initialValue: document.description ?? "")
@@ -549,17 +626,25 @@ struct DocumentDetailSheet: View {
                 }
                 
                 Section("Fichier") {
-                    if let fileName = document.fileName {
+                    if let fileName = pickedFileName ?? document.fileName {
                         HStack {
-                            Text("Fichier actuel")
+                            Text(pickedFileName == nil ? "Fichier actuel" : "Nouveau fichier")
                             Spacer()
                             Text(fileName)
                                 .foregroundColor(AppTheme.Colors.textSecondary)
+                                .lineLimit(1)
                         }
                     }
-                    
-                    Button("Remplacer le fichier") {
-                        // TODO: Implement file picker
+
+                    if document.fileUrl != nil && pickedFileName == nil {
+                        Button("Ouvrir le fichier") {
+                            Task { if let url = await onOpen() { openURL(url) } }
+                        }
+                        .foregroundColor(AppTheme.Colors.primary)
+                    }
+
+                    Button(document.fileName == nil ? "Ajouter un fichier" : "Remplacer le fichier") {
+                        showFileImporter = true
                     }
                     .foregroundColor(AppTheme.Colors.primary)
                 }
@@ -589,6 +674,30 @@ struct DocumentDetailSheet: View {
                                 .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        onDelete()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("Supprimer le document", systemImage: "trash")
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.pdf, .image, .plainText],
+                allowsMultipleSelection: false
+            ) { result in
+                if let picked = readPickedDocument(result) {
+                    pickedFileData = picked.data
+                    pickedFileName = picked.name
+                    pickedMimeType = picked.mime
                 }
             }
             .navigationTitle("Modifier le document")
@@ -630,8 +739,10 @@ struct DocumentDetailSheet: View {
             createdAt: document.createdAt,
             updatedAt: Date()
         )
-        
-        onSave(updatedDocument)
+
+        // Si une nouvelle pièce jointe a été choisie, elle est uploadée en aval
+        // (DocumentsViewModel.updateDocument) qui écrasera les champs file_*.
+        onSave(updatedDocument, pickedFileData, pickedFileName, pickedMimeType)
         dismiss()
     }
     

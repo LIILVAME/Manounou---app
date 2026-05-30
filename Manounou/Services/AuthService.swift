@@ -25,16 +25,15 @@ class AuthService: AuthServiceProtocol, ObservableObject {
     
     func signIn(email: String, password: String) async throws -> User {
         do {
-            let response = try await supabaseClient.auth.signIn(
+            _ = try await supabaseClient.auth.signIn(
                 email: email,
                 password: password
             )
             
-            // Convert Supabase User to our custom User model
             let customUser = User(
                 email: email,
-                firstName: "User", // TODO: Get from profile
-                lastName: "Name"   // TODO: Get from profile
+                firstName: email.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                lastName: ""
             )
             
             await MainActor.run {
@@ -55,14 +54,11 @@ class AuthService: AuthServiceProtocol, ObservableObject {
                 password: password
             )
             
-            // User is always present in successful response
             let supabaseUser = response.user
-            
-            // Convert to our custom User model
             let customUser = User(
-                email: email,
-                firstName: "New", // TODO: Get from registration form
-                lastName: "User"  // TODO: Get from registration form
+                email: supabaseUser.email ?? email,
+                firstName: email.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                lastName: ""
             )
             
             await MainActor.run {
@@ -76,6 +72,27 @@ class AuthService: AuthServiceProtocol, ObservableObject {
         }
     }
     
+    func signInWithApple(idToken: String) async throws -> User {
+        do {
+            let session = try await supabaseClient.auth.signInWithIdToken(
+                credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken)
+            )
+            let supabaseUser = session.user
+            let customUser = User(
+                email: supabaseUser.email ?? "inconnu@apple.com",
+                firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                lastName: ""
+            )
+            await MainActor.run {
+                self.currentUser = customUser
+                self.isAuthenticated = true
+            }
+            return customUser
+        } catch {
+            throw ServiceError.authenticationError("Connexion Apple échouée: \(error.localizedDescription)")
+        }
+    }
+
     func signOut() async throws {
         do {
             try await supabaseClient.auth.signOut()
@@ -101,12 +118,11 @@ class AuthService: AuthServiceProtocol, ObservableObject {
         do {
             let supabaseUser = try await supabaseClient.auth.user()
             
-            // Convert to our custom User model
             let customUser = User(
                 email: supabaseUser.email ?? "unknown@example.com",
-                firstName: "Current", // TODO: Get from profile
-                lastName: "User"      // TODO: Get from profile
-                )
+                firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                lastName: ""
+            )
                 
                 await MainActor.run {
                     self.currentUser = customUser
@@ -192,7 +208,19 @@ class MockAuthService: AuthServiceProtocol, ObservableObject {
     func getCurrentUser() async throws -> User? {
         return currentUser
     }
-    
+
+    func signInWithApple(idToken: String) async throws -> User {
+        if shouldFailAuth {
+            throw ServiceError.authenticationError("Mock Apple authentication failure")
+        }
+        let mockUser = User(email: "apple@user.com", firstName: "Utilisateur", lastName: "")
+        await MainActor.run {
+            self.currentUser = mockUser
+            self.isAuthenticated = true
+        }
+        return mockUser
+    }
+
     func setFailureMode(_ shouldFail: Bool) {
         self.shouldFailAuth = shouldFail
     }
