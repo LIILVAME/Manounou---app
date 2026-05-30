@@ -372,8 +372,8 @@ struct RememberedIdentity {
 
 /// Stockage du dernier utilisateur connecté.
 /// - Infos d'affichage (email, nom) : `UserDefaults`.
-/// - Mot de passe : Keychain (device-only), pour permettre la reconnexion Face ID.
-/// En production, à durcir avec un access control biométrique (`SecAccessControl`).
+/// - Mot de passe : Keychain lié à la biométrie (`.userPresence` + passcode), lu
+///   uniquement via un `LAContext` déjà évalué pour éviter un second prompt.
 enum RememberedAccount {
     private static let kEmail = "manounou_last_email"
     private static let kName  = "manounou_last_name"
@@ -393,7 +393,9 @@ enum RememberedAccount {
         KeychainStore.set(password, account: pwdAccount)
     }
 
-    static func savedPassword() -> String? { KeychainStore.get(account: pwdAccount) }
+    static func savedPassword(using context: LAContext) -> String? {
+        KeychainStore.get(account: pwdAccount, context: context)
+    }
 
     static func forget() {
         let d = UserDefaults.standard
@@ -411,7 +413,7 @@ enum RememberedAccount {
     }
 }
 
-// MARK: Keychain (mot de passe device-only)
+// MARK: Keychain (mot de passe protégé biométrie/passcode)
 
 enum KeychainStore {
     private static let service = "com.manounou.credentials"
@@ -423,19 +425,31 @@ enum KeychainStore {
             kSecAttrAccount as String: account
         ]
         SecItemDelete(base as CFDictionary)
+        // Protège l'item : lecture impossible sans biométrie ou code d'accès.
+        // kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly garantit device-only +
+        // invalidation si passcode retiré.
+        guard let access = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+            .userPresence,
+            nil
+        ) else { return }
         var add = base
         add[kSecValueData as String] = Data(value.utf8)
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        add[kSecAttrAccessControl as String] = access
         SecItemAdd(add as CFDictionary, nil)
     }
 
-    static func get(account: String) -> String? {
+    // Le contexte doit avoir été évalué via LAContext.evaluatePolicy avant l'appel
+    // pour éviter un second prompt biométrique.
+    static func get(account: String, context: LAContext) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseAuthenticationContext as String: context
         ]
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
@@ -484,12 +498,15 @@ enum BiometricAuth {
         }
     }
 
-    static func authenticate(reason: String) async -> Bool {
+    // Retourne le contexte évalué pour qu'il puisse être passé à KeychainStore.get
+    // sans déclencher un second prompt biométrique.
+    static func authenticate(reason: String) async -> LAContext? {
         let ctx = LAContext()
         do {
-            return try await ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason)
+            let ok = try await ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason)
+            return ok ? ctx : nil
         } catch {
-            return false
+            return nil
         }
     }
 }
@@ -777,8 +794,9 @@ struct ReconnectionView: View {
 
     private func unlockWithBiometrics() async {
         face = .scan
-        let ok = await BiometricAuth.authenticate(reason: "Déverrouiller Manounou")
-        guard ok, let id = remembered, let pwd = RememberedAccount.savedPassword() else {
+        guard let ctx = await BiometricAuth.authenticate(reason: "Déverrouiller Manounou"),
+              let id = remembered,
+              let pwd = RememberedAccount.savedPassword(using: ctx) else {
             face = nil
             withAnimation { usePwd = true; focus = .pwdA }
             return

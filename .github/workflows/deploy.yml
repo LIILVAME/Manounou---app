@@ -18,6 +18,15 @@ on:
         required: true
         default: '1.0.0'
 
+# Least privilege (best practice 2026)
+permissions:
+  contents: read
+
+# Sérialise les déploiements sans couper un run en cours (un déploiement ne s'annule pas)
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
 
@@ -25,6 +34,7 @@ jobs:
   prepare-deployment:
     name: 🔧 Préparation du Déploiement
     runs-on: macos-latest
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
       environment: ${{ steps.env.outputs.environment }}
@@ -60,6 +70,7 @@ jobs:
   build-for-deployment:
     name: 🔨 Build pour Déploiement
     runs-on: macos-latest
+    timeout-minutes: 60
     needs: prepare-deployment
     
     steps:
@@ -147,6 +158,7 @@ jobs:
   deploy-to-testflight:
     name: ✈️ Déploiement TestFlight
     runs-on: macos-latest
+    timeout-minutes: 30
     needs: [prepare-deployment, build-for-deployment]
     if: needs.prepare-deployment.outputs.environment == 'staging'
     
@@ -174,6 +186,7 @@ jobs:
   deploy-to-app-store:
     name: 🏪 Déploiement App Store
     runs-on: macos-latest
+    timeout-minutes: 30
     needs: [prepare-deployment, build-for-deployment]
     if: needs.prepare-deployment.outputs.environment == 'production'
     environment: production
@@ -202,6 +215,7 @@ jobs:
   notify-deployment:
     name: 📢 Notification de Déploiement
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [prepare-deployment, deploy-to-testflight, deploy-to-app-store]
     if: always()
     

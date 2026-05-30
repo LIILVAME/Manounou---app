@@ -1,1 +1,0 @@
-Si je te dis explicitement que quelque chose fonctionne (feature, process, etc.), tu ne devras jamais la toucher sauf si je te le demande explicitement !
