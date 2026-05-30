@@ -177,24 +177,6 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-### 🛠️ Script d'Aide au Déploiement
-
-Un script d'aide est disponible pour faciliter les déploiements :
-
-```bash
-# Afficher le statut du projet
-./DeploymentScripts/deploy_helper.sh status
-
-# Préparer une nouvelle release
-./DeploymentScripts/deploy_helper.sh prepare -v 1.2.0
-
-# Valider la configuration
-./DeploymentScripts/deploy_helper.sh validate
-
-# Déploiement manuel (si nécessaire)
-./DeploymentScripts/deploy_helper.sh deploy -v 1.2.0 -e staging
-```
-
 ### 🔐 Configuration des Secrets
 
 Pour configurer le déploiement automatique, suivez le guide détaillé :
