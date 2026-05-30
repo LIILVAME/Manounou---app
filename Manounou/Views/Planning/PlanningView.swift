@@ -38,29 +38,6 @@ private enum Person: String, CaseIterable {
     }
 }
 
-// MARK: - Day schedule model
-
-private struct DaySchedule {
-    let index: Int        // 1 = Mon … 7 = Sun
-    let shortName: String
-    let isWorkDay: Bool
-    let dropTime: String
-    let pickTime: String
-    let carer: String
-    let dropBy: String
-    let pickBy: String
-}
-
-private let demoWeek: [DaySchedule] = [
-    DaySchedule(index: 1, shortName: "Lun", isWorkDay: true,  dropTime: "9h00",  pickTime: "17h00", carer: "Fatou", dropBy: "Papa",  pickBy: "Maman"),
-    DaySchedule(index: 2, shortName: "Mar", isWorkDay: true,  dropTime: "9h00",  pickTime: "17h00", carer: "Fatou", dropBy: "Papa",  pickBy: "Maman"),
-    DaySchedule(index: 3, shortName: "Mer", isWorkDay: true,  dropTime: "9h00",  pickTime: "17h00", carer: "Fatou", dropBy: "Papa",  pickBy: "Maman"),
-    DaySchedule(index: 4, shortName: "Jeu", isWorkDay: true,  dropTime: "9h00",  pickTime: "17h00", carer: "Fatou", dropBy: "Papa",  pickBy: "Maman"),
-    DaySchedule(index: 5, shortName: "Ven", isWorkDay: true,  dropTime: "9h00",  pickTime: "17h00", carer: "Fatou", dropBy: "Papa",  pickBy: "Maman"),
-    DaySchedule(index: 6, shortName: "Sam", isWorkDay: false, dropTime: "",      pickTime: "",      carer: "",      dropBy: "",      pickBy: ""),
-    DaySchedule(index: 7, shortName: "Dim", isWorkDay: false, dropTime: "",      pickTime: "",      carer: "",      dropBy: "",      pickBy: ""),
-]
-
 private let dayLetters = ["L", "M", "M", "J", "V", "S", "D"]
 
 // MARK: - PlanningView
@@ -88,7 +65,8 @@ struct PlanningView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
-                    cetteMaineCard
+                    cetteSemaineCard
+                    organisationCard
                     if isEditing {
                         typeDeGardeSection
                         editeurSection
@@ -109,51 +87,108 @@ struct PlanningView: View {
         }
     }
 
-    // MARK: - Cette semaine card
+    // MARK: - Cette semaine (strip compact, cohérent avec l'accueil)
 
-    private var cetteMaineCard: some View {
-        VStack(spacing: 0) {
-            // Header row
-            HStack {
-                Text("CETTE SEMAINE")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.muted)
-                    .tracking(1.2)
-                Spacer()
-                Button {
-                    withAnimation(AppTheme.Animation.standard) {
-                        isEditing.toggle()
+    /// 0 = lundi … 6 = dimanche
+    private var todayWeekdayIndex: Int {
+        let raw = Calendar.current.component(.weekday, from: Date()) // 1=dim … 7=sam
+        return (raw + 5) % 7
+    }
+
+    private func hhmm(_ s: String) -> String { s.replacingOccurrences(of: ":", with: "h") }
+
+    private var cetteSemaineCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            PlanSectionLabel(title: "CETTE SEMAINE")
+
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { i in
+                        let isGarde = activeDays.contains(i + 1)
+                        let isToday = i == todayWeekdayIndex
+                        VStack(spacing: 6) {
+                            Text(dayLetters[i])
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(isToday ? AppTheme.Colors.brand
+                                                 : (isGarde ? AppTheme.Colors.ink : AppTheme.Colors.muted))
+                            Circle()
+                                .fill(isGarde ? AppTheme.Colors.brand : Color.clear)
+                                .frame(width: 7, height: 7)
+                                .overlay(
+                                    Circle().stroke(isGarde ? AppTheme.Colors.brand : AppTheme.Colors.border,
+                                                    lineWidth: 1.5)
+                                )
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                } label: {
-                    Text(isEditing ? "Terminer" : "Modifier")
-                        .font(AppTheme.Typography.subheadline)
+                }
+                .padding(.horizontal, AppTheme.Spacing.sm)
+                .padding(.top, AppTheme.Spacing.sm)
+
+                // Footer : semaine active du roulement + horaires
+                HStack(spacing: 8) {
+                    Text(scheduleMode == 1 ? "Sem. A" : "Horaires fixes")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(AppTheme.Colors.brand)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Colors.brandGhost))
+                    Text("\(hhmm(dropTime))–\(hhmm(pickTime))")
+                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.ink)
+                    Spacer(minLength: 0)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .overlay(
+                    Rectangle().fill(AppTheme.Colors.divider).frame(height: 1),
+                    alignment: .top
+                )
+                .padding(.top, 5)
             }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.top, AppTheme.Spacing.md)
-            .padding(.bottom, AppTheme.Spacing.sm)
-
-            Rectangle()
-                .fill(AppTheme.Colors.divider)
-                .frame(height: 1)
-
-            // Day rows
-            ForEach(Array(demoWeek.enumerated()), id: \.offset) { idx, day in
-                VStack(spacing: 0) {
-                    DayRow(day: day)
-                    if idx < demoWeek.count - 1 {
-                        Rectangle()
-                            .fill(AppTheme.Colors.divider)
-                            .frame(height: 1)
-                            .padding(.leading, AppTheme.Spacing.md)
-                    }
-                }
-            }
-
-            Spacer(minLength: AppTheme.Spacing.xs)
+            .themedCard()
         }
-        .themedCard()
+    }
+
+    // MARK: - Organisation (entrée du configurateur)
+
+    private var organisationCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            PlanSectionLabel(title: "ORGANISATION")
+
+            Button {
+                withAnimation(AppTheme.Animation.standard) { isEditing.toggle() }
+            } label: {
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppTheme.Colors.brandGhost)
+                        .frame(width: 42, height: 42)
+                        .overlay(
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.Colors.brand)
+                        )
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(scheduleMode == 1 ? "Roulement · 3 semaines" : "Horaires fixes")
+                            .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.ink)
+                        Text("Gérée avec Fatou")
+                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.muted)
+                    }
+                    Spacer(minLength: 0)
+                    Text(isEditing ? "Fermer" : "Modifier")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.brand)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(AppTheme.Colors.muted.opacity(0.5))
+                }
+                .padding(15)
+                .themedCard()
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: - Type de garde section
@@ -239,7 +274,7 @@ struct PlanningView: View {
 
     private var babySitterSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            PlanSectionLabel(title: "BABY-SITTER PONCTUEL")
+            PlanSectionLabel(title: "BABY-SITTER & EXCEPTIONS")
 
             VStack(spacing: 0) {
                 if sitters.isEmpty {
@@ -371,45 +406,6 @@ struct PlanningView: View {
             }
         }
         return entries
-    }
-}
-
-// MARK: - DayRow
-
-private struct DayRow: View {
-    let day: DaySchedule
-
-    var body: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            // Day abbreviation
-            Text(day.shortName)
-                .font(AppTheme.Typography.bodyBold)
-                .foregroundColor(AppTheme.Colors.ink)
-                .frame(width: 34, alignment: .leading)
-
-            if day.isWorkDay {
-                // Time range pill
-                Text("\(day.dropTime)–\(day.pickTime)")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.brand)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.Colors.brandLight)
-                    .clipShape(Capsule())
-
-                Spacer()
-
-                // Carer chip
-                PersonChip(name: day.carer)
-            } else {
-                Text("Repos")
-                    .font(AppTheme.Typography.callout)
-                    .foregroundColor(AppTheme.Colors.muted)
-                Spacer()
-            }
-        }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.vertical, 12)
     }
 }
 

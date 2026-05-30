@@ -35,15 +35,7 @@ struct ModernDocumentsView: View {
                         NoResultsView(searchText: searchText)
                     }
                 } else {
-                    DocumentsList(
-                        documents: filteredDocuments,
-                        onDocumentSelected: { document in
-                            selectedDocument = document
-                        },
-                        onDeleteDocuments: { offsets in
-                            deleteDocuments(offsets: offsets)
-                        }
-                    )
+                    groupedDocuments
                 }
             }
             .navigationTitle("Documents")
@@ -108,13 +100,169 @@ struct ModernDocumentsView: View {
         }
     }
     
-    private func deleteDocuments(offsets: IndexSet) {
-        Task {
-            for index in offsets {
-                let document = filteredDocuments[index]
-                await documentsViewModel.deleteDocument(document)
+    // MARK: - Grouped documents (cf. « Focus Documents » : sections par catégorie)
+
+    private var groupedDocuments: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                ForEach(DocCategory.ordered, id: \.self) { category in
+                    let docs = filteredDocuments.filter { DocCategory.from($0.documentType) == category }
+                    if !docs.isEmpty {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                            Text(category.label.uppercased())
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.muted)
+                                .tracking(1)
+                                .padding(.leading, 4)
+
+                            VStack(spacing: 0) {
+                                ForEach(Array(docs.enumerated()), id: \.element.id) { idx, doc in
+                                    DocCategoryRow(document: doc, category: category) {
+                                        selectedDocument = doc
+                                    }
+                                    if idx < docs.count - 1 {
+                                        Rectangle()
+                                            .fill(AppTheme.Colors.divider)
+                                            .frame(height: 1)
+                                            .padding(.leading, 64)
+                                    }
+                                }
+                            }
+                            .background(AppTheme.Colors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.card))
+                            .shadow(color: AppTheme.Shadow.small.color,
+                                    radius: AppTheme.Shadow.small.radius,
+                                    x: AppTheme.Shadow.small.x,
+                                    y: AppTheme.Shadow.small.y)
+                        }
+                    }
+                }
+
+                // Bouton « Ajouter un document » en pointillé (design .dashed)
+                Button {
+                    showingAddDocument = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("Ajouter un document")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(AppTheme.Colors.brand)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(RoundedRectangle(cornerRadius: 15).fill(AppTheme.Colors.brandGhost))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1.8, dash: [6, 4]))
+                            .foregroundColor(AppTheme.Colors.brand)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, AppTheme.Spacing.xs)
             }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.top, AppTheme.Spacing.sm)
+            .padding(.bottom, AppTheme.Spacing.xl)
         }
+        .background(AppTheme.Colors.paper.ignoresSafeArea())
+    }
+}
+
+// MARK: - Document category (mappe DocumentType → catégorie du design)
+
+enum DocCategory: Hashable {
+    case sante, autorisations, scolaire, administratif, souvenirs
+
+    static let ordered: [DocCategory] = [.sante, .autorisations, .scolaire, .administratif, .souvenirs]
+
+    static func from(_ type: DocumentType) -> DocCategory {
+        switch type {
+        case .medical: return .sante
+        case .legal:   return .autorisations
+        case .school:  return .scolaire
+        case .photo:   return .souvenirs
+        case .other:   return .administratif
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .sante:         return "Santé"
+        case .autorisations: return "Autorisations"
+        case .scolaire:      return "Scolaire"
+        case .administratif: return "Administratif"
+        case .souvenirs:     return "Souvenirs"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .sante:         return AppTheme.Colors.green
+        case .autorisations: return AppTheme.Colors.brand
+        case .scolaire:      return AppTheme.Colors.blue
+        case .administratif: return AppTheme.Colors.blue
+        case .souvenirs:     return AppTheme.Colors.purple
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .sante:         return "cross.case.fill"
+        case .autorisations: return "checkmark.seal.fill"
+        case .scolaire:      return "graduationcap.fill"
+        case .administratif: return "doc.text.fill"
+        case .souvenirs:     return "photo.fill"
+        }
+    }
+}
+
+// MARK: - DocCategoryRow
+
+private struct DocCategoryRow: View {
+    let document: Document
+    let category: DocCategory
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 11)
+                    .fill(category.color)
+                    .frame(width: 38, height: 38)
+                    .overlay(
+                        Image(systemName: category.icon)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(document.title)
+                        .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.ink)
+                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(AppTheme.Colors.muted.opacity(0.5))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var subtitle: String {
+        if let desc = document.description, !desc.isEmpty { return desc }
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "fr_FR")
+        fmt.dateFormat = "d MMM yyyy"
+        return "Ajouté le \(fmt.string(from: document.createdAt))"
     }
 }
 
@@ -235,139 +383,6 @@ struct NoResultsView: View {
         .padding(AppTheme.Spacing.xl)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Aucun résultat trouvé pour \(searchText)")
-    }
-}
-
-// MARK: - Documents List Component
-struct DocumentsList: View {
-    let documents: [Document]
-    let onDocumentSelected: (Document) -> Void
-    let onDeleteDocuments: (IndexSet) -> Void
-    
-    var body: some View {
-        List {
-            ForEach(documents) { document in
-                ModernDocumentRowView(document: document) {
-                    onDocumentSelected(document)
-                }
-            }
-            .onDelete(perform: onDeleteDocuments)
-        }
-        .listStyle(.insetGrouped)
-        .accessibilityLabel("Liste des documents")
-    }
-}
-
-// MARK: - Modern Document Row Component
-struct ModernDocumentRowView: View {
-    let document: Document
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: AppTheme.Spacing.md) {
-                // Document Type Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                        .fill(documentTypeColor.opacity(0.2))
-                        .frame(width: 44, height: 44)
-                    
-                    Image(systemName: documentTypeIcon)
-                        .foregroundColor(documentTypeColor)
-                        .font(.system(size: 18, weight: .semibold))
-                }
-                
-                // Document Details
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                    Text(document.title)
-                        .font(AppTheme.Typography.callout)
-                        .fontWeight(.medium)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
-                        .lineLimit(1)
-                    
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Text(document.documentType.displayName)
-                            .font(AppTheme.Typography.footnote)
-                            .foregroundColor(documentTypeColor)
-                            .padding(.horizontal, AppTheme.Spacing.xs)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(documentTypeColor.opacity(0.1))
-                            )
-                        
-                        Text(relativeDateText)
-                            .font(AppTheme.Typography.footnote)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                    
-                    if let description = document.description, !description.isEmpty {
-                        Text(description)
-                            .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textTertiary)
-                            .lineLimit(2)
-                    }
-                }
-                
-                Spacer()
-                
-                // File Size (if available)
-                if let fileSize = document.fileSize {
-                    VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
-                        Text(formatFileSize(Int64(fileSize)))
-                            .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textTertiary)
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(AppTheme.Colors.textTertiary)
-                    }
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.Colors.textTertiary)
-                }
-            }
-            .padding(.vertical, AppTheme.Spacing.xs)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Document: \(document.title), type: \(document.documentType.displayName), créé \(relativeDateText)")
-        .accessibilityHint("Appuyez pour voir les détails")
-    }
-    
-    private var documentTypeColor: Color {
-        switch document.documentType {
-        case .medical: return AppTheme.Colors.success
-        case .school: return AppTheme.Colors.primary
-        case .legal: return AppTheme.Colors.warning
-        case .photo: return AppTheme.Colors.green
-        case .other: return AppTheme.Colors.secondary
-        }
-    }
-
-    private var documentTypeIcon: String {
-        switch document.documentType {
-        case .medical: return "cross.case.fill"
-        case .school: return "graduationcap.fill"
-        case .legal: return "doc.text.fill"
-        case .photo: return "photo.fill"
-        case .other: return "doc.fill"
-        }
-    }
-    
-    private var relativeDateText: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "fr_FR")
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: document.createdAt, relativeTo: Date())
-    }
-    
-    private func formatFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
     }
 }
 
