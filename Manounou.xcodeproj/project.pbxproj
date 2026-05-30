@@ -40,6 +40,10 @@
 		E944AC1E9A2029DE2504B9AB /* ModernDocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */; };
 		F0A1B2C3D4E5F60718293A4C /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A4B /* Logger.swift */; };
 		F2BA37EEE475441AABEB1BB3 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59332336662B40318442EA47 /* AuthService.swift */; };
+		DD01000000000000000000A1 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD01000000000000000000B1 /* HomeView.swift */; };
+		DD02000000000000000000A2 /* PajemploiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD02000000000000000000B2 /* PajemploiView.swift */; };
+		DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD03000000000000000000B3 /* PajemploiDeclaration.swift */; };
+		DD04000000000000000000A4 /* AddChildSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD04000000000000000000B4 /* AddChildSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,6 +91,10 @@
 		EC538ACAB64D459FBAE0181C /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/CacheService.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F60718293A4B /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/Logger.swift; sourceTree = "<group>"; };
 		F8F58B399C76BAC459644DC5 /* SmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmokeTests.swift; path = ManounouTests/SmokeTests.swift; sourceTree = "<group>"; };
+		DD01000000000000000000B1 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = Views/Home/HomeView.swift; sourceTree = "<group>"; };
+		DD02000000000000000000B2 /* PajemploiView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiView.swift; path = Views/Pajemploi/PajemploiView.swift; sourceTree = "<group>"; };
+		DD03000000000000000000B3 /* PajemploiDeclaration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiDeclaration.swift; path = Models/PajemploiDeclaration.swift; sourceTree = "<group>"; };
+		DD04000000000000000000B4 /* AddChildSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AddChildSheet.swift; path = Views/Sheets/AddChildSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +138,10 @@
 				6A8416F13EB001C3DD89677E /* MessagesView.swift */,
 				2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */,
 				6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */,
+				DD01000000000000000000B1 /* HomeView.swift */,
+				DD02000000000000000000B2 /* PajemploiView.swift */,
+				DD03000000000000000000B3 /* PajemploiDeclaration.swift */,
+				DD04000000000000000000B4 /* AddChildSheet.swift */,
 			);
 			path = Manounou;
 			sourceTree = "<group>";
@@ -307,6 +319,10 @@
 				9AA203C3B66C5006556B8C9D /* MessagesView.swift in Sources */,
 				E944AC1E9A2029DE2504B9AB /* ModernDocumentsView.swift in Sources */,
 				8A4E4F98F2243549F8D69676 /* ProfileEditSheet.swift in Sources */,
+				DD01000000000000000000A1 /* HomeView.swift in Sources */,
+				DD02000000000000000000A2 /* PajemploiView.swift in Sources */,
+				DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */,
+				DD04000000000000000000A4 /* AddChildSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

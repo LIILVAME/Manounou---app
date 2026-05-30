@@ -157,34 +157,4 @@ extension PajemploiDeclaration {
             netToPay: 472
         )
     }
-
-    /// Calcule les heures / jours / net à payer d'un mois à partir du planning réel.
-    /// Le détail salaire net / indemnités exige une grille de taux non encore portée :
-    /// en attendant, `netSalary` reprend le net à payer et `upkeepAllowance` reste à 0.
-    /// Renvoie `nil` si aucune réservation facturable n'existe sur le mois.
-    static func from(
-        month: Date,
-        nounouFirstName: String,
-        bookings: [Booking],
-        calendar: Calendar = .current
-    ) -> PajemploiDeclaration? {
-        let monthly = bookings.filter {
-            calendar.isDate($0.date, equalTo: month, toGranularity: .month)
-        }
-        guard !monthly.isEmpty else { return nil }
-
-        let hours = monthly.reduce(0) { $0 + $1.durationHours }
-        let amount = monthly.reduce(0) { $0 + ($1.totalAmount ?? 0) }
-        let days = Set(monthly.map { calendar.startOfDay(for: $0.date) }).count
-
-        return PajemploiDeclaration(
-            month: month,
-            nounouFirstName: nounouFirstName,
-            hours: hours,
-            days: days,
-            netSalary: amount,
-            upkeepAllowance: 0,
-            netToPay: amount
-        )
-    }
 }
