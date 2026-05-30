@@ -80,6 +80,7 @@ struct HomeView: View {
     @State private var showingAddEvent      = false
     @State private var showingAddDocument   = false
     @State private var showingMessages      = false
+    @State private var showingDeclaration   = false
 
     @State private var navigateToCalendar   = false
     @State private var navigateToDocuments  = false
@@ -102,6 +103,9 @@ struct HomeView: View {
                             .padding(.top, AppTheme.Spacing.md)
 
                         heroCard
+                            .padding(.horizontal, AppTheme.Spacing.screenPadding)
+
+                        declarationCard
                             .padding(.horizontal, AppTheme.Spacing.screenPadding)
 
                         weeklyStrip
@@ -155,7 +159,12 @@ struct HomeView: View {
                 .environmentObject(childrenViewModel)
         }
         .sheet(isPresented: $showingMessages) {
-            messagesPlaceholder
+            MessagesView()
+        }
+        .alert("Déclaration Pajemploi", isPresented: $showingDeclaration) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Le calcul et la déclaration Pajemploi du mois arriveront bientôt.")
         }
     }
 
@@ -176,8 +185,34 @@ struct HomeView: View {
 
             Spacer()
 
-            notificationButton
+            HStack(spacing: 10) {
+                messagesButton
+                notificationButton
+            }
         }
+    }
+
+    // Messagerie = overlay transverse (cf. « Carte de navigation »), ouvert
+    // depuis l'accueil plutôt que via un onglet dédié.
+    private var messagesButton: some View {
+        Button {
+            showingMessages = true
+        } label: {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.ink)
+                .frame(width: 44, height: 44)
+                .background(AppTheme.Colors.surface)
+                .clipShape(Circle())
+                .shadow(
+                    color: AppTheme.Shadow.small.color,
+                    radius: AppTheme.Shadow.small.radius,
+                    x: AppTheme.Shadow.small.x,
+                    y: AppTheme.Shadow.small.y
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Messagerie")
     }
 
     private var notificationButton: some View {
@@ -207,6 +242,50 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Notifications")
+    }
+
+    // MARK: - Déclaration Pajemploi (rappel)
+
+    /// Rappel de déclaration mensuelle (cf. « Focus Accueil », carte ambre).
+    /// Montants représentatifs tant que le calcul Pajemploi réel n'est pas branché.
+    private var declarationCard: some View {
+        Button { showingDeclaration = true } label: {
+            HStack(spacing: 11) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 11)
+                        .fill(AppTheme.Colors.amber)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "eurosign")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Déclaration \(Self.monthName(offset: 0)) à faire")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.ink)
+                    Text("86 h · 472,00 € — avant le 5 \(Self.monthName(offset: 1))")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(hex: "B07D00"))
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color(hex: "B07D00").opacity(0.7))
+            }
+            .padding(13)
+            .background(RoundedRectangle(cornerRadius: 16).fill(AppTheme.Colors.amber.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.Colors.amber.opacity(0.45), lineWidth: 1.6))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Nom du mois en français, décalé de `offset` mois (0 = mois courant).
+    private static func monthName(offset: Int) -> String {
+        let date = Calendar.current.date(byAdding: .month, value: offset, to: Date()) ?? Date()
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "fr_FR")
+        fmt.dateFormat = "LLLL"
+        return fmt.string(from: date)
     }
 
     // MARK: - Hero Card
@@ -324,8 +403,8 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
 
-        // 3-step progress bar
-        statusProgressBar
+        // 3-segment progress bar
+        heroSegmentBar
 
         // Next info line
         HStack(spacing: AppTheme.Spacing.xs) {
@@ -337,6 +416,10 @@ struct HomeView: View {
                 .font(AppTheme.Typography.callout)
                 .foregroundColor(.white.opacity(0.88))
         }
+
+        // Timeline dépôt → garde → récup (avatars P / F / M)
+        heroTimeline
+            .padding(.top, 4)
     }
 
     private var noChildHeroContent: some View {
@@ -376,60 +459,53 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Status Progress Bar
+    // MARK: Hero progress + timeline (cf. « Focus Accueil »)
 
-    private var statusProgressBar: some View {
-        let steps   = ["Dépôt", "Chez Fatou", "Récup"]
-        let active  = currentStatus.stepIndex
-
-        return HStack(spacing: 0) {
-            ForEach(Array(steps.enumerated()), id: \.offset) { index, label in
-                stepDot(index: index, label: label, activeIndex: active,
-                        isLast: index == steps.count - 1)
+    /// Barre à 3 segments (design `.pgr`).
+    private var heroSegmentBar: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule()
+                    .fill(i <= currentStatus.stepIndex ? Color.white : Color.white.opacity(0.32))
+                    .frame(height: 5)
             }
         }
     }
 
-    @ViewBuilder
-    private func stepDot(
-        index: Int,
-        label: String,
-        activeIndex: Int,
-        isLast: Bool
-    ) -> some View {
-        let isCompleted = index < activeIndex
-        let isCurrent   = index == activeIndex
+    /// Timeline humanisée dépôt → garde → récup avec avatars (design `.stages`).
+    /// Données représentatives en l'absence de modèle de planning ; à brancher
+    /// sur le planning réel quand il existera.
+    private var heroTimeline: some View {
+        HStack(alignment: .top) {
+            heroStage(initial: "P", color: AppTheme.Colors.blue,
+                      title: "Dépôt", time: "8h30", align: .leading)
+            Spacer(minLength: 0)
+            heroStage(initial: "F", color: AppTheme.Colors.brand,
+                      title: "Chez Fatou", time: nil, align: .center)
+            Spacer(minLength: 0)
+            heroStage(initial: "M", color: AppTheme.Colors.purple,
+                      title: "Récup.", time: "17h00", align: .trailing)
+        }
+    }
 
-        HStack(spacing: 0) {
-            VStack(spacing: 5) {
-                ZStack {
-                    if isCurrent {
-                        Circle()
-                            .stroke(Color.white.opacity(0.6), lineWidth: 2)
-                            .frame(width: 18, height: 18)
-                    }
-                    Circle()
-                        .fill(isCompleted || isCurrent
-                              ? Color.white
-                              : Color.white.opacity(0.30))
-                        .frame(width: 10, height: 10)
-                }
-
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(
-                        isCompleted || isCurrent
-                            ? .white
-                            : .white.opacity(0.45)
-                    )
-                    .fixedSize()
+    private func heroStage(initial: String, color: Color, title: String,
+                           time: String?, align: HorizontalAlignment) -> some View {
+        VStack(alignment: align, spacing: 5) {
+            ZStack {
+                Circle().fill(color).frame(width: 30, height: 30)
+                // Bord blanc pour détacher l'avatar du fond rose
+                Circle().stroke(Color.white.opacity(0.85), lineWidth: 1.5).frame(width: 30, height: 30)
+                Text(initial)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
             }
-
-            if !isLast {
-                Rectangle()
-                    .fill(isCompleted ? Color.white : Color.white.opacity(0.28))
-                    .frame(height: 2)
-                    .padding(.bottom, 16)   // visually align with dot center
+            Text(title)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            if let time {
+                Text(time)
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.85))
             }
         }
     }
@@ -447,51 +523,85 @@ struct HomeView: View {
     }
 
     private var weeklyStrip: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<7, id: \.self) { index in
-                let isToday = index == todayWeekdayIndex
-                let isGarde = Self.gardeIndices.contains(index)
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { index in
+                    let isToday = index == todayWeekdayIndex
+                    let isGarde = Self.gardeIndices.contains(index)
 
-                VStack(spacing: 6) {
-                    Text(Self.dayLetters[index])
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(
-                            isToday ? .white : (isGarde ? AppTheme.Colors.ink : AppTheme.Colors.muted)
-                        )
+                    VStack(spacing: 6) {
+                        Text(Self.dayLetters[index])
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(
+                                isToday ? .white : (isGarde ? AppTheme.Colors.ink : AppTheme.Colors.muted)
+                            )
 
-                    Circle()
-                        .fill(
-                            isGarde
-                                ? (isToday ? Color.white : AppTheme.Colors.brand)
-                                : Color.clear
-                        )
-                        .frame(width: 6, height: 6)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    isGarde
-                                        ? (isToday ? Color.white : AppTheme.Colors.brand)
-                                        : AppTheme.Colors.border,
-                                    lineWidth: 1.5
-                                )
-                        )
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.sm)
-                .background(
-                    Group {
-                        if isToday {
-                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                                .fill(AppTheme.Colors.brand)
-                        } else {
-                            Color.clear
-                        }
+                        Circle()
+                            .fill(
+                                isGarde
+                                    ? (isToday ? Color.white : AppTheme.Colors.brand)
+                                    : Color.clear
+                            )
+                            .frame(width: 6, height: 6)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        isGarde
+                                            ? (isToday ? Color.white : AppTheme.Colors.brand)
+                                            : AppTheme.Colors.border,
+                                        lineWidth: 1.5
+                                    )
+                            )
                     }
-                )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .background(
+                        Group {
+                            if isToday {
+                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
+                                    .fill(AppTheme.Colors.brand)
+                            } else {
+                                Color.clear
+                            }
+                        }
+                    )
+                }
             }
+            .padding(.horizontal, AppTheme.Spacing.xs)
+            .padding(.top, AppTheme.Spacing.xs)
+
+            // Footer : type de garde + horaires + raccourci Planning (cf. « Focus Accueil »)
+            HStack(spacing: 8) {
+                Text("Routine")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.brand)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Colors.brandGhost))
+
+                Text("8h30–17h00")
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.ink)
+
+                Spacer(minLength: 0)
+
+                Button { navigateToCalendar = true } label: {
+                    Text("Planning ›")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.brand)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .overlay(
+                Rectangle()
+                    .fill(AppTheme.Colors.divider)
+                    .frame(height: 1),
+                alignment: .top
+            )
+            .padding(.top, 5)
         }
-        .padding(.horizontal, AppTheme.Spacing.xs)
-        .padding(.vertical, AppTheme.Spacing.xs)
         .background(AppTheme.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
         .shadow(
@@ -619,28 +729,6 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(AppTheme.Colors.paper.ignoresSafeArea())
             .navigationTitle("Notifications")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    private var messagesPlaceholder: some View {
-        NavigationStack {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                Spacer()
-                Image(systemName: "bubble.left.and.bubble.right")
-                    .font(.system(size: 52, weight: .light, design: .rounded))
-                    .foregroundColor(AppTheme.Colors.muted)
-                Text("Messages")
-                    .font(AppTheme.Typography.title3)
-                    .foregroundColor(AppTheme.Colors.ink)
-                Text("Fonctionnalité disponible prochainement")
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.muted)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AppTheme.Colors.paper.ignoresSafeArea())
-            .navigationTitle("Messages")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
