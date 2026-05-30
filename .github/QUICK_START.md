@@ -29,18 +29,18 @@ Ce guide vous permet de configurer rapidement le déploiement automatique pour l
 git clone https://github.com/LIILVAME/Manounou---app.git
 cd Manounou---app
 
-# Valider la configuration
-./DeploymentScripts/deploy_helper.sh validate
+# Valider la configuration (build simulateur)
+./build_simulator_only.sh
 ```
 
 ### 3. 🚀 Premier Déploiement
 
 ```bash
-# Créer une release beta pour TestFlight
-./DeploymentScripts/deploy_helper.sh prepare -v 1.0.0-beta.1
+# Créer une release beta pour TestFlight (le tag déclenche le workflow)
+git tag v1.0.0-beta.1 && git push origin v1.0.0-beta.1
 
 # Ou créer une release de production
-./DeploymentScripts/deploy_helper.sh prepare -v 1.0.0
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
 ## 🎯 Workflows Automatiques
@@ -58,13 +58,13 @@ Une fois configuré, ces actions se déclenchent automatiquement :
 
 ```bash
 # Afficher le statut du projet
-./DeploymentScripts/deploy_helper.sh status
+git status
 
-# Préparer une nouvelle version
-./DeploymentScripts/deploy_helper.sh prepare -v 1.2.0
+# Préparer une nouvelle version (le tag déclenche le déploiement)
+git tag v1.2.0 && git push origin v1.2.0
 
-# Valider la configuration
-./DeploymentScripts/deploy_helper.sh validate
+# Valider la configuration (build simulateur)
+./build_simulator_only.sh
 
 # Pipeline de build local
 ./full_pipeline.sh
@@ -91,12 +91,12 @@ Une fois configuré, ces actions se déclenchent automatiquement :
 git checkout develop
 git pull origin develop
 
-# Préparer la release
-./DeploymentScripts/deploy_helper.sh prepare -v 1.1.0-beta.1
+# Préparer la release (le tag déclenche TestFlight)
+git tag v1.1.0-beta.1 && git push origin v1.1.0-beta.1
 
 # Le déploiement TestFlight se lance automatiquement
 # Après validation, créer la release finale
-./DeploymentScripts/deploy_helper.sh prepare -v 1.1.0
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
 ## 🆘 Dépannage Express
@@ -129,8 +129,8 @@ BUILD_PROVISION_PROFILE_BASE64
 # Tester localement
 ./full_pipeline.sh
 
-# Valider la configuration
-./DeploymentScripts/deploy_helper.sh validate
+# Valider la configuration (build simulateur)
+./build_simulator_only.sh
 ```
 
 ## 📚 Documentation Complète
@@ -140,15 +140,6 @@ BUILD_PROVISION_PROFILE_BASE64
 - 📖 **[README Principal](../README.md)** - Vue d'ensemble du projet
 
 ## ✨ Fonctionnalités Avancées
-
-### Déploiement Manuel (si nécessaire)
-```bash
-# Déploiement staging manuel
-./DeploymentScripts/deploy_helper.sh deploy -v 1.0.0 -e staging
-
-# Déploiement production manuel
-./DeploymentScripts/deploy_helper.sh deploy -v 1.0.0 -e production
-```
 
 ### Monitoring
 - 📊 **GitHub Actions** : Logs détaillés de chaque build
