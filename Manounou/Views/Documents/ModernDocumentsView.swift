@@ -58,7 +58,7 @@ struct ModernDocumentsView: View {
             .sheet(isPresented: $showingAddDocument) {
                 AddDocumentSheet(children: childrenViewModel.children) { newDocument in
                     Task {
-                        await documentsViewModel.addDocument(newDocument)
+                        await documentsViewModel.createDocument(newDocument)
                     }
                 }
             }
@@ -112,7 +112,7 @@ struct ModernDocumentsView: View {
         Task {
             for index in offsets {
                 let document = filteredDocuments[index]
-                await documentsViewModel.deleteDocument(document.id)
+                await documentsViewModel.deleteDocument(document)
             }
         }
     }
@@ -314,7 +314,7 @@ struct ModernDocumentRowView: View {
                 // File Size (if available)
                 if let fileSize = document.fileSize {
                     VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
-                        Text(formatFileSize(fileSize))
+                        Text(formatFileSize(Int64(fileSize)))
                             .font(AppTheme.Typography.caption)
                             .foregroundColor(AppTheme.Colors.textTertiary)
                         
@@ -341,15 +341,17 @@ struct ModernDocumentRowView: View {
         case .medical: return AppTheme.Colors.success
         case .school: return AppTheme.Colors.primary
         case .legal: return AppTheme.Colors.warning
+        case .photo: return AppTheme.Colors.green
         case .other: return AppTheme.Colors.secondary
         }
     }
-    
+
     private var documentTypeIcon: String {
         switch document.documentType {
         case .medical: return "cross.case.fill"
         case .school: return "graduationcap.fill"
         case .legal: return "doc.text.fill"
+        case .photo: return "photo.fill"
         case .other: return "doc.fill"
         }
     }
@@ -400,17 +402,9 @@ struct AddDocumentSheet: View {
         NavigationStack {
             Form {
                 Section("Informations du document") {
-                    ThemedTextField(
-                        "Titre",
-                        text: $title,
-                        placeholder: "Entrez le titre du document"
-                    )
-                    
-                    ThemedTextField(
-                        "Description",
-                        text: $description,
-                        placeholder: "Description optionnelle"
-                    )
+                    TextField("Entrez le titre du document", text: $title)
+
+                    TextField("Description optionnelle", text: $description)
                 }
                 
                 Section("Catégorie") {
@@ -471,10 +465,12 @@ struct AddDocumentSheet: View {
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
             documentType: documentType,
-            childId: selectedChildId,
-            filePath: nil, // TODO: Implement file handling
+            fileName: nil,
+            fileUrl: nil, // TODO: Implement file handling
             fileSize: nil,
             mimeType: nil,
+            childId: selectedChildId,
+            userId: UUID(), // TODO: inject current user id
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -511,17 +507,9 @@ struct DocumentDetailSheet: View {
         NavigationStack {
             Form {
                 Section("Informations du document") {
-                    ThemedTextField(
-                        "Titre",
-                        text: $title,
-                        placeholder: "Entrez le titre du document"
-                    )
-                    
-                    ThemedTextField(
-                        "Description",
-                        text: $description,
-                        placeholder: "Description optionnelle"
-                    )
+                    TextField("Entrez le titre du document", text: $title)
+
+                    TextField("Description optionnelle", text: $description)
                 }
                 
                 Section("Catégorie") {
@@ -546,11 +534,11 @@ struct DocumentDetailSheet: View {
                 }
                 
                 Section("Fichier") {
-                    if let filePath = document.filePath {
+                    if let fileName = document.fileName {
                         HStack {
                             Text("Fichier actuel")
                             Spacer()
-                            Text(URL(fileURLWithPath: filePath).lastPathComponent)
+                            Text(fileName)
                                 .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
@@ -582,7 +570,7 @@ struct DocumentDetailSheet: View {
                         HStack {
                             Text("Taille du fichier")
                             Spacer()
-                            Text(formatFileSize(fileSize))
+                            Text(formatFileSize(Int64(fileSize)))
                                 .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
@@ -618,10 +606,12 @@ struct DocumentDetailSheet: View {
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
             documentType: documentType,
-            childId: selectedChildId,
-            filePath: document.filePath,
+            fileName: document.fileName,
+            fileUrl: document.fileUrl,
             fileSize: document.fileSize,
             mimeType: document.mimeType,
+            childId: selectedChildId,
+            userId: document.userId,
             createdAt: document.createdAt,
             updatedAt: Date()
         )
@@ -638,31 +628,3 @@ struct DocumentDetailSheet: View {
     }
 }
 
-// MARK: - DocumentType Extension
-extension DocumentType {
-    var displayName: String {
-        switch self {
-        case .medical: return "Médical"
-        case .school: return "École"
-        case .legal: return "Légal"
-        case .other: return "Autre"
-        }
-    }
-}
-
-// MARK: - Preview
-#if DEBUG
-struct ModernDocumentsView_Previews: PreviewProvider {
-    static var previews: some View {
-        ModernDocumentsView()
-            .environmentObject(DocumentsViewModel(documentsService: MockDocumentsService()))
-            .environmentObject(ChildrenViewModel(childrenService: MockChildrenService()))
-            .preferredColorScheme(.light)
-        
-        ModernDocumentsView()
-            .environmentObject(DocumentsViewModel(documentsService: MockDocumentsService()))
-            .environmentObject(ChildrenViewModel(childrenService: MockChildrenService()))
-            .preferredColorScheme(.dark)
-    }
-}
-#endif

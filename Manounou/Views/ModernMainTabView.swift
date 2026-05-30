@@ -1,10 +1,5 @@
-//
-//  ModernMainTabView.swift
-//  Manounou
-//
-//  Created by Assistant on 18/08/2025.
-//  Modern refactored version of MainTabView with proper architecture
-//
+// ModernMainTabView.swift — Manounou
+// Tab navigation: Accueil · Planning · Messages · Documents · Profil
 
 import SwiftUI
 import Foundation
@@ -12,611 +7,385 @@ import Foundation
 struct ModernMainTabView: View {
     @EnvironmentObject var appContainer: AppContainer
     @State private var selectedTab = 0
-    
+
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Home Tab
+
+            // 1 — Accueil
             HomeView()
                 .environmentObject(appContainer.childrenViewModel)
                 .environmentObject(appContainer.eventsViewModel)
                 .environmentObject(appContainer.documentsViewModel)
                 .environmentObject(appContainer.authViewModel)
-                .tabItem {
-                    Label("Accueil", systemImage: AppTheme.Icons.home)
-                }
+                .tabItem { Label("Accueil",   systemImage: "house.fill") }
                 .tag(0)
-                .accessibilityLabel("Onglet Accueil")
-            
-            // Children Tab
-            ModernChildrenView()
-                .environmentObject(appContainer.childrenViewModel)
-                .tabItem {
-                    Label("Enfants", systemImage: AppTheme.Icons.children)
-                }
-                .tag(1)
-                .accessibilityLabel("Onglet Enfants")
-            
-            // Calendar Tab
-            ModernCalendarView()
+
+            // 2 — Planning
+            PlanningView()
                 .environmentObject(appContainer.eventsViewModel)
-                .tabItem {
-                    Label("Calendrier", systemImage: AppTheme.Icons.calendar)
-                }
+                .tabItem { Label("Planning",  systemImage: "calendar.badge.clock") }
+                .tag(1)
+
+            // 3 — Messages
+            MessagesView()
+                .tabItem { Label("Messages",  systemImage: "bubble.left.and.bubble.right.fill") }
                 .tag(2)
-                .accessibilityLabel("Onglet Calendrier")
-            
-            // Documents Tab
+
+            // 4 — Documents
             ModernDocumentsView()
                 .environmentObject(appContainer.documentsViewModel)
                 .environmentObject(appContainer.childrenViewModel)
-                .tabItem {
-                    Label("Documents", systemImage: AppTheme.Icons.documents)
-                }
+                .tabItem { Label("Documents", systemImage: "doc.fill") }
                 .tag(3)
-                .accessibilityLabel("Onglet Documents")
-            
-            // Settings Tab
-            ModernSettingsView()
+
+            // 5 — Profil
+            ProfilFoyerView()
                 .environmentObject(appContainer.authViewModel)
-                .tabItem {
-                    Label("Paramètres", systemImage: AppTheme.Icons.settings)
-                }
+                .environmentObject(appContainer.childrenViewModel)
+                .tabItem { Label("Profil",    systemImage: "person.crop.circle.fill") }
                 .tag(4)
-                .accessibilityLabel("Onglet Paramètres")
         }
-        .tint(AppTheme.Colors.primary)
-        .onAppear {
-            setupTabBarAppearance()
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Navigation principale de l'application")
+        .tint(AppTheme.Colors.brand)
+        .onAppear { setupTabBarAppearance() }
     }
-    
+
     private func setupTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(AppTheme.Colors.surface)
-        
-        // Selected tab appearance
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(AppTheme.Colors.primary)
+        appearance.backgroundColor = .systemBackground
+
+        let selected   = UIColor(AppTheme.Colors.brand)
+        let unselected = UIColor(AppTheme.Colors.muted)
+
+        let font = UIFont.systemFont(ofSize: 10, weight: .semibold)
+
+        appearance.stackedLayoutAppearance.selected.iconColor = selected
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor(AppTheme.Colors.primary),
-            .font: UIFont.systemFont(ofSize: 10, weight: .medium)
+            .foregroundColor: selected, .font: font
         ]
-        
-        // Normal tab appearance
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(AppTheme.Colors.textSecondary)
+        appearance.stackedLayoutAppearance.normal.iconColor = unselected
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor(AppTheme.Colors.textSecondary),
-            .font: UIFont.systemFont(ofSize: 10, weight: .regular)
+            .foregroundColor: unselected, .font: font
         ]
-        
-        UITabBar.appearance().standardAppearance = appearance
+
+        UITabBar.appearance().standardAppearance   = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }
 
-// MARK: - Modern Settings View Component
-struct ModernSettingsView: View {
+// MARK: - Profil / Foyer  (stub — replaced by ProfilFoyerView when ready)
+
+struct ProfilFoyerView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var showingProfile = false
+    @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @State private var showingSignOutAlert = false
-    @State private var showingAbout = false
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                // Profile Section
-                Section {
-                    ProfileHeaderRow(
-                        user: authViewModel.currentUser,
-                        onTap: {
-                            showingProfile = true
-                        }
-                    )
-                }
-                
-                // Account Section
-                Section("Compte") {
-                    SettingsRow(
-                        title: "Modifier le profil",
-                        icon: "person.circle",
-                        color: AppTheme.Colors.primary
-                    ) {
-                        showingProfile = true
-                    }
-                    
-                    SettingsRow(
-                        title: "Changer le mot de passe",
-                        icon: "key",
-                        color: AppTheme.Colors.secondary
-                    ) {
-                        // TODO: Implement password change
-                    }
-                    
-                    SettingsRow(
-                        title: "Notifications",
-                        icon: "bell",
-                        color: AppTheme.Colors.info
-                    ) {
-                        // TODO: Implement notifications settings
-                    }
-                }
-                
-                // App Section
-                Section("Application") {
-                    SettingsRow(
-                        title: "Confidentialité",
-                        icon: "hand.raised",
-                        color: AppTheme.Colors.warning
-                    ) {
-                        // TODO: Implement privacy settings
-                    }
-                    
-                    SettingsRow(
-                        title: "À propos",
-                        icon: "info.circle",
-                        color: AppTheme.Colors.accent
-                    ) {
-                        showingAbout = true
-                    }
-                    
-                    SettingsRow(
-                        title: "Aide et support",
-                        icon: "questionmark.circle",
-                        color: AppTheme.Colors.success
-                    ) {
-                        // TODO: Implement help and support
-                    }
-                }
-                
-                // Danger Zone
-                Section {
-                    SettingsRow(
-                        title: "Déconnexion",
-                        icon: "rectangle.portrait.and.arrow.right",
-                        color: AppTheme.Colors.error,
-                        showChevron: false
-                    ) {
-                        showingSignOutAlert = true
-                    }
-                }
-            }
-            .navigationTitle("Paramètres")
-            .navigationBarTitleDisplayMode(.large)
-        }
-        .sheet(isPresented: $showingProfile) {
-            ProfileEditSheet(user: authViewModel.currentUser) { updatedUser in
-                Task {
-                    try await authViewModel.updateProfile(
-                        firstName: updatedUser.firstName,
-                        lastName: updatedUser.lastName
-                    )
-                }
-            }
-        }
-        .sheet(isPresented: $showingAbout) {
-            AboutSheet()
-        }
-        .alert("Déconnexion", isPresented: $showingSignOutAlert) {
-            Button("Annuler", role: .cancel) { }
-            Button("Déconnexion", role: .destructive) {
-                Task {
-                    await authViewModel.signOut()
-                }
-            }
-        } message: {
-            Text("Êtes-vous sûr de vouloir vous déconnecter ?")
-        }
-    }
-}
+    @State private var showingEditProfile  = false
 
-// MARK: - Profile Header Row Component
-struct ProfileHeaderRow: View {
-    let user: User?
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: AppTheme.Spacing.md) {
-                // Profile Avatar
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    AppTheme.Colors.primary.opacity(0.3),
-                                    AppTheme.Colors.secondary.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 60, height: 60)
-                    
-                    Text(userInitials)
-                        .font(AppTheme.Typography.title3)
-                        .foregroundColor(AppTheme.Colors.primary)
-                }
-                
-                // User Info
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                    Text(displayName)
-                        .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
-                    
-                    if let email = user?.email {
-                        Text(email)
-                            .font(AppTheme.Typography.callout)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                    
-                    Text("Modifier le profil")
-                        .font(AppTheme.Typography.footnote)
-                        .foregroundColor(AppTheme.Colors.primary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(AppTheme.Colors.textTertiary)
-            }
-            .padding(.vertical, AppTheme.Spacing.sm)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Profil utilisateur: \(displayName)")
-        .accessibilityHint("Appuyez pour modifier le profil")
-    }
-    
-    private var displayName: String {
-        if let firstName = user?.firstName, let lastName = user?.lastName {
-            return "\(firstName) \(lastName)"
-        } else if let firstName = user?.firstName {
-            return firstName
-        } else {
-            return "Utilisateur"
-        }
-    }
-    
-    private var userInitials: String {
-        let firstName = user?.firstName ?? ""
-        let lastName = user?.lastName ?? ""
-        let firstInitial = firstName.first?.uppercased() ?? "U"
-        let lastInitial = lastName.first?.uppercased() ?? "S"
-        return "\(firstInitial)\(lastInitial)"
-    }
-}
-
-// MARK: - Settings Row Component
-struct SettingsRow: View {
-    let title: String
-    let icon: String
-    let color: Color
-    let showChevron: Bool
-    let action: () -> Void
-    
-    init(
-        title: String,
-        icon: String,
-        color: Color,
-        showChevron: Bool = true,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.icon = icon
-        self.color = color
-        self.showChevron = showChevron
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: AppTheme.Spacing.md) {
-                // Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm)
-                        .fill(color.opacity(0.2))
-                        .frame(width: 32, height: 32)
-                    
-                    Image(systemName: icon)
-                        .foregroundColor(color)
-                        .font(.system(size: 16, weight: .medium))
-                }
-                
-                // Title
-                Text(title)
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
-                
-                Spacer()
-                
-                // Chevron
-                if showChevron {
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.Colors.textTertiary)
-                }
-            }
-            .padding(.vertical, AppTheme.Spacing.xs)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityLabel(title)
-        .accessibilityHint("Appuyez pour \(title.lowercased())")
-    }
-}
-
-// MARK: - Profile Edit Sheet Component
-struct ProfileEditSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let user: User?
-    let onSave: (User) -> Void
-    
-    @State private var firstName: String
-    @State private var lastName: String
-    @State private var email: String
-    @State private var isLoading = false
-    
-    init(user: User?, onSave: @escaping (User) -> Void) {
-        self.user = user
-        self.onSave = onSave
-        self._firstName = State(initialValue: user?.firstName ?? "")
-        self._lastName = State(initialValue: user?.lastName ?? "")
-        self._email = State(initialValue: user?.email ?? "")
-    }
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Informations personnelles") {
-                    ThemedTextField(
-                        "Prénom",
-                        text: $firstName,
-                        placeholder: "Entrez votre prénom"
-                    )
-                    
-                    ThemedTextField(
-                        "Nom",
-                        text: $lastName,
-                        placeholder: "Entrez votre nom"
-                    )
-                    
-                    ThemedTextField(
-                        "Email",
-                        text: $email,
-                        placeholder: "Entrez votre email",
-                        keyboardType: .emailAddress,
-                        autocapitalization: .never
-                    )
-                }
-                
-                if let user = user {
-                    Section("Informations du compte") {
-                        HStack {
-                            Text("Créé le")
-                            Spacer()
-                            Text(user.createdAt, style: .date)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
-                        }
-                        
-                        if user.updatedAt != user.createdAt {
-                            HStack {
-                                Text("Modifié le")
-                                Spacer()
-                                Text(user.updatedAt, style: .date)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Modifier le profil")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.Colors.textSecondary)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Sauvegarder") {
-                        saveProfile()
-                    }
-                    .foregroundColor(AppTheme.Colors.primary)
-                    .disabled(firstName.isEmpty || lastName.isEmpty || email.isEmpty || isLoading)
-                }
-            }
-        }
-        .interactiveDismissDisabled(isLoading)
-    }
-    
-    private func saveProfile() {
-        isLoading = true
-        
-        let updatedUser = User(
-            id: user?.id ?? UUID(),
-            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-            firstName: firstName.trimmingCharacters(in: .whitespacesAndNewlines),
-            lastName: lastName.trimmingCharacters(in: .whitespacesAndNewlines),
-            createdAt: user?.createdAt ?? Date(),
-            updatedAt: Date()
-        )
-        
-        onSave(updatedUser)
-        dismiss()
-    }
-}
-
-// MARK: - About Sheet Component
-struct AboutSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppTheme.Spacing.xl) {
-                    // App Icon and Info
-                    VStack(spacing: AppTheme.Spacing.md) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(AppTheme.Colors.primary)
-                        
-                        VStack(spacing: AppTheme.Spacing.sm) {
-                            Text(Config.App.name)
-                                .font(AppTheme.Typography.largeTitle)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            Text("Version \(Config.App.version)")
-                                .font(AppTheme.Typography.callout)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
-                        }
-                    }
-                    
-                    // Description
-                    VStack(spacing: AppTheme.Spacing.md) {
-                        Text("Votre carnet de famille numérique")
-                            .font(AppTheme.Typography.headline)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("Manounou vous aide à organiser et suivre toutes les informations importantes de votre famille en un seul endroit sécurisé.")
-                            .font(AppTheme.Typography.body)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    
-                    // Links
-                    VStack(spacing: AppTheme.Spacing.sm) {
-                        Button("Site web") {
-                            if let url = URL(string: Config.App.websiteURL) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .themedButton(style: .primary)
-                        
-                        Button("Support") {
-                            if let url = URL(string: "mailto:\(Config.App.supportEmail)") {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .themedButton(style: .secondary)
-                    }
+                VStack(spacing: 0) {
+                    profileHeader
+                    Divider().padding(.horizontal, 20)
+                    settingsList
                 }
-                .padding(AppTheme.Spacing.xl)
             }
-            .navigationTitle("À propos")
+            .background(AppTheme.Colors.paper.ignoresSafeArea())
+            .navigationTitle("Profil")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Fermer") {
-                        dismiss()
+                    Button { showingEditProfile = true } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.brand)
                     }
-                    .foregroundColor(AppTheme.Colors.primary)
                 }
             }
         }
-    }
-}
-
-// MARK: - Temporary View Definitions
-// TODO: Remove these once the separate files are properly recognized by the compiler
-
-struct ModernChildrenView: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Text("Enfants")
-                    .font(.largeTitle)
-                    .padding()
-                Text("Vue moderne des enfants")
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Enfants")
+        .sheet(isPresented: $showingEditProfile) {
+            ProfileEditSheet()
+                .environmentObject(authViewModel)
+        }
+        .alert("Déconnexion", isPresented: $showingSignOutAlert) {
+            Button("Se déconnecter", role: .destructive) { Task { await authViewModel.signOut() } }
+            Button("Annuler", role: .cancel) {}
+        } message: {
+            Text("Voulez-vous vraiment vous déconnecter ?")
         }
     }
-}
 
-struct ModernCalendarView: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Text("Calendrier")
-                    .font(.largeTitle)
-                    .padding()
-                Text("Vue moderne du calendrier")
-                    .foregroundColor(.secondary)
+    // MARK: - Profile header
+    private var profileHeader: some View {
+        VStack(spacing: 12) {
+            // Avatar
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.brand)
+                    .frame(width: 80, height: 80)
+                Text(initials)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
             }
-            .navigationTitle("Calendrier")
+            .shadow(color: AppTheme.Colors.brandShadow, radius: 12, x: 0, y: 4)
+
+            VStack(spacing: 4) {
+                Text(displayName)
+                    .font(AppTheme.Typography.title3)
+                    .foregroundColor(AppTheme.Colors.ink)
+                Text(authViewModel.currentUser?.email ?? "")
+                    .font(AppTheme.Typography.footnote)
+                    .foregroundColor(AppTheme.Colors.muted)
+            }
+
+            // Foyer card
+            foyerCard
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 28)
+    }
+
+    private var foyerCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "house.fill")
+                .font(.system(size: 18))
+                .foregroundColor(AppTheme.Colors.brand)
+                .frame(width: 40, height: 40)
+                .background(AppTheme.Colors.brandGhost)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Famille \(authViewModel.currentUser?.lastName ?? "—")")
+                    .font(AppTheme.Typography.bodyMedium)
+                    .foregroundColor(AppTheme.Colors.ink)
+                Text("\(childrenViewModel.children.count) enfant\(childrenViewModel.children.count == 1 ? "" : "s")")
+                    .font(AppTheme.Typography.footnote)
+                    .foregroundColor(AppTheme.Colors.muted)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(AppTheme.Colors.muted)
+        }
+        .padding(16)
+        .background(AppTheme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+        .shadow(color: AppTheme.Shadow.card.color,
+                radius: AppTheme.Shadow.card.radius,
+                x: AppTheme.Shadow.card.x,
+                y: AppTheme.Shadow.card.y)
+    }
+
+    // MARK: - Settings list
+    private var settingsList: some View {
+        VStack(spacing: 8) {
+            // Children section
+            PFSettingsSection(title: "MES ENFANTS") {
+                ForEach(childrenViewModel.children) { child in
+                    PFSettingsRow(icon: "figure.child", iconColor: AppTheme.Colors.brand,
+                                  title: "\(child.firstName) \(child.lastName)",
+                                  subtitle: child.ageText)
+                }
+                PFSettingsRow(icon: "person.badge.plus", iconColor: AppTheme.Colors.green,
+                              title: "Ajouter un enfant")
+            }
+
+            // Garde section
+            PFSettingsSection(title: "GARDE") {
+                PFSettingsRow(icon: "person.2.fill", iconColor: AppTheme.Colors.purple,
+                              title: "Membres du foyer", subtitle: "Gérer les accès")
+                PFSettingsRow(icon: "bell.fill", iconColor: AppTheme.Colors.blue,
+                              title: "Notifications")
+                PFSettingsRow(icon: "banknote", iconColor: AppTheme.Colors.green,
+                              title: "Rémunération & Pajemploi")
+            }
+
+            // App section
+            PFSettingsSection(title: "APPLICATION") {
+                PFSettingsRow(icon: "lock.shield.fill", iconColor: AppTheme.Colors.amber,
+                              title: "Confidentialité")
+                PFSettingsRow(icon: "questionmark.circle.fill", iconColor: AppTheme.Colors.blue,
+                              title: "Aide et support")
+                PFSettingsRow(icon: "info.circle.fill", iconColor: AppTheme.Colors.muted,
+                              title: "À propos")
+            }
+
+            // Sign out
+            Button {
+                showingSignOutAlert = true
+            } label: {
+                HStack {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Text("Déconnexion")
+                        .font(AppTheme.Typography.bodyMedium)
+                }
+                .foregroundColor(AppTheme.Colors.red)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(AppTheme.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Computed
+    private var displayName: String {
+        guard let u = authViewModel.currentUser else { return "Utilisateur" }
+        let n = "\(u.firstName) \(u.lastName)".trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? u.email : n
+    }
+
+    private var initials: String {
+        let f = authViewModel.currentUser?.firstName.first.map(String.init) ?? "?"
+        let l = authViewModel.currentUser?.lastName.first.map(String.init)  ?? ""
+        return "\(f)\(l)"
     }
 }
 
-struct ModernDocumentsView: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Text("Documents")
-                    .font(.largeTitle)
-                    .padding()
-                Text("Vue moderne des documents")
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Documents")
-        }
-    }
-}
+// MARK: - Helper components
 
-struct ThemedTextField: View {
+private struct PFSettingsSection<Content: View>: View {
     let title: String
-    @Binding var text: String
-    let placeholder: String
-    var keyboardType: UIKeyboardType = .default
-    var autocapitalization: TextInputAutocapitalization = .sentences
-    
-    init(
-        _ title: String,
-        text: Binding<String>,
-        placeholder: String,
-        keyboardType: UIKeyboardType = .default,
-        autocapitalization: TextInputAutocapitalization = .sentences
-    ) {
-        self.title = title
-        self._text = text
-        self.placeholder = placeholder
-        self.keyboardType = keyboardType
-        self.autocapitalization = autocapitalization
-    }
-    
+    @ViewBuilder let content: () -> Content
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            TextField(placeholder, text: $text)
-                .keyboardType(keyboardType)
-                .textInputAutocapitalization(autocapitalization)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal, 4)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.muted)
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 10)
+                .kerning(0.6)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(AppTheme.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+            .padding(.horizontal, 20)
+            .shadow(color: AppTheme.Shadow.card.color,
+                    radius: AppTheme.Shadow.card.radius,
+                    x: AppTheme.Shadow.card.x,
+                    y: AppTheme.Shadow.card.y)
         }
     }
 }
 
-// MARK: - Preview
+private struct PFSettingsRow: View {
+    let icon: String
+    var iconColor: Color = AppTheme.Colors.muted
+    let title: String
+    var subtitle: String? = nil
 
-#if DEBUG
-struct ModernMainTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        ModernMainTabView()
-            .environmentObject(AppContainer.shared)
-            .preferredColorScheme(.light)
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundColor(iconColor)
+                .frame(width: 32, height: 32)
+                .background(iconColor.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
-        ModernMainTabView()
-            .environmentObject(AppContainer.shared)
-            .preferredColorScheme(.dark)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.ink)
+                if let sub = subtitle {
+                    Text(sub)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.muted)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(AppTheme.Colors.muted.opacity(0.6))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .contentShape(Rectangle())
+        Divider().padding(.leading, 60)
     }
 }
-#endif
+
+// MARK: - Legacy ModernSettingsView kept for backward compat
+// (now ProfilFoyerView is the primary profile screen)
+struct ModernSettingsView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+    var body: some View {
+        ProfilFoyerView()
+            .environmentObject(authViewModel)
+            .environmentObject(AppContainer.shared.childrenViewModel)
+    }
+}
+
+// MARK: - Component stubs used by other files
+
+struct ProfileHeaderRow: View {
+    var user: UserProfile?
+    var onTap: () -> Void
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(AppTheme.Colors.brand).frame(width: 46, height: 46)
+                    Text(initials).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(.white)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayName).font(AppTheme.Typography.bodyMedium).foregroundColor(AppTheme.Colors.ink)
+                    Text(user?.email ?? "").font(AppTheme.Typography.caption).foregroundColor(AppTheme.Colors.muted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(AppTheme.Colors.muted)
+            }
+        }
+    }
+    private var displayName: String {
+        guard let u = user else { return "Utilisateur" }
+        return "\(u.firstName) \(u.lastName)".trimmingCharacters(in: .whitespaces)
+    }
+    private var initials: String {
+        let f = user?.firstName.first.map(String.init) ?? "U"
+        let l = user?.lastName.first.map(String.init)  ?? ""
+        return "\(f)\(l)"
+    }
+}
+
+struct SettingsRow: View {
+    var title: String
+    var icon: String
+    var color: Color = AppTheme.Colors.brand
+    var showChevron: Bool = true
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).foregroundColor(color).frame(width: 28)
+                Text(title).font(AppTheme.Typography.body).foregroundColor(AppTheme.Colors.ink)
+                Spacer()
+                if showChevron { Image(systemName: "chevron.right").foregroundColor(AppTheme.Colors.muted) }
+            }
+        }
+    }
+}
+
+struct AboutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Image(systemName: "heart.fill").font(.system(size: 48)).foregroundColor(AppTheme.Colors.brand)
+                Text("Manounou").font(AppTheme.Typography.title1)
+                Text("L'app qui simplifie la garde\nde vos enfants.").font(AppTheme.Typography.body).multilineTextAlignment(.center).foregroundColor(AppTheme.Colors.muted)
+            }
+            .padding(40)
+            .navigationTitle("À propos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Fermer") { dismiss() } } }
+        }
+    }
+}
