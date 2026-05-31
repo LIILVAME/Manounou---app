@@ -22,7 +22,7 @@ class ChildrenService: ChildrenServiceProtocol, ObservableObject {
     func fetchChildren() async throws -> [Child] {
         do {
             let response: [ChildDTO] = try await supabaseClient
-                .from("children")
+                .from(Config.Tables.children)
                 .select()
                 .execute()
                 .value
@@ -44,7 +44,7 @@ class ChildrenService: ChildrenServiceProtocol, ObservableObject {
         do {
             let childDTO = ChildDTO.from(child)
             let response: ChildDTO = try await supabaseClient
-                .from("children")
+                .from(Config.Tables.children)
                 .insert(childDTO)
                 .select()
                 .single()
@@ -61,7 +61,7 @@ class ChildrenService: ChildrenServiceProtocol, ObservableObject {
         do {
             let childDTO = ChildDTO.from(child)
             let response: ChildDTO = try await supabaseClient
-                .from("children")
+                .from(Config.Tables.children)
                 .update(childDTO)
                 .eq("id", value: child.id)
                 .select()
@@ -78,7 +78,7 @@ class ChildrenService: ChildrenServiceProtocol, ObservableObject {
     func deleteChild(id: UUID) async throws {
         do {
             try await supabaseClient
-                .from("children")
+                .from(Config.Tables.children)
                 .delete()
                 .eq("id", value: id)
                 .execute()
@@ -90,7 +90,7 @@ class ChildrenService: ChildrenServiceProtocol, ObservableObject {
     func fetchChild(id: UUID) async throws -> Child? {
         do {
             let response: ChildDTO = try await supabaseClient
-                .from("children")
+                .from(Config.Tables.children)
                 .select()
                 .eq("id", value: id)
                 .single()
