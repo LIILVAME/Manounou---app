@@ -80,6 +80,8 @@ struct ProfilFoyerView: View {
     @State private var showingEditProfile  = false
     @State private var showingAddChild     = false
     @State private var showingAbout        = false
+    @State private var showingNotifSettings = false
+    @State private var showingRateProposal  = false
 
     var body: some View {
         NavigationStack {
@@ -113,6 +115,12 @@ struct ProfilFoyerView: View {
         }
         .sheet(isPresented: $showingAbout) {
             AboutSheet()
+        }
+        .sheet(isPresented: $showingNotifSettings) {
+            NotificationSettingsView()
+        }
+        .sheet(isPresented: $showingRateProposal) {
+            RateProposalView()
         }
         .alert("Déconnexion", isPresented: $showingSignOutAlert) {
             Button("Se déconnecter", role: .destructive) { Task { await authViewModel.signOut() } }
@@ -225,9 +233,9 @@ struct ProfilFoyerView: View {
                 PFSettingsRow(icon: "person.2.fill", iconColor: AppTheme.Colors.purple,
                               title: "Membres du foyer", subtitle: "Gérer les accès")
                 PFSettingsRow(icon: "bell.fill", iconColor: AppTheme.Colors.blue,
-                              title: "Notifications")
+                              title: "Notifications") { showingNotifSettings = true }
                 PFSettingsRow(icon: "banknote", iconColor: AppTheme.Colors.green,
-                              title: "Rémunération & Pajemploi")
+                              title: "Rémunération & Pajemploi") { showingRateProposal = true }
             }
 
             // App section
