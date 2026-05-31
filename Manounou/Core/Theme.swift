@@ -311,6 +311,28 @@ extension View {
             .padding(.horizontal, AppTheme.Spacing.screenPadding)
             .padding(.vertical, AppTheme.Spacing.sectionSpacing)
     }
+
+    /// Surfacing d'erreur **réservé au dev** : affiche `message` dans une alerte
+    /// en build DEBUG, et ne fait STRICTEMENT rien en production (aucune UI, le
+    /// message reste avalé côté prod). Idéal pour rendre visibles les échecs
+    /// réseau/Supabase pendant le développement sans les exposer aux parents.
+    func debugErrorAlert(_ message: Binding<String?>) -> some View {
+        #if DEBUG
+        return self.alert(
+            "Erreur (dev)",
+            isPresented: Binding(
+                get: { message.wrappedValue != nil },
+                set: { if !$0 { message.wrappedValue = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { message.wrappedValue = nil }
+        } message: {
+            Text(message.wrappedValue ?? "")
+        }
+        #else
+        return self
+        #endif
+    }
 }
 
 // MARK: - Button style enum (renamed to avoid conflict with SwiftUI.ButtonStyle)

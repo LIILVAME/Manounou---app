@@ -19,9 +19,20 @@ public struct OnboardingView: View {
     // MARK: Navigation callback
     public var onComplete: () -> Void
 
+    // MARK: Environment
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var appContainer: AppContainer
+
     // MARK: State
     @State private var step: Int = -1
     @State private var carouselPage: Int = 0
+
+    // Account creation control
+    @State private var isCreatingAccount = false
+    @State private var accountError: String? = nil
+    @State private var isCompletingOnboarding = false
+    /// Nonce brut courant pour Sign in with Apple (transmis ensuite à Supabase).
+    @State private var currentNonce: String? = nil
 
     // Step 0
     @State private var email: String = ""
@@ -96,7 +107,13 @@ public struct OnboardingView: View {
                 // Back chevron (steps 1–4 only)
                 if step >= 1 {
                     Button {
-                        withAnimation(AppTheme.Animation.standard) { step -= 1 }
+                        withAnimation(AppTheme.Animation.standard) {
+                            if step == 1 && authViewModel.isAuthenticated {
+                                step = -1
+                            } else {
+                                step -= 1
+                            }
+                        }
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -169,14 +186,16 @@ public struct OnboardingView: View {
                         if carouselPage < 2 {
                             carouselPage += 1
                         } else {
-                            step = 0
+                            step = authViewModel.isAuthenticated ? 1 : 0
                         }
                     }
                 }
 
                 if carouselPage < 2 {
                     Button("Passer") {
-                        withAnimation(AppTheme.Animation.standard) { step = 0 }
+                        withAnimation(AppTheme.Animation.standard) {
+                            step = authViewModel.isAuthenticated ? 1 : 0
+                        }
                     }
                     .font(AppTheme.Typography.callout)
                     .foregroundColor(AppTheme.Colors.muted)
@@ -236,9 +255,34 @@ public struct OnboardingView: View {
 
                 // Apple Sign In
                 SignInWithAppleButton(.signIn) { request in
+                    let nonce = AppleSignIn.randomNonceString()
+                    currentNonce = nonce
                     request.requestedScopes = [.email, .fullName]
-                } onCompletion: { _ in
-                    withAnimation(AppTheme.Animation.standard) { step = 1 }
+                    request.nonce = AppleSignIn.sha256(nonce)
+                } onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        guard
+                            let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                            let idTokenData = credential.identityToken,
+                            let idToken = String(data: idTokenData, encoding: .utf8),
+                            let nonce = currentNonce
+                        else { return }
+                        Task {
+                            isCreatingAccount = true
+                            accountError = nil
+                            await authViewModel.signInWithApple(idToken: idToken, nonce: nonce)
+                            isCreatingAccount = false
+                            if authViewModel.errorMessage == nil {
+                                withAnimation(AppTheme.Animation.standard) { step = 1 }
+                            } else {
+                                accountError = authViewModel.errorMessage
+                                authViewModel.clearError()
+                            }
+                        }
+                    case .failure(let error):
+                        accountError = error.localizedDescription
+                    }
                 }
                 .signInWithAppleButtonStyle(.black)
                 .frame(maxWidth: .infinity)
@@ -290,10 +334,18 @@ public struct OnboardingView: View {
                     }
                 }
 
+                if let error = accountError {
+                    Text(error)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.red)
+                        .multilineTextAlignment(.center)
+                }
+
                 Spacer(minLength: AppTheme.Spacing.xl)
 
-                BrandButton(title: "Continuer", disabled: !isAccountStepValid) {
-                    withAnimation(AppTheme.Animation.standard) { step = 1 }
+                BrandButton(title: isCreatingAccount ? "Création…" : "Continuer",
+                            disabled: !isAccountStepValid || isCreatingAccount) {
+                    Task { await signUpAndContinue() }
                 }
             }
             .padding(AppTheme.Spacing.md)
@@ -584,11 +636,60 @@ public struct OnboardingView: View {
 
                 Spacer(minLength: AppTheme.Spacing.xl)
 
-                BrandButton(title: "Entrer dans Manounou") {
-                    onComplete()
+                BrandButton(title: isCompletingOnboarding ? "Finalisation…" : "Entrer dans Manounou",
+                            disabled: isCompletingOnboarding) {
+                    Task { await finishOnboarding() }
                 }
             }
             .padding(AppTheme.Spacing.md)
+        }
+    }
+
+    // MARK: - Async actions
+
+    private func signUpAndContinue() async {
+        isCreatingAccount = true
+        accountError = nil
+        await authViewModel.signUp(email: email, password: password)
+        isCreatingAccount = false
+        if authViewModel.errorMessage == nil {
+            withAnimation(AppTheme.Animation.standard) { step = 1 }
+        } else {
+            accountError = authViewModel.errorMessage
+            authViewModel.clearError()
+        }
+    }
+
+    private func finishOnboarding() async {
+        isCompletingOnboarding = true
+        if !childFirstName.trimmingCharacters(in: .whitespaces).isEmpty {
+            let notes = allergies.isEmpty
+                ? nil
+                : "Allergies: \(allergies.sorted().joined(separator: ", "))"
+            let child = Child(
+                firstName: childFirstName,
+                lastName: "",
+                birthDate: birthDateFromAgeCategory(childAge),
+                gender: .other,
+                notes: notes
+            )
+            await appContainer.childrenViewModel.createChild(child)
+        }
+        if notificationsEnabled {
+            appContainer.notificationManager.requestPermission()
+        }
+        isCompletingOnboarding = false
+        onComplete()
+    }
+
+    private func birthDateFromAgeCategory(_ category: String) -> Date {
+        let cal = Calendar.current
+        switch category {
+        case "0–1 an":  return cal.date(byAdding: .month, value: -6, to: Date()) ?? Date()
+        case "1–3 ans": return cal.date(byAdding: .year, value: -2, to: Date()) ?? Date()
+        case "3–6 ans": return cal.date(byAdding: .year, value: -4, to: Date()) ?? Date()
+        case "6+ ans":  return cal.date(byAdding: .year, value: -8, to: Date()) ?? Date()
+        default:        return cal.date(byAdding: .year, value: -3, to: Date()) ?? Date()
         }
     }
 
@@ -910,11 +1011,16 @@ private struct OnboardingSlide {
 
 #if DEBUG
 #Preview("Onboarding – Carousel") {
-    OnboardingView(onComplete: { print("onboarding complete") })
+    let container = AppContainer.createForTesting()
+    return OnboardingView(onComplete: {})
+        .environmentObject(container)
+        .environmentObject(container.authViewModel)
 }
 
 #Preview("Onboarding – Step 0") {
-    let v = OnboardingView(onComplete: {})
-    return v
+    let container = AppContainer.createForTesting()
+    return OnboardingView(onComplete: {})
+        .environmentObject(container)
+        .environmentObject(container.authViewModel)
 }
 #endif

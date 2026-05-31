@@ -25,14 +25,21 @@ class AppContainer: ObservableObject {
     let eventsService: EventsService
     let childrenService: ChildrenService
     let documentsService: DocumentsService
-    
+    let profilesService: ProfilesService
+    let planningScheduleService: PlanningScheduleService
+    let householdService: HouseholdService
+    let plansService: PlansService
+
     // MARK: - ViewModels
-    
+
     @Published var authViewModel: AuthViewModel
     @Published var eventsViewModel: EventsViewModel
     @Published var childrenViewModel: ChildrenViewModel
     @Published var documentsViewModel: DocumentsViewModel
     @Published var notificationManager: NotificationManager
+    @Published var planningScheduleViewModel: PlanningScheduleViewModel
+    @Published var householdViewModel: HouseholdViewModel
+    @Published var plansConfig: [String: PlanConfigDTO] = [:]
     
     // MARK: - Configuration
     
@@ -56,6 +63,10 @@ class AppContainer: ObservableObject {
         
         // Initialisation des services
         self.cacheService = CacheService.shared
+        self.profilesService = ProfilesService(supabaseClient: supabaseClient)
+        self.planningScheduleService = PlanningScheduleService(supabaseClient: supabaseClient)
+        self.householdService = HouseholdService(supabaseClient: supabaseClient)
+        self.plansService = PlansService(supabaseClient: supabaseClient)
         if isTestMode {
             self.authService = MockAuthService()
             self.eventsService = EventsService(supabaseClient: supabaseClient, cacheService: cacheService)
@@ -67,13 +78,15 @@ class AppContainer: ObservableObject {
             self.childrenService = ChildrenService(supabaseClient: supabaseClient, cacheService: cacheService)
             self.documentsService = DocumentsService(supabaseClient: supabaseClient, cacheService: cacheService)
         }
-        
+
         // Initialisation des ViewModels avec injection de dépendances
         self.authViewModel = AuthViewModel(authService: authService)
         self.eventsViewModel = EventsViewModel(eventsService: eventsService)
         self.childrenViewModel = ChildrenViewModel(childrenService: childrenService)
         self.documentsViewModel = DocumentsViewModel(documentsService: documentsService)
         self.notificationManager = NotificationManager()
+        self.planningScheduleViewModel = PlanningScheduleViewModel(service: planningScheduleService)
+        self.householdViewModel = HouseholdViewModel(service: householdService)
         setupAuthStateListener()
     }
     
@@ -114,12 +127,36 @@ class AppContainer: ObservableObject {
             documentsViewModel.documents = cachedDocuments
             Logger.dataLoad("cached documents", count: cachedDocuments.count)
         }
-        
+
+        // Charger le profil Supabase (role, plan, plan_status, nom) + données dépendantes
+        if let supabaseUser = try? await supabaseClient.auth.user() {
+            let userId = supabaseUser.id
+            planningScheduleViewModel.configure(userId: userId)
+            householdViewModel.configure(userId: userId)
+
+            if let profile = try? await profilesService.fetchProfile(userId: userId) {
+                let fallback = authViewModel.currentUser ?? User(
+                    id: userId,
+                    email: supabaseUser.email ?? "",
+                    firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                    lastName: ""
+                )
+                authViewModel.currentUser = profile.applyTo(fallback)
+            }
+        }
+
         // Chargement réseau concurrent pour rafraîchir les données
         await withTaskGroup(of: Void.self) { group in
             group.addTask { [self] in await self.eventsViewModel.loadEvents() }
             group.addTask { [self] in await self.childrenViewModel.loadChildren() }
             group.addTask { [self] in await self.documentsViewModel.loadDocuments() }
+            group.addTask { [self] in await self.planningScheduleViewModel.loadSchedule() }
+            group.addTask { [self] in await self.householdViewModel.loadMembers() }
+            group.addTask { [self] in
+                if let configs = try? await self.plansService.fetchAllPlans() {
+                    await MainActor.run { self.plansConfig = configs }
+                }
+            }
             await group.waitForAll()
         }
         timer.end(extra: "network refreshed")
@@ -154,6 +191,10 @@ class AppContainer: ObservableObject {
     private func clearUserData() {
         eventsViewModel.clearEvents()
         childrenViewModel.clearChildren()
+        documentsViewModel.clearDocuments()
+        planningScheduleViewModel.clear()
+        householdViewModel.clear()
+        plansConfig = [:]
         cacheService.clearCache()
     }
 }
@@ -261,6 +302,28 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
+    func signInWithApple(idToken: String, nonce: String?) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let user = try await authService.signInWithApple(idToken: idToken, nonce: nonce)
+            currentUser = user
+            isAuthenticated = true
+            userProfile = UserProfile(
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
     func checkAuthenticationStatus() async {
         do {
             let user = try await authService.getCurrentUser()
@@ -489,26 +552,105 @@ class DocumentsViewModel: ObservableObject {
     }
     
     func createDocument(_ document: Document) async {
+        await createDocument(document, fileData: nil, fileName: nil, mimeType: nil)
+    }
+
+    /// Crée un document en uploadant d'abord la pièce jointe optionnelle dans
+    /// Supabase Storage (bucket privé `documents`). En cas de `fileData`, les
+    /// champs `file_url` (= chemin de l'objet), `file_name`, `file_size` et
+    /// `mime_type` sont renseignés avant l'insertion en base.
+    func createDocument(_ document: Document, fileData: Data?, fileName: String?, mimeType: String?) async {
+        isLoading = true
+        errorMessage = nil
+        var uploadedPath: String? = nil
         do {
-            _ = try await documentsService.createDocument(document)
+            var toCreate = document
+            if let fileData, let fileName {
+                let path = try await documentsService.uploadFile(
+                    data: fileData,
+                    fileName: fileName,
+                    mimeType: mimeType ?? "application/octet-stream"
+                )
+                uploadedPath = path
+                toCreate.fileUrl = path
+                toCreate.fileName = fileName
+                toCreate.fileSize = fileData.count
+                toCreate.mimeType = mimeType
+            }
+            _ = try await documentsService.createDocument(toCreate)
             await loadDocuments() // Reload to get updated list
         } catch {
+            // Compensation : l'upload a réussi mais l'insertion a échoué →
+            // on supprime l'objet Storage orphelin pour éviter une fuite.
+            if let uploadedPath {
+                try? await documentsService.deleteFile(url: uploadedPath)
+            }
             errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
-    
+
+    /// URL signée temporaire pour consulter la pièce jointe d'un document.
+    func signedURL(for document: Document) async -> URL? {
+        guard let path = document.fileUrl, !path.isEmpty else { return nil }
+        do {
+            return try await documentsService.signedURL(path: path)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func updateDocument(_ document: Document) async {
+        await updateDocument(document, fileData: nil, fileName: nil, mimeType: nil)
+    }
+
+    /// Met à jour un document, en remplaçant la pièce jointe si `fileData` est
+    /// fourni (upload du nouveau fichier puis suppression best-effort de l'ancien).
+    func updateDocument(_ document: Document, fileData: Data?, fileName: String?, mimeType: String?) async {
+        isLoading = true
+        errorMessage = nil
+        let oldPath = document.fileUrl
+        var uploadedPath: String? = nil
         do {
-            _ = try await documentsService.updateDocument(document)
+            var toUpdate = document
+            if let fileData, let fileName {
+                let path = try await documentsService.uploadFile(
+                    data: fileData,
+                    fileName: fileName,
+                    mimeType: mimeType ?? "application/octet-stream"
+                )
+                uploadedPath = path
+                toUpdate.fileUrl = path
+                toUpdate.fileName = fileName
+                toUpdate.fileSize = fileData.count
+                toUpdate.mimeType = mimeType
+            }
+            _ = try await documentsService.updateDocument(toUpdate)
+            // Succès : supprimer best-effort l'ancien fichier remplacé.
+            if uploadedPath != nil, let oldPath, !oldPath.isEmpty, oldPath != toUpdate.fileUrl {
+                try? await documentsService.deleteFile(url: oldPath)
+            }
             await loadDocuments() // Reload to get updated list
         } catch {
+            // Compensation : l'upload du NOUVEAU fichier a réussi mais la mise à
+            // jour a échoué → on supprime l'objet orphelin (l'ancien est conservé).
+            if let uploadedPath {
+                try? await documentsService.deleteFile(url: uploadedPath)
+            }
             errorMessage = error.localizedDescription
         }
+        isLoading = false
     }
-    
+
     func deleteDocument(_ document: Document) async {
+        errorMessage = nil
         do {
             try await documentsService.deleteDocument(id: document.id)
+            // Nettoyage best-effort de la pièce jointe (le row est déjà supprimé).
+            if let path = document.fileUrl, !path.isEmpty {
+                try? await documentsService.deleteFile(url: path)
+            }
             await loadDocuments() // Reload to get updated list
         } catch {
             errorMessage = error.localizedDescription
@@ -529,9 +671,7 @@ class NotificationManager: ObservableObject {
     @Published var hasNotifications = false
     @Published var notificationCount = 0
     
-    init() {
-        requestPermission()
-    }
+    init() {}
     
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
@@ -559,5 +699,119 @@ class NotificationManager: ObservableObject {
         )
         
         UNUserNotificationCenter.current().add(request)
+    }
+}
+
+// MARK: - PlanningScheduleViewModel
+
+@MainActor
+class PlanningScheduleViewModel: ObservableObject {
+    @Published var scheduleMode: Int    = 0
+    @Published var activeDays: Set<Int> = [1, 2, 3, 4, 5]
+    @Published var dropTime: String     = "09:00"
+    @Published var pickTime: String     = "17:00"
+    @Published var dropBy: String       = "Papa"
+    @Published var pickBy: String       = "Maman"
+    @Published var carerName: String    = "la nounou"
+    @Published var isLoading: Bool      = false
+
+    private let service: PlanningScheduleService
+    private var userId: UUID?
+
+    init(service: PlanningScheduleService) {
+        self.service = service
+    }
+
+    func configure(userId: UUID) {
+        self.userId = userId
+    }
+
+    func loadSchedule() async {
+        guard let userId else { return }
+        isLoading = true
+        if let s = try? await service.fetchSchedule(userId: userId) {
+            scheduleMode = s.scheduleMode
+            activeDays   = s.activeDays
+            dropTime     = s.dropTime
+            pickTime     = s.pickTime
+            dropBy       = s.dropBy
+            pickBy       = s.pickBy
+            carerName    = s.carerName
+        }
+        isLoading = false
+    }
+
+    func saveSchedule() async {
+        guard let userId else { return }
+        let schedule = PlanningSchedule(
+            scheduleMode: scheduleMode,
+            activeDays: activeDays,
+            dropTime: dropTime,
+            pickTime: pickTime,
+            dropBy: dropBy,
+            pickBy: pickBy,
+            carerName: carerName
+        )
+        try? await service.upsertSchedule(schedule, userId: userId)
+    }
+
+    var currentSchedule: PlanningSchedule {
+        PlanningSchedule(scheduleMode: scheduleMode, activeDays: activeDays,
+                         dropTime: dropTime, pickTime: pickTime,
+                         dropBy: dropBy, pickBy: pickBy, carerName: carerName)
+    }
+
+    func clear() {
+        let d = PlanningSchedule.default
+        scheduleMode = d.scheduleMode
+        activeDays   = d.activeDays
+        dropTime     = d.dropTime
+        pickTime     = d.pickTime
+        dropBy       = d.dropBy
+        pickBy       = d.pickBy
+        carerName    = d.carerName
+        userId       = nil
+    }
+}
+
+// MARK: - HouseholdViewModel
+
+@MainActor
+class HouseholdViewModel: ObservableObject {
+    @Published var members: [HouseholdMember] = []
+    @Published var isLoading: Bool = false
+
+    private let service: HouseholdService
+    private var userId: UUID?
+
+    init(service: HouseholdService) {
+        self.service = service
+    }
+
+    func configure(userId: UUID) {
+        self.userId = userId
+    }
+
+    func loadMembers() async {
+        guard let userId else { return }
+        isLoading = true
+        do {
+            try await service.seedDefaultMembers(userId: userId)
+            members = try await service.fetchMembers(userId: userId)
+        } catch {
+            // Keep existing on error
+        }
+        isLoading = false
+    }
+
+    var memberNames: [String] { members.map { $0.name } }
+
+    func hexColor(for name: String) -> String {
+        members.first { $0.name == name }?.color ?? "#7A5AE0"
+    }
+
+    func clear() {
+        members = []
+        userId  = nil
     }
 }

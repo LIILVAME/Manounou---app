@@ -30,13 +30,24 @@ struct Config {
     }
     
     // MARK: - Supabase Tables
+    // Source de vérité des noms de tables (zéro chaîne en dur dans les Services).
+    // Seules les tables réellement déployées figurent ici ; chaque phase backend
+    // (profiles, nounous, planning, pajemploi, messagerie) ajoutera sa constante
+    // au moment où le service qui l'utilise sera créé.
     struct Tables {
-        static let children = "children"
-        static let events = "events"
-        static let documents = "documents"
-        static let users = "users"
-        static let families = "families"
-        static let nannies = "nannies"
+        static let profiles          = "profiles"
+        static let children          = "children"
+        static let events            = "events"
+        static let documents         = "documents"
+        static let planningSchedules = "planning_schedules"
+        static let householdMembers  = "household_members"
+        static let plans             = "plans"
+    }
+
+    // MARK: - Supabase Storage
+    // Noms des buckets Storage (distincts des tables, même si homonymes).
+    struct Storage {
+        static let documentsBucket = "documents"
     }
     
     // MARK: - App Information

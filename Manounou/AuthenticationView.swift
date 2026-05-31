@@ -9,6 +9,70 @@
 import SwiftUI
 import LocalAuthentication
 import Security
+import AuthenticationServices
+import CryptoKit
+
+// MARK: - Sign in with Apple (helpers partagés)
+
+/// Outils « Sign in with Apple ».
+///
+/// ⚠️ Pré-requis runtime : la capacité *Sign in with Apple* (entitlement
+/// `com.apple.developer.applesignin`) doit être activée sur l'App ID, ce qui
+/// nécessite un compte **Apple Developer Program payant**. Sans elle, la requête
+/// d'autorisation échoue à l'exécution (ASAuthorizationError code 1000). Le code
+/// ci-dessous est néanmoins complet et correct : il suffira d'activer la
+/// capacité dans Xcode + le provider Apple côté Supabase pour qu'il fonctionne.
+enum AppleSignIn {
+    /// Nonce aléatoire (valeur **brute**, à transmettre à Supabase).
+    static func randomNonceString(length: Int = 32) -> String {
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        var bytes = [UInt8](repeating: 0, count: length)
+        guard SecRandomCopyBytes(kSecRandomDefault, length, &bytes) == errSecSuccess else {
+            return UUID().uuidString + UUID().uuidString
+        }
+        return String(bytes.map { charset[Int($0) % charset.count] })
+    }
+
+    /// SHA256 du nonce (valeur **hashée**, à placer dans la requête Apple).
+    static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Bouton natif « Continuer avec Apple » avec gestion du nonce (anti-rejeu).
+/// `onToken` reçoit l'idToken Apple et le nonce **brut** à passer à Supabase.
+struct AppleSignInButton: View {
+    var onToken: (_ idToken: String, _ nonce: String) -> Void
+    var onError: (String) -> Void = { _ in }
+    @State private var currentNonce: String?
+
+    var body: some View {
+        SignInWithAppleButton(.continue) { request in
+            let nonce = AppleSignIn.randomNonceString()
+            currentNonce = nonce
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = AppleSignIn.sha256(nonce)
+        } onCompletion: { result in
+            switch result {
+            case .success(let authorization):
+                guard
+                    let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                    let tokenData = credential.identityToken,
+                    let idToken = String(data: tokenData, encoding: .utf8),
+                    let nonce = currentNonce
+                else {
+                    onError("Jeton Apple invalide.")
+                    return
+                }
+                onToken(idToken, nonce)
+            case .failure(let error):
+                // L'annulation volontaire ne doit pas afficher d'erreur.
+                if (error as? ASAuthorizationError)?.code == .canceled { return }
+                onError(error.localizedDescription)
+            }
+        }
+    }
+}
 
 struct AuthenticationView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -523,11 +587,11 @@ struct ReconnectionView: View {
 
     @State private var screen: Screen
     @State private var face: FacePhase? = nil
-    @State private var usePwd: Bool = !BiometricAuth.isAvailable
+    @State private var showAlt: Bool = false      // bottom sheet « Comment vous connecter ? »
+    @State private var usePwd: Bool = false       // champ mot de passe inline (écran A)
     @State private var pwdA: String = ""          // mot de passe écran A
     @State private var emailB: String = ""        // email écran B
     @State private var pwdB: String = ""          // mot de passe écran B
-    @State private var showAppleSoon = false
     @FocusState private var focus: FieldID?
 
     private enum FieldID { case pwdA, emailB, pwdB }
@@ -564,15 +628,27 @@ struct ReconnectionView: View {
             }
             .transition(.opacity)
 
+            if showAlt {
+                AltSignInSheet(
+                    faceIdAvailable: BiometricAuth.isAvailable,
+                    onFace: {
+                        withAnimation(.easeInOut(duration: 0.2)) { showAlt = false }
+                        Task { await unlockWithBiometrics() }
+                    },
+                    appleButton: appleButton,
+                    onPassword: {
+                        withAnimation { showAlt = false; usePwd = true; focus = .pwdA }
+                    },
+                    onClose: { withAnimation(.easeInOut(duration: 0.2)) { showAlt = false } }
+                )
+                .transition(.opacity)
+                .zIndex(1)
+            }
+
             if let face { FaceIdOverlay(phase: face, name: remembered?.displayName ?? "") }
         }
         .animation(.easeInOut(duration: 0.4), value: screen)
         .animation(.easeInOut(duration: 0.25), value: face != nil)
-        .alert("Bientôt disponible", isPresented: $showAppleSoon) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("La connexion avec Apple arrive prochainement.")
-        }
         .alert("Erreur", isPresented: Binding(
             get: { authViewModel.errorMessage != nil },
             set: { if !$0 { authViewModel.clearError() } }
@@ -603,20 +679,11 @@ struct ReconnectionView: View {
                 }
                 .padding(.bottom, 26)
 
-                identityCard.padding(.bottom, 18)
+                // La carte d'identité est un bouton : elle ouvre la feuille
+                // « Comment vous connecter ? » (Face ID · Apple · mot de passe).
+                accountCardButton.padding(.bottom, usePwd ? 16 : 0)
 
-                if !usePwd {
-                    PrimaryButton(title: "Déverrouiller avec \(BiometricAuth.label)",
-                                  systemIcon: BiometricAuth.iconName,
-                                  enabled: true) { Task { await unlockWithBiometrics() } }
-                    Button("Saisir le mot de passe") {
-                        withAnimation { usePwd = true; focus = .pwdA }
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                    .foregroundColor(acc)
-                    .padding(.top, 8)
-                } else {
+                if usePwd {
                     ReconField(text: $pwdA, placeholder: "Mot de passe", secure: true,
                                valid: false, focused: focus == .pwdA, trailing: "Oublié ?")
                         .focused($focus, equals: .pwdA)
@@ -625,28 +692,15 @@ struct ReconnectionView: View {
                         Task { await signInWithPassword(email: remembered?.email ?? "", password: pwdA) }
                     }
                     .padding(.top, 14)
-                    if BiometricAuth.isAvailable {
-                        Button {
-                            withAnimation { usePwd = false }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: BiometricAuth.iconName)
-                                Text("Utiliser \(BiometricAuth.label)")
-                            }
-                            .font(.system(size: 14.5, weight: .bold, design: .rounded))
-                            .foregroundColor(acc)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 8)
-                    }
                 }
             }
 
             Spacer(minLength: 0)
 
+            // Bas : séparateur « OU » conservé + « Changer de compte ».
+            // (Apple et Face ID vivent désormais dans la feuille de connexion.)
             VStack(spacing: 0) {
                 orSeparator.padding(.vertical, 4)
-                GhostButton(title: "Continuer avec Apple", appleIcon: true) { showAppleSoon = true }
                 Button {
                     withAnimation { screen = .plain; focus = .emailB }
                 } label: {
@@ -663,34 +717,48 @@ struct ReconnectionView: View {
         .padding(EdgeInsets(top: 64, leading: 26, bottom: 40, trailing: 26))
     }
 
-    private var identityCard: some View {
-        HStack(spacing: 14) {
-            ZStack(alignment: .bottomTrailing) {
-                Circle().fill(AppTheme.Colors.blue).frame(width: 54, height: 54)
-                Text(String(remembered?.displayName.prefix(1) ?? "?"))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(width: 54, height: 54)
-                Circle().fill(Color.white).frame(width: 20, height: 20)
-                    .overlay(Image(systemName: "house.fill").font(.system(size: 9, weight: .bold)).foregroundColor(acc))
-                    .shadow(color: .black.opacity(0.15), radius: 1.5, y: 1)
-                    .offset(x: 3, y: 3)
+    private var accountCardButton: some View {
+        Button {
+            focus = nil
+            withAnimation(.easeInOut(duration: 0.2)) { showAlt = true }
+        } label: {
+            HStack(spacing: 14) {
+                ZStack(alignment: .bottomTrailing) {
+                    Circle().fill(AppTheme.Colors.blue).frame(width: 54, height: 54)
+                    Text(String(remembered?.displayName.prefix(1) ?? "?"))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(width: 54, height: 54)
+                    Circle().fill(Color.white).frame(width: 20, height: 20)
+                        .overlay(Image(systemName: "house.fill").font(.system(size: 9, weight: .bold)).foregroundColor(acc))
+                        .shadow(color: .black.opacity(0.15), radius: 1.5, y: 1)
+                        .offset(x: 3, y: 3)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(remembered?.displayName ?? "Mon compte")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(ink)
+                    Text(remembered?.email ?? "")
+                        .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.58))
+                        .lineLimit(1)
+                    Text("Toucher pour se connecter")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        .foregroundColor(acc)
+                        .padding(.top, 5)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.3))
             }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(remembered?.displayName ?? "Mon compte")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(ink)
-                Text(remembered?.email ?? "")
-                    .font(.system(size: 13.5, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.58))
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
+            .padding(18)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.black.opacity(0.07), lineWidth: 1.8))
+            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
         }
-        .padding(18)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .buttonStyle(ReconPressStyle())
     }
 
     // MARK: État B — connexion simple
@@ -730,7 +798,7 @@ struct ReconnectionView: View {
                 }
                 .padding(.bottom, 22)
 
-                GhostButton(title: "Continuer avec Apple", appleIcon: true) { showAppleSoon = true }
+                appleButton
                 orSeparator.padding(.vertical, 18)
 
                 fieldLabel("EMAIL")
@@ -784,6 +852,20 @@ struct ReconnectionView: View {
                 .foregroundColor(Color.black.opacity(0.22))
             Rectangle().fill(Color.black.opacity(0.07)).frame(height: 1.5)
         }
+    }
+
+    /// Bouton « Continuer avec Apple » natif, stylé pour matcher le design system.
+    private var appleButton: some View {
+        AppleSignInButton(
+            onToken: { idToken, nonce in
+                Task { await authViewModel.signInWithApple(idToken: idToken, nonce: nonce) }
+            },
+            onError: { message in authViewModel.errorMessage = message }
+        )
+        .signInWithAppleButtonStyle(.whiteOutline)
+        .frame(height: 54)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.black.opacity(0.12), lineWidth: 1.8))
     }
 
     // MARK: Logique
@@ -893,13 +975,13 @@ private struct PrimaryButton: View {
 
 private struct GhostButton: View {
     let title: String
-    var appleIcon: Bool = false
+    var systemIcon: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 9) {
-                if appleIcon { Image(systemName: "apple.logo").font(.system(size: 17)) }
+                if let systemIcon { Image(systemName: systemIcon).font(.system(size: 17)) }
                 Text(title)
             }
             .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -1010,6 +1092,71 @@ private struct FaceIdOverlay: View {
         .onAppear {
             scanY = -28
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { scanY = 28 }
+        }
+    }
+}
+
+// MARK: Feuille « Comment vous connecter ? »
+
+/// Bottom sheet ouverte en touchant la carte du compte mémorisé.
+/// Propose les modes de connexion : Face ID (si dispo), Apple, mot de passe.
+private struct AltSignInSheet<AppleButton: View>: View {
+    let faceIdAvailable: Bool
+    let onFace: () -> Void
+    let appleButton: AppleButton
+    let onPassword: () -> Void
+    let onClose: () -> Void
+
+    @State private var appeared = false
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color(red: 20/255, green: 14/255, blue: 18/255).opacity(0.4)
+                .background(.ultraThinMaterial)
+                .ignoresSafeArea()
+                .onTapGesture { onClose() }
+
+            VStack(spacing: 0) {
+                Capsule().fill(Color.black.opacity(0.16))
+                    .frame(width: 40, height: 5)
+                    .padding(.top, 12).padding(.bottom, 16)
+
+                Text("Comment vous connecter ?")
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.ink)
+                Text("Choisissez votre mode de connexion.")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.6))
+                    .padding(.top, 3).padding(.bottom, 20)
+
+                VStack(spacing: 12) {
+                    if faceIdAvailable {
+                        PrimaryButton(title: "Déverrouiller avec \(BiometricAuth.label)",
+                                      systemIcon: BiometricAuth.iconName, enabled: true,
+                                      action: onFace)
+                    }
+                    appleButton
+                    GhostButton(title: "Saisir le mot de passe", systemIcon: "key.fill",
+                                action: onPassword)
+                }
+
+                Button("Annuler", action: onClose)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.55))
+                    .padding(.top, 14)
+            }
+            .padding(EdgeInsets(top: 0, leading: 22, bottom: 30, trailing: 22))
+            .frame(maxWidth: .infinity)
+            .background(
+                UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26)
+                    .fill(Color(hex: "F6F3EF"))
+            )
+            .shadow(color: .black.opacity(0.16), radius: 30, x: 0, y: -8)
+            .offset(y: appeared ? 0 : 600)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) { appeared = true }
         }
     }
 }

@@ -18,6 +18,7 @@
 		66F4B4F1A8E580602B676CCD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCB8E6B73FE0AF6E3B3C3623 /* OnboardingView.swift */; };
 		740587052FA7410FB24A7E1C /* DocumentsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAECDFBF276149AB9F9721D9 /* DocumentsService.swift */; };
 		8A4E4F98F2243549F8D69676 /* ProfileEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */; };
+		0BEA0000000000000000B001 /* OverlaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BEA0000000000000000A001 /* OverlaysView.swift */; };
 		9AA203C3B66C5006556B8C9D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8416F13EB001C3DD89677E /* MessagesView.swift */; };
 		9AC23C1599CB4C42A03957F9 /* DateFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697B6B89AEA94E46A045168A /* DateFormatters.swift */; };
 		A1234567890123456789012A /* ManounouApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012B /* ManounouApp.swift */; };
@@ -40,6 +41,14 @@
 		E944AC1E9A2029DE2504B9AB /* ModernDocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */; };
 		F0A1B2C3D4E5F60718293A4C /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A4B /* Logger.swift */; };
 		F2BA37EEE475441AABEB1BB3 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59332336662B40318442EA47 /* AuthService.swift */; };
+		DD01000000000000000000A1 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD01000000000000000000B1 /* HomeView.swift */; };
+		DD02000000000000000000A2 /* PajemploiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD02000000000000000000B2 /* PajemploiView.swift */; };
+		DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD03000000000000000000B3 /* PajemploiDeclaration.swift */; };
+		DD04000000000000000000A4 /* AddChildSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD04000000000000000000B4 /* AddChildSheet.swift */; };
+		CC01000000000000000000A1 /* ProfilesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC01000000000000000000B1 /* ProfilesService.swift */; };
+		CC02000000000000000000A2 /* PlanningScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC02000000000000000000B2 /* PlanningScheduleService.swift */; };
+		CC03000000000000000000A3 /* HouseholdService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC03000000000000000000B3 /* HouseholdService.swift */; };
+		CC04000000000000000000A4 /* PlansService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC04000000000000000000B4 /* PlansService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +74,7 @@
 		697B6B89AEA94E46A045168A /* DateFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/DateFormatters.swift; sourceTree = "<group>"; };
 		6A8416F13EB001C3DD89677E /* MessagesView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MessagesView.swift; path = Views/Messages/MessagesView.swift; sourceTree = "<group>"; };
 		6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileEditSheet.swift; path = Views/Sheets/ProfileEditSheet.swift; sourceTree = "<group>"; };
+		0BEA0000000000000000A001 /* OverlaysView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OverlaysView.swift; path = Views/Sheets/OverlaysView.swift; sourceTree = "<group>"; };
 		7685EB3A06F041A691227F0F /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Models/Event.swift; sourceTree = "<group>"; };
 		773CBC209D7A49F0BE33951D /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Core/AppContainer.swift; sourceTree = "<group>"; };
 		88988B6FC9EC4D41BB7F24B2 /* FilterTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Models/FilterTypes.swift; sourceTree = "<group>"; };
@@ -87,6 +97,14 @@
 		EC538ACAB64D459FBAE0181C /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/CacheService.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F60718293A4B /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/Logger.swift; sourceTree = "<group>"; };
 		F8F58B399C76BAC459644DC5 /* SmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmokeTests.swift; path = ManounouTests/SmokeTests.swift; sourceTree = "<group>"; };
+		DD01000000000000000000B1 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = Views/Home/HomeView.swift; sourceTree = "<group>"; };
+		DD02000000000000000000B2 /* PajemploiView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiView.swift; path = Views/Pajemploi/PajemploiView.swift; sourceTree = "<group>"; };
+		DD03000000000000000000B3 /* PajemploiDeclaration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiDeclaration.swift; path = Models/PajemploiDeclaration.swift; sourceTree = "<group>"; };
+		DD04000000000000000000B4 /* AddChildSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AddChildSheet.swift; path = Views/Sheets/AddChildSheet.swift; sourceTree = "<group>"; };
+		CC01000000000000000000B1 /* ProfilesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/ProfilesService.swift; sourceTree = "<group>"; };
+		CC02000000000000000000B2 /* PlanningScheduleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/PlanningScheduleService.swift; sourceTree = "<group>"; };
+		CC03000000000000000000B3 /* HouseholdService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/HouseholdService.swift; sourceTree = "<group>"; };
+		CC04000000000000000000B4 /* PlansService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/PlansService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +148,11 @@
 				6A8416F13EB001C3DD89677E /* MessagesView.swift */,
 				2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */,
 				6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */,
+				0BEA0000000000000000A001 /* OverlaysView.swift */,
+				DD01000000000000000000B1 /* HomeView.swift */,
+				DD02000000000000000000B2 /* PajemploiView.swift */,
+				DD03000000000000000000B3 /* PajemploiDeclaration.swift */,
+				DD04000000000000000000B4 /* AddChildSheet.swift */,
 			);
 			path = Manounou;
 			sourceTree = "<group>";
@@ -307,6 +330,15 @@
 				9AA203C3B66C5006556B8C9D /* MessagesView.swift in Sources */,
 				E944AC1E9A2029DE2504B9AB /* ModernDocumentsView.swift in Sources */,
 				8A4E4F98F2243549F8D69676 /* ProfileEditSheet.swift in Sources */,
+				0BEA0000000000000000B001 /* OverlaysView.swift in Sources */,
+				DD01000000000000000000A1 /* HomeView.swift in Sources */,
+				DD02000000000000000000A2 /* PajemploiView.swift in Sources */,
+				DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */,
+				DD04000000000000000000A4 /* AddChildSheet.swift in Sources */,
+				CC01000000000000000000A1 /* ProfilesService.swift in Sources */,
+				CC02000000000000000000A2 /* PlanningScheduleService.swift in Sources */,
+				CC03000000000000000000A3 /* HouseholdService.swift in Sources */,
+				CC04000000000000000000A4 /* PlansService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

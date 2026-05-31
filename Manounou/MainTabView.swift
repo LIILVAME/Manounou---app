@@ -11,7 +11,7 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            HomeView()
+            HomeView(selectedTab: .constant(0))
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Accueil")
@@ -46,20 +46,9 @@ struct MainTabView: View {
 }
 
 // MARK: - Temporary Basic Views
-struct HomeView: View {
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Accueil")
-                    .font(.largeTitle)
-                    .padding()
-                Text("Bienvenue dans Manounou")
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Accueil")
-        }
-    }
-}
+// Note : `HomeView` est désormais le véritable écran d'accueil défini dans
+// Views/Home/HomeView.swift (câblé au target). Le placeholder a été retiré
+// pour lever le conflit de symbole.
 
 struct ChildrenView: View {
     var body: some View {
@@ -123,6 +112,10 @@ struct SettingsView: View {
 
 // MARK: - Preview
 #Preview {
-    MainTabView()
-        .environmentObject(AuthViewModel(authService: MockAuthService()))
+    let container = AppContainer.createForTesting()
+    return MainTabView()
+        .environmentObject(container.authViewModel)
+        .environmentObject(container.childrenViewModel)
+        .environmentObject(container.eventsViewModel)
+        .environmentObject(container.documentsViewModel)
 }

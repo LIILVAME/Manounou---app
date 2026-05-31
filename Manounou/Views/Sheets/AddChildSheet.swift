@@ -14,7 +14,7 @@ struct AddChildSheet: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var birthDate = Date()
-    @State private var gender: Child.Gender = .other
+    @State private var gender: Gender = .other
     @State private var isLoading = false
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -33,9 +33,9 @@ struct AddChildSheet: View {
                         .datePickerStyle(.compact)
                     
                     Picker("Genre", selection: $gender) {
-                        Text("Fille").tag(Child.Gender.female)
-                        Text("Garçon").tag(Child.Gender.male)
-                        Text("Autre").tag(Child.Gender.other)
+                        Text("Fille").tag(Gender.female)
+                        Text("Garçon").tag(Gender.male)
+                        Text("Autre").tag(Gender.other)
                     }
                     .pickerStyle(.segmented)
                 }
@@ -70,38 +70,29 @@ struct AddChildSheet: View {
     
     private func addChild() {
         isLoading = true
-        
-        Task {
-            do {
-                let newChild = Child(
-                    id: UUID(),
-                    firstName: firstName,
-                    lastName: lastName,
-                    birthDate: birthDate,
-                    gender: gender,
-                    createdAt: Date(),
-                    updatedAt: Date()
-                )
-                
-                await childrenViewModel.addChild(newChild)
-                
-                await MainActor.run {
-                    alertMessage = "Enfant ajouté avec succès"
-                    showingAlert = true
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    alertMessage = "Erreur lors de l'ajout de l'enfant"
-                    showingAlert = true
-                    isLoading = false
-                }
+
+        Task { @MainActor in
+            let newChild = Child(
+                firstName: firstName,
+                lastName: lastName,
+                birthDate: birthDate,
+                gender: gender
+            )
+
+            await childrenViewModel.createChild(newChild)
+
+            isLoading = false
+            if let error = childrenViewModel.errorMessage {
+                alertMessage = "Erreur lors de l'ajout de l'enfant : \(error)"
+            } else {
+                alertMessage = "Enfant ajouté avec succès"
             }
+            showingAlert = true
         }
     }
 }
 
 #Preview {
     AddChildSheet()
-        .environmentObject(ChildrenViewModel())
+        .environmentObject(AppContainer.createForTesting().childrenViewModel)
 }

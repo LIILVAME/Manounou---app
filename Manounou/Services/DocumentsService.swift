@@ -22,7 +22,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocuments() async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .execute()
                 .value
@@ -44,7 +44,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
         do {
             let documentDTO = DocumentDTO.from(document)
             let response: DocumentDTO = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .insert(documentDTO)
                 .select()
                 .single()
@@ -61,7 +61,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
         do {
             let documentDTO = DocumentDTO.from(document)
             let response: DocumentDTO = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .update(documentDTO)
                 .eq("id", value: document.id)
                 .select()
@@ -78,7 +78,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func deleteDocument(id: UUID) async throws {
         do {
             try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .delete()
                 .eq("id", value: id)
                 .execute()
@@ -90,7 +90,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocumentsForChild(childId: UUID) async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .eq("child_id", value: childId)
                 .execute()
@@ -105,7 +105,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocumentsByType(_ type: DocumentType) async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .eq("document_type", value: type.rawValue)
                 .execute()
@@ -119,36 +119,42 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     
     // MARK: - File Upload
     
+    /// Upload dans le bucket privé `documents`, sous un dossier au nom de
+    /// l'utilisateur (`<uid>/…`) imposé par la RLS storage. Retourne le **chemin**
+    /// de l'objet (stocké dans `documents.file_url`), pas une URL publique.
     func uploadFile(data: Data, fileName: String, mimeType: String) async throws -> String {
         do {
-            let filePath = "documents/\(UUID().uuidString)_\(fileName)"
-            
-            // Supabase Storage API expects Data in recent versions
+            // uid en minuscules pour matcher `auth.uid()::text` côté policy.
+            let uid = try await supabaseClient.auth.session.user.id.uuidString.lowercased()
+            let path = "\(uid)/\(UUID().uuidString)_\(fileName)"
+
             try await supabaseClient.storage
-                .from("documents")
-                .upload(filePath, data: data)
-            
-            let publicURL = try supabaseClient.storage
-                .from("documents")
-                .getPublicURL(path: filePath)
-            
-            return publicURL.absoluteString
+                .from(Config.Storage.documentsBucket)
+                .upload(path, data: data)
+
+            return path
         } catch {
             throw ServiceError.networkError("Impossible d'uploader le fichier: \(error.localizedDescription)")
         }
     }
-    
+
+    /// URL signée temporaire (bucket privé) pour consulter un fichier.
+    func signedURL(path: String, expiresIn: Int = 3600) async throws -> URL {
+        do {
+            return try await supabaseClient.storage
+                .from(Config.Storage.documentsBucket)
+                .createSignedURL(path: path, expiresIn: expiresIn)
+        } catch {
+            throw ServiceError.networkError("Impossible de générer le lien du fichier: \(error.localizedDescription)")
+        }
+    }
+
+    /// `url` est ici le chemin de l'objet (tel que stocké dans file_url).
     func deleteFile(url: String) async throws {
         do {
-            // Extract file path from URL
-            guard let urlComponents = URLComponents(string: url),
-                  let path = urlComponents.path.components(separatedBy: "/documents/").last else {
-                throw ServiceError.validationError("URL de fichier invalide")
-            }
-            
             try await supabaseClient.storage
-                .from("documents")
-                .remove(paths: ["documents/\(path)"])
+                .from(Config.Storage.documentsBucket)
+                .remove(paths: [url])
         } catch {
             throw ServiceError.networkError("Impossible de supprimer le fichier: \(error.localizedDescription)")
         }
@@ -167,7 +173,7 @@ struct DocumentDTO: Codable {
     let fileSize: Int?
     let mimeType: String?
     let childId: UUID?
-    let userId: UUID
+    let userId: UUID?      // omis à l'écriture → rempli par `default auth.uid()` (RLS)
     let createdAt: Date?
     let updatedAt: Date?
     
@@ -197,12 +203,12 @@ struct DocumentDTO: Codable {
             fileSize: fileSize,
             mimeType: mimeType,
             childId: childId,
-            userId: userId,
+            userId: userId ?? UUID(),
             createdAt: createdAt ?? Date(),
             updatedAt: updatedAt ?? Date()
         )
     }
-    
+
     static func from(_ document: Document) -> DocumentDTO {
         return DocumentDTO(
             id: document.id,
@@ -214,7 +220,9 @@ struct DocumentDTO: Codable {
             fileSize: document.fileSize,
             mimeType: document.mimeType,
             childId: document.childId,
-            userId: document.userId,
+            // user_id volontairement omis : la base le renseigne via
+            // `default auth.uid()` et la RLS exige auth.uid() = user_id.
+            userId: nil,
             createdAt: document.createdAt,
             updatedAt: document.updatedAt
         )

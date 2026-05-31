@@ -22,7 +22,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
     func fetchEvents() async throws -> [Event] {
         do {
             let response: [EventDTO] = try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .select()
                 .execute()
                 .value
@@ -44,7 +44,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
         do {
             let eventDTO = EventDTO.from(event)
             let response: EventDTO = try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .insert(eventDTO)
                 .select()
                 .single()
@@ -61,7 +61,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
         do {
             let eventDTO = EventDTO.from(event)
             let response: EventDTO = try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .update(eventDTO)
                 .eq("id", value: event.id)
                 .select()
@@ -78,7 +78,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
     func deleteEvent(id: UUID) async throws {
         do {
             try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .delete()
                 .eq("id", value: id)
                 .execute()
@@ -90,7 +90,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
     func fetchEventsForChild(childId: UUID) async throws -> [Event] {
         do {
             let response: [EventDTO] = try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .select()
                 .eq("child_id", value: childId)
                 .execute()
@@ -105,7 +105,7 @@ class EventsService: EventsServiceProtocol, ObservableObject {
     func fetchEventsForDateRange(from: Date, to: Date) async throws -> [Event] {
         do {
             let response: [EventDTO] = try await supabaseClient
-                .from("events")
+                .from(Config.Tables.events)
                 .select()
                 .gte("start_date", value: from)
                 .lte("end_date", value: to)
