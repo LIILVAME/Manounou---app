@@ -45,6 +45,10 @@
 		DD02000000000000000000A2 /* PajemploiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD02000000000000000000B2 /* PajemploiView.swift */; };
 		DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD03000000000000000000B3 /* PajemploiDeclaration.swift */; };
 		DD04000000000000000000A4 /* AddChildSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD04000000000000000000B4 /* AddChildSheet.swift */; };
+		CC01000000000000000000A1 /* ProfilesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC01000000000000000000B1 /* ProfilesService.swift */; };
+		CC02000000000000000000A2 /* PlanningScheduleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC02000000000000000000B2 /* PlanningScheduleService.swift */; };
+		CC03000000000000000000A3 /* HouseholdService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC03000000000000000000B3 /* HouseholdService.swift */; };
+		CC04000000000000000000A4 /* PlansService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC04000000000000000000B4 /* PlansService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -97,6 +101,10 @@
 		DD02000000000000000000B2 /* PajemploiView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiView.swift; path = Views/Pajemploi/PajemploiView.swift; sourceTree = "<group>"; };
 		DD03000000000000000000B3 /* PajemploiDeclaration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiDeclaration.swift; path = Models/PajemploiDeclaration.swift; sourceTree = "<group>"; };
 		DD04000000000000000000B4 /* AddChildSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AddChildSheet.swift; path = Views/Sheets/AddChildSheet.swift; sourceTree = "<group>"; };
+		CC01000000000000000000B1 /* ProfilesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/ProfilesService.swift; sourceTree = "<group>"; };
+		CC02000000000000000000B2 /* PlanningScheduleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/PlanningScheduleService.swift; sourceTree = "<group>"; };
+		CC03000000000000000000B3 /* HouseholdService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/HouseholdService.swift; sourceTree = "<group>"; };
+		CC04000000000000000000B4 /* PlansService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/PlansService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -327,6 +335,10 @@
 				DD02000000000000000000A2 /* PajemploiView.swift in Sources */,
 				DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */,
 				DD04000000000000000000A4 /* AddChildSheet.swift in Sources */,
+				CC01000000000000000000A1 /* ProfilesService.swift in Sources */,
+				CC02000000000000000000A2 /* PlanningScheduleService.swift in Sources */,
+				CC03000000000000000000A3 /* HouseholdService.swift in Sources */,
+				CC04000000000000000000A4 /* PlansService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

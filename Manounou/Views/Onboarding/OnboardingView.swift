@@ -107,7 +107,13 @@ public struct OnboardingView: View {
                 // Back chevron (steps 1–4 only)
                 if step >= 1 {
                     Button {
-                        withAnimation(AppTheme.Animation.standard) { step -= 1 }
+                        withAnimation(AppTheme.Animation.standard) {
+                            if step == 1 && authViewModel.isAuthenticated {
+                                step = -1
+                            } else {
+                                step -= 1
+                            }
+                        }
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -180,14 +186,16 @@ public struct OnboardingView: View {
                         if carouselPage < 2 {
                             carouselPage += 1
                         } else {
-                            step = 0
+                            step = authViewModel.isAuthenticated ? 1 : 0
                         }
                     }
                 }
 
                 if carouselPage < 2 {
                     Button("Passer") {
-                        withAnimation(AppTheme.Animation.standard) { step = 0 }
+                        withAnimation(AppTheme.Animation.standard) {
+                            step = authViewModel.isAuthenticated ? 1 : 0
+                        }
                     }
                     .font(AppTheme.Typography.callout)
                     .foregroundColor(AppTheme.Colors.muted)

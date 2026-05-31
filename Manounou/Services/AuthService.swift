@@ -25,12 +25,13 @@ class AuthService: AuthServiceProtocol, ObservableObject {
     
     func signIn(email: String, password: String) async throws -> User {
         do {
-            _ = try await supabaseClient.auth.signIn(
+            let session = try await supabaseClient.auth.signIn(
                 email: email,
                 password: password
             )
-            
+
             let customUser = User(
+                id: session.user.id,
                 email: email,
                 firstName: email.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
                 lastName: ""
@@ -56,6 +57,7 @@ class AuthService: AuthServiceProtocol, ObservableObject {
             
             let supabaseUser = response.user
             let customUser = User(
+                id: supabaseUser.id,
                 email: supabaseUser.email ?? email,
                 firstName: email.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
                 lastName: ""
@@ -79,6 +81,7 @@ class AuthService: AuthServiceProtocol, ObservableObject {
             )
             let supabaseUser = session.user
             let customUser = User(
+                id: supabaseUser.id,
                 email: supabaseUser.email ?? "inconnu@apple.com",
                 firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
                 lastName: ""
@@ -119,6 +122,7 @@ class AuthService: AuthServiceProtocol, ObservableObject {
             let supabaseUser = try await supabaseClient.auth.user()
             
             let customUser = User(
+                id: supabaseUser.id,
                 email: supabaseUser.email ?? "unknown@example.com",
                 firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
                 lastName: ""

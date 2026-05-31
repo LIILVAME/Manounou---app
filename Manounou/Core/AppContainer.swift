@@ -25,14 +25,21 @@ class AppContainer: ObservableObject {
     let eventsService: EventsService
     let childrenService: ChildrenService
     let documentsService: DocumentsService
-    
+    let profilesService: ProfilesService
+    let planningScheduleService: PlanningScheduleService
+    let householdService: HouseholdService
+    let plansService: PlansService
+
     // MARK: - ViewModels
-    
+
     @Published var authViewModel: AuthViewModel
     @Published var eventsViewModel: EventsViewModel
     @Published var childrenViewModel: ChildrenViewModel
     @Published var documentsViewModel: DocumentsViewModel
     @Published var notificationManager: NotificationManager
+    @Published var planningScheduleViewModel: PlanningScheduleViewModel
+    @Published var householdViewModel: HouseholdViewModel
+    @Published var plansConfig: [String: PlanConfigDTO] = [:]
     
     // MARK: - Configuration
     
@@ -56,6 +63,10 @@ class AppContainer: ObservableObject {
         
         // Initialisation des services
         self.cacheService = CacheService.shared
+        self.profilesService = ProfilesService(supabaseClient: supabaseClient)
+        self.planningScheduleService = PlanningScheduleService(supabaseClient: supabaseClient)
+        self.householdService = HouseholdService(supabaseClient: supabaseClient)
+        self.plansService = PlansService(supabaseClient: supabaseClient)
         if isTestMode {
             self.authService = MockAuthService()
             self.eventsService = EventsService(supabaseClient: supabaseClient, cacheService: cacheService)
@@ -67,13 +78,15 @@ class AppContainer: ObservableObject {
             self.childrenService = ChildrenService(supabaseClient: supabaseClient, cacheService: cacheService)
             self.documentsService = DocumentsService(supabaseClient: supabaseClient, cacheService: cacheService)
         }
-        
+
         // Initialisation des ViewModels avec injection de dépendances
         self.authViewModel = AuthViewModel(authService: authService)
         self.eventsViewModel = EventsViewModel(eventsService: eventsService)
         self.childrenViewModel = ChildrenViewModel(childrenService: childrenService)
         self.documentsViewModel = DocumentsViewModel(documentsService: documentsService)
         self.notificationManager = NotificationManager()
+        self.planningScheduleViewModel = PlanningScheduleViewModel(service: planningScheduleService)
+        self.householdViewModel = HouseholdViewModel(service: householdService)
         setupAuthStateListener()
     }
     
@@ -114,12 +127,36 @@ class AppContainer: ObservableObject {
             documentsViewModel.documents = cachedDocuments
             Logger.dataLoad("cached documents", count: cachedDocuments.count)
         }
-        
+
+        // Charger le profil Supabase (role, plan, plan_status, nom) + données dépendantes
+        if let supabaseUser = try? await supabaseClient.auth.user() {
+            let userId = supabaseUser.id
+            planningScheduleViewModel.configure(userId: userId)
+            householdViewModel.configure(userId: userId)
+
+            if let profile = try? await profilesService.fetchProfile(userId: userId) {
+                let fallback = authViewModel.currentUser ?? User(
+                    id: userId,
+                    email: supabaseUser.email ?? "",
+                    firstName: supabaseUser.email?.components(separatedBy: "@").first?.capitalized ?? "Utilisateur",
+                    lastName: ""
+                )
+                authViewModel.currentUser = profile.applyTo(fallback)
+            }
+        }
+
         // Chargement réseau concurrent pour rafraîchir les données
         await withTaskGroup(of: Void.self) { group in
             group.addTask { [self] in await self.eventsViewModel.loadEvents() }
             group.addTask { [self] in await self.childrenViewModel.loadChildren() }
             group.addTask { [self] in await self.documentsViewModel.loadDocuments() }
+            group.addTask { [self] in await self.planningScheduleViewModel.loadSchedule() }
+            group.addTask { [self] in await self.householdViewModel.loadMembers() }
+            group.addTask { [self] in
+                if let configs = try? await self.plansService.fetchAllPlans() {
+                    await MainActor.run { self.plansConfig = configs }
+                }
+            }
             await group.waitForAll()
         }
         timer.end(extra: "network refreshed")
@@ -155,6 +192,9 @@ class AppContainer: ObservableObject {
         eventsViewModel.clearEvents()
         childrenViewModel.clearChildren()
         documentsViewModel.clearDocuments()
+        planningScheduleViewModel.clear()
+        householdViewModel.clear()
+        plansConfig = [:]
         cacheService.clearCache()
     }
 }
@@ -659,5 +699,119 @@ class NotificationManager: ObservableObject {
         )
         
         UNUserNotificationCenter.current().add(request)
+    }
+}
+
+// MARK: - PlanningScheduleViewModel
+
+@MainActor
+class PlanningScheduleViewModel: ObservableObject {
+    @Published var scheduleMode: Int    = 0
+    @Published var activeDays: Set<Int> = [1, 2, 3, 4, 5]
+    @Published var dropTime: String     = "09:00"
+    @Published var pickTime: String     = "17:00"
+    @Published var dropBy: String       = "Papa"
+    @Published var pickBy: String       = "Maman"
+    @Published var carerName: String    = "la nounou"
+    @Published var isLoading: Bool      = false
+
+    private let service: PlanningScheduleService
+    private var userId: UUID?
+
+    init(service: PlanningScheduleService) {
+        self.service = service
+    }
+
+    func configure(userId: UUID) {
+        self.userId = userId
+    }
+
+    func loadSchedule() async {
+        guard let userId else { return }
+        isLoading = true
+        if let s = try? await service.fetchSchedule(userId: userId) {
+            scheduleMode = s.scheduleMode
+            activeDays   = s.activeDays
+            dropTime     = s.dropTime
+            pickTime     = s.pickTime
+            dropBy       = s.dropBy
+            pickBy       = s.pickBy
+            carerName    = s.carerName
+        }
+        isLoading = false
+    }
+
+    func saveSchedule() async {
+        guard let userId else { return }
+        let schedule = PlanningSchedule(
+            scheduleMode: scheduleMode,
+            activeDays: activeDays,
+            dropTime: dropTime,
+            pickTime: pickTime,
+            dropBy: dropBy,
+            pickBy: pickBy,
+            carerName: carerName
+        )
+        try? await service.upsertSchedule(schedule, userId: userId)
+    }
+
+    var currentSchedule: PlanningSchedule {
+        PlanningSchedule(scheduleMode: scheduleMode, activeDays: activeDays,
+                         dropTime: dropTime, pickTime: pickTime,
+                         dropBy: dropBy, pickBy: pickBy, carerName: carerName)
+    }
+
+    func clear() {
+        let d = PlanningSchedule.default
+        scheduleMode = d.scheduleMode
+        activeDays   = d.activeDays
+        dropTime     = d.dropTime
+        pickTime     = d.pickTime
+        dropBy       = d.dropBy
+        pickBy       = d.pickBy
+        carerName    = d.carerName
+        userId       = nil
+    }
+}
+
+// MARK: - HouseholdViewModel
+
+@MainActor
+class HouseholdViewModel: ObservableObject {
+    @Published var members: [HouseholdMember] = []
+    @Published var isLoading: Bool = false
+
+    private let service: HouseholdService
+    private var userId: UUID?
+
+    init(service: HouseholdService) {
+        self.service = service
+    }
+
+    func configure(userId: UUID) {
+        self.userId = userId
+    }
+
+    func loadMembers() async {
+        guard let userId else { return }
+        isLoading = true
+        do {
+            try await service.seedDefaultMembers(userId: userId)
+            members = try await service.fetchMembers(userId: userId)
+        } catch {
+            // Keep existing on error
+        }
+        isLoading = false
+    }
+
+    var memberNames: [String] { members.map { $0.name } }
+
+    func hexColor(for name: String) -> String {
+        members.first { $0.name == name }?.color ?? "#7A5AE0"
+    }
+
+    func clear() {
+        members = []
+        userId  = nil
     }
 }

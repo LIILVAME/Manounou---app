@@ -13,6 +13,8 @@ struct ManounouApp: App {
             RootView()
                 .environmentObject(appContainer)
                 .environmentObject(appContainer.authViewModel)
+                .environmentObject(appContainer.planningScheduleViewModel)
+                .environmentObject(appContainer.householdViewModel)
                 .task { await appContainer.initialize() }
         }
     }
