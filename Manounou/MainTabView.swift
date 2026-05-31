@@ -11,7 +11,7 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            HomeView()
+            HomeView(selectedTab: .constant(0))
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Accueil")

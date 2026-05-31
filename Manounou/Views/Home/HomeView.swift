@@ -18,7 +18,7 @@ private enum ChildStatus {
         switch self {
         case .atHome:    return "À la maison"
         case .dropping:  return "En route · dépôt"
-        case .withCarer: return "Chez Fatou"
+        case .withCarer: return "Avec la garde"
         case .returning: return "En route · récupération"
         }
     }
@@ -52,13 +52,14 @@ private enum ChildStatus {
 
     // MARK: Factory
 
-    static func current(for hour: Int) -> ChildStatus {
+    static func current(for hour: Int, dropHour: Int = 9, pickHour: Int = 17) -> ChildStatus {
+        let transitEnd = min(dropHour + 1, pickHour)
         switch hour {
-        case 0..<8:   return .atHome
-        case 8..<9:   return .dropping
-        case 9..<17:  return .withCarer
-        case 17..<18: return .returning
-        default:      return .atHome
+        case 0..<dropHour:           return .atHome
+        case dropHour..<transitEnd:  return .dropping
+        case transitEnd..<pickHour:  return .withCarer
+        case pickHour...(pickHour):  return .returning
+        default:                     return .atHome
         }
     }
 }
@@ -69,10 +70,15 @@ struct HomeView: View {
 
     // MARK: Environment
 
-    @EnvironmentObject var authViewModel:      AuthViewModel
-    @EnvironmentObject var childrenViewModel:  ChildrenViewModel
-    @EnvironmentObject var eventsViewModel:    EventsViewModel
-    @EnvironmentObject var documentsViewModel: DocumentsViewModel
+    @EnvironmentObject var authViewModel:             AuthViewModel
+    @EnvironmentObject var childrenViewModel:         ChildrenViewModel
+    @EnvironmentObject var eventsViewModel:           EventsViewModel
+    @EnvironmentObject var documentsViewModel:        DocumentsViewModel
+    @EnvironmentObject var planningScheduleViewModel: PlanningScheduleViewModel
+
+    // MARK: Binding — tab switching
+
+    @Binding var selectedTab: Int
 
     // MARK: State
 
@@ -81,9 +87,6 @@ struct HomeView: View {
     @State private var showingAddDocument   = false
     @State private var showingMessages      = false
     @State private var showingDeclaration   = false
-
-    @State private var navigateToCalendar   = false
-    @State private var navigateToDocuments  = false
 
     /// Drives the live-pulse animation on the hero card
     @State private var livePulse = false
@@ -127,15 +130,6 @@ struct HomeView: View {
                 }
             }
             .navigationBarHidden(true)
-            .navigationDestination(isPresented: $navigateToCalendar) {
-                PlanningView()
-                    .environmentObject(eventsViewModel)
-            }
-            .navigationDestination(isPresented: $navigateToDocuments) {
-                ModernDocumentsView()
-                    .environmentObject(documentsViewModel)
-                    .environmentObject(childrenViewModel)
-            }
         }
         .onAppear {
             Task { await loadData() }
@@ -398,7 +392,7 @@ struct HomeView: View {
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundColor(.white.opacity(0.88))
 
-            Text(currentStatus.label)
+            Text(currentStatusLabel)
                 .font(AppTheme.Typography.title1)
                 .foregroundColor(.white)
                 .fixedSize(horizontal: false, vertical: true)
@@ -477,15 +471,22 @@ struct HomeView: View {
     /// Données représentatives en l'absence de modèle de planning ; à brancher
     /// sur le planning réel quand il existera.
     private var heroTimeline: some View {
-        HStack(alignment: .top) {
-            heroStage(initial: "P", color: AppTheme.Colors.blue,
-                      title: "Dépôt", time: "8h30", align: .leading)
+        let s = planningScheduleViewModel.currentSchedule
+        let dropInitial = String(s.dropBy.prefix(1)).uppercased()
+        let pickInitial = String(s.pickBy.prefix(1)).uppercased()
+        let carerInitial = String(s.carerName.first(where: { $0.isLetter })
+                                  .map(String.init) ?? "G").uppercased()
+        let drop = s.dropTime.replacingOccurrences(of: ":", with: "h")
+        let pick = s.pickTime.replacingOccurrences(of: ":", with: "h")
+        return HStack(alignment: .top) {
+            heroStage(initial: dropInitial, color: AppTheme.Colors.blue,
+                      title: "Dépôt", time: drop, align: .leading)
             Spacer(minLength: 0)
-            heroStage(initial: "F", color: AppTheme.Colors.brand,
-                      title: "Chez Fatou", time: nil, align: .center)
+            heroStage(initial: carerInitial, color: AppTheme.Colors.brand,
+                      title: "Chez \(s.carerName)", time: nil, align: .center)
             Spacer(minLength: 0)
-            heroStage(initial: "M", color: AppTheme.Colors.purple,
-                      title: "Récup.", time: "17h00", align: .trailing)
+            heroStage(initial: pickInitial, color: AppTheme.Colors.purple,
+                      title: "Récup.", time: pick, align: .trailing)
         }
     }
 
@@ -513,9 +514,11 @@ struct HomeView: View {
 
     // MARK: - Weekly Strip
 
-    private static let dayLetters:   [String] = ["L", "M", "M", "J", "V", "S", "D"]
-    /// Mon–Fri are garde days (0-based Mon = 0)
-    private static let gardeIndices: Set<Int>  = [0, 1, 2, 3, 4]
+    private static let dayLetters: [String] = ["L", "M", "M", "J", "V", "S", "D"]
+    /// Active garde days (0-based Mon = 0) derived from user's planning schedule.
+    private var gardeIndices: Set<Int> {
+        Set(planningScheduleViewModel.activeDays.map { $0 - 1 })
+    }
 
     private var todayWeekdayIndex: Int {
         // Calendar.weekday: 1=Sun, 2=Mon … 7=Sat  →  0=Mon … 6=Sun
@@ -528,7 +531,7 @@ struct HomeView: View {
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { index in
                     let isToday = index == todayWeekdayIndex
-                    let isGarde = Self.gardeIndices.contains(index)
+                    let isGarde = gardeIndices.contains(index)
 
                     VStack(spacing: 6) {
                         Text(Self.dayLetters[index])
@@ -573,20 +576,20 @@ struct HomeView: View {
 
             // Footer : type de garde + horaires + raccourci Planning (cf. « Focus Accueil »)
             HStack(spacing: 8) {
-                Text("Routine")
+                Text(planningScheduleViewModel.scheduleMode == 0 ? "Routine" : "Roulement")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundColor(AppTheme.Colors.brand)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Colors.brandGhost))
 
-                Text("8h30–17h00")
+                Text("\(planningScheduleViewModel.dropTime.replacingOccurrences(of: ":", with: "h"))–\(planningScheduleViewModel.pickTime.replacingOccurrences(of: ":", with: "h"))")
                     .font(.system(size: 13.5, weight: .bold, design: .rounded))
                     .foregroundColor(AppTheme.Colors.ink)
 
                 Spacer(minLength: 0)
 
-                Button { navigateToCalendar = true } label: {
+                Button { selectedTab = 1 } label: {
                     Text("Planning ›")
                         .font(.system(size: 12.5, weight: .bold, design: .rounded))
                         .foregroundColor(AppTheme.Colors.brand)
@@ -618,7 +621,7 @@ struct HomeView: View {
     private var quickActionsRow: some View {
         HStack(spacing: AppTheme.Spacing.md) {
             HomeQuickActionCard(
-                label: "Message à Fatou",
+                label: "Message à \(planningScheduleViewModel.carerName)",
                 icon: "bubble.left.fill",
                 accentColor: AppTheme.Colors.green
             ) {
@@ -630,7 +633,7 @@ struct HomeView: View {
                 icon: "star.fill",
                 accentColor: AppTheme.Colors.orange
             ) {
-                navigateToCalendar = true
+                selectedTab = 1
             }
         }
     }
@@ -640,7 +643,7 @@ struct HomeView: View {
     private var upcomingEventsSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HomeSectionHeader(title: "PROCHAINS ÉVÉNEMENTS") {
-                navigateToCalendar = true
+                selectedTab = 1
             }
             .padding(.horizontal, AppTheme.Spacing.screenPadding)
 
@@ -650,14 +653,14 @@ struct HomeView: View {
                     message: "Pas d'événement à venir",
                     actionLabel: "Ajouter un événement"
                 ) {
-                    navigateToCalendar = true
+                    selectedTab = 1
                 }
                 .padding(.horizontal, AppTheme.Spacing.screenPadding)
             } else {
                 VStack(spacing: AppTheme.Spacing.sm) {
                     ForEach(Array(sortedUpcomingEvents.prefix(3)), id: \.id) { event in
                         HomeEventRow(event: event)
-                            .onTapGesture { navigateToCalendar = true }
+                            .onTapGesture { selectedTab = 1 }
                     }
                 }
                 .padding(.horizontal, AppTheme.Spacing.screenPadding)
@@ -670,7 +673,7 @@ struct HomeView: View {
     private var recentDocumentsSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HomeSectionHeader(title: "DOCUMENTS RÉCENTS") {
-                navigateToDocuments = true
+                selectedTab = 2
             }
             .padding(.horizontal, AppTheme.Spacing.screenPadding)
 
@@ -688,7 +691,7 @@ struct HomeView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(displayed.enumerated()), id: \.element.id) { index, doc in
                         HomeDocumentRow(document: doc)
-                            .onTapGesture { navigateToDocuments = true }
+                            .onTapGesture { selectedTab = 2 }
 
                         if index < displayed.count - 1 {
                             Divider()
@@ -741,19 +744,40 @@ struct HomeView: View {
         return first
     }
 
+    /// True si aujourd'hui est un jour de garde configuré (1=Lun…7=Dim).
+    private var isTodayGardeDay: Bool {
+        let raw = Calendar.current.component(.weekday, from: Date()) // 1=Sun…7=Sat
+        let mondayBased = (raw + 5) % 7 + 1                          // 1=Mon…7=Sun
+        return planningScheduleViewModel.activeDays.contains(mondayBased)
+    }
+
     private var currentStatus: ChildStatus {
+        guard isTodayGardeDay else { return .atHome }
         let hour = Calendar.current.component(.hour, from: Date())
-        return ChildStatus.current(for: hour)
+        let s    = planningScheduleViewModel.currentSchedule
+        return ChildStatus.current(for: hour, dropHour: s.dropHour, pickHour: s.pickHour)
+    }
+
+    private var currentStatusLabel: String {
+        let s = planningScheduleViewModel.currentSchedule
+        switch currentStatus {
+        case .withCarer: return "Chez \(s.carerName)"
+        default:         return currentStatus.label
+        }
     }
 
     private var nextInfoLine: String {
+        guard isTodayGardeDay else { return "Pas de garde aujourd'hui" }
+        let s    = planningScheduleViewModel.currentSchedule
         let hour = Calendar.current.component(.hour, from: Date())
+        let drop = s.dropTime.replacingOccurrences(of: ":", with: "h")
+        let pick = s.pickTime.replacingOccurrences(of: ":", with: "h")
         switch hour {
-        case 0..<8:   return "Dépôt prévu à 08h30"
-        case 8..<9:   return "Arrivée chez Fatou à 09h00"
-        case 9..<17:  return "Récupération à 17h00"
-        case 17..<18: return "Retour à la maison vers 18h00"
-        default:      return "Pas de garde ce soir"
+        case 0..<s.dropHour:                return "Dépôt prévu à \(drop)"
+        case s.dropHour..<(s.dropHour + 1): return "Arrivée chez \(s.carerName) à \(drop)"
+        case (s.dropHour + 1)..<s.pickHour: return "Récupération à \(pick)"
+        case s.pickHour...(s.pickHour):     return "Retour à la maison vers \(pick)"
+        default:                            return "Pas de garde ce soir"
         }
     }
 
@@ -1000,7 +1024,7 @@ struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
         let container = AppContainer.createForTesting()
         container.childrenViewModel.children = Child.sampleChildren
-        return HomeView()
+        return HomeView(selectedTab: .constant(0))
             .environmentObject(container.authViewModel)
             .environmentObject(container.childrenViewModel)
             .environmentObject(container.eventsViewModel)

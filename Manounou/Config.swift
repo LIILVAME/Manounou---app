@@ -35,9 +35,13 @@ struct Config {
     // (profiles, nounous, planning, pajemploi, messagerie) ajoutera sa constante
     // au moment où le service qui l'utilise sera créé.
     struct Tables {
-        static let children = "children"
-        static let events = "events"
-        static let documents = "documents"
+        static let profiles          = "profiles"
+        static let children          = "children"
+        static let events            = "events"
+        static let documents         = "documents"
+        static let planningSchedules = "planning_schedules"
+        static let householdMembers  = "household_members"
+        static let plans             = "plans"
     }
 
     // MARK: - Supabase Storage

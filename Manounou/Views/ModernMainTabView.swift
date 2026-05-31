@@ -15,7 +15,7 @@ struct ModernMainTabView: View {
         TabView(selection: $selectedTab) {
 
             // 1 — Accueil
-            HomeView()
+            HomeView(selectedTab: $selectedTab)
                 .environmentObject(appContainer.childrenViewModel)
                 .environmentObject(appContainer.eventsViewModel)
                 .environmentObject(appContainer.documentsViewModel)

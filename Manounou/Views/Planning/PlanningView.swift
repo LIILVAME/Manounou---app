@@ -25,30 +25,6 @@ struct SitterSlot: Identifiable {
     }
 }
 
-// MARK: - Person colour helper
-
-private enum Person: String, CaseIterable {
-    case papa  = "Papa"
-    case maman = "Maman"
-    case mamie = "Mamie"
-    case fatou = "Fatou"
-    case lea   = "Léa"
-
-    var color: Color {
-        switch self {
-        case .papa:  return Color(hex: "2E7BEE")
-        case .maman: return Color(hex: "7A5AE0")
-        case .mamie: return Color(hex: "1FA87A")
-        case .fatou: return Color(hex: "FA4270")
-        case .lea:   return Color(hex: "FF8A3D")
-        }
-    }
-
-    static func color(for name: String) -> Color {
-        allCases.first { $0.rawValue == name }?.color ?? AppTheme.Colors.muted
-    }
-}
-
 private let dayLetters = ["L", "M", "M", "J", "V", "S", "D"]
 
 // MARK: - PlanningView
@@ -59,7 +35,9 @@ struct PlanningView: View {
     /// autres événements de la table `events`.
     private static let babysitterTag = "babysitter"
 
-    @EnvironmentObject private var eventsViewModel: EventsViewModel
+    @EnvironmentObject private var eventsViewModel:            EventsViewModel
+    @EnvironmentObject private var planningScheduleViewModel:  PlanningScheduleViewModel
+    @EnvironmentObject private var householdViewModel:         HouseholdViewModel
 
     // MARK: State — editing
 
@@ -105,7 +83,27 @@ struct PlanningView: View {
             .background(AppTheme.Colors.paper.ignoresSafeArea())
             .navigationTitle("Planning")
             .navigationBarTitleDisplayMode(.large)
-            .task { await eventsViewModel.loadEvents() }
+            .task {
+                await eventsViewModel.loadEvents()
+                let vm = planningScheduleViewModel
+                scheduleMode = vm.scheduleMode
+                activeDays   = vm.activeDays
+                dropTime     = vm.dropTime
+                pickTime     = vm.pickTime
+                dropBy       = vm.dropBy
+                pickBy       = vm.pickBy
+            }
+            .onChange(of: isEditing) { editing in
+                if !editing {
+                    planningScheduleViewModel.scheduleMode = scheduleMode
+                    planningScheduleViewModel.activeDays   = activeDays
+                    planningScheduleViewModel.dropTime     = dropTime
+                    planningScheduleViewModel.pickTime     = pickTime
+                    planningScheduleViewModel.dropBy       = dropBy
+                    planningScheduleViewModel.pickBy       = pickBy
+                    Task { await planningScheduleViewModel.saveSchedule() }
+                }
+            }
         }
         .sheet(isPresented: $showingAddSitter) {
             AddSitterSheet { date, name, arrive, leave in
@@ -234,7 +232,7 @@ struct PlanningView: View {
                         Text(scheduleMode == 1 ? "Roulement · 3 semaines" : "Horaires fixes")
                             .font(.system(size: 15.5, weight: .bold, design: .rounded))
                             .foregroundColor(AppTheme.Colors.ink)
-                        Text("Gérée avec Fatou")
+                        Text("Gérée avec \(planningScheduleViewModel.carerName)")
                             .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                             .foregroundColor(AppTheme.Colors.muted)
                     }
@@ -295,9 +293,36 @@ struct PlanningView: View {
                     .fill(AppTheme.Colors.divider)
                     .frame(height: 1)
 
-                // Person pickers
-                PersonPickerRow(label: "Déposé par", selection: $dropBy)
-                PersonPickerRow(label: "Récupéré par", selection: $pickBy)
+                // Person pickers (options from household members)
+                let memberNames = householdViewModel.memberNames.isEmpty
+                    ? ["Papa", "Maman"]
+                    : householdViewModel.memberNames
+                let colorFor: (String) -> Color = { name in
+                    Color(hex: householdViewModel.hexColor(for: name))
+                }
+                PersonPickerRow(label: "Déposé par",   selection: $dropBy,
+                                options: memberNames, colorForName: colorFor)
+                PersonPickerRow(label: "Récupéré par", selection: $pickBy,
+                                options: memberNames, colorForName: colorFor)
+
+                Rectangle()
+                    .fill(AppTheme.Colors.divider)
+                    .frame(height: 1)
+
+                // Nom du caregiving (nourrice/nounou)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Nom de la garde")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.muted)
+                        .tracking(0.3)
+                    TextField("ex. Fatou", text: $planningScheduleViewModel.carerName)
+                        .font(AppTheme.Typography.bodyMedium)
+                        .foregroundColor(AppTheme.Colors.ink)
+                        .padding(.horizontal, AppTheme.Spacing.sm)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.Colors.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
+                }
             }
             .padding(AppTheme.Spacing.md)
             .themedCard()
@@ -415,7 +440,10 @@ struct PlanningView: View {
                                         dateStr: entry.dateStr,
                                         timeRange: entry.timeRange,
                                         dropBy: entry.dropBy,
-                                        pickBy: entry.pickBy)
+                                        pickBy: entry.pickBy,
+                                        colorForName: { name in
+                                            Color(hex: householdViewModel.hexColor(for: name))
+                                        })
                         if idx < upcoming.count - 1 {
                             Rectangle()
                                 .fill(AppTheme.Colors.divider)
@@ -476,19 +504,20 @@ struct PlanningView: View {
 
 private struct PersonChip: View {
     let name: String
+    let color: Color
 
     var body: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(Person.color(for: name))
+                .fill(color)
                 .frame(width: 7, height: 7)
             Text(name)
                 .font(AppTheme.Typography.caption2)
-                .foregroundColor(Person.color(for: name))
+                .foregroundColor(color)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
-        .background(Person.color(for: name).opacity(0.10))
+        .background(color.opacity(0.10))
         .clipShape(Capsule())
     }
 }
@@ -554,6 +583,7 @@ private struct UpcomingCareRow: View {
     let timeRange: String
     let dropBy: String
     let pickBy: String
+    var colorForName: (String) -> Color = { _ in AppTheme.Colors.muted }
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
@@ -578,11 +608,11 @@ private struct UpcomingCareRow: View {
 
             // Dépose → récup (pilotés par l'éditeur d'horaires)
             HStack(spacing: 3) {
-                PersonChip(name: dropBy)
+                PersonChip(name: dropBy, color: colorForName(dropBy))
                 Image(systemName: "arrow.right")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(AppTheme.Colors.muted.opacity(0.6))
-                PersonChip(name: pickBy)
+                PersonChip(name: pickBy, color: colorForName(pickBy))
             }
         }
         .padding(.horizontal, AppTheme.Spacing.md)
@@ -622,8 +652,8 @@ private struct PlanTimeField: View {
 private struct PersonPickerRow: View {
     let label: String
     @Binding var selection: String
-
-    private let options = ["Papa", "Maman", "Mamie"]
+    let options: [String]
+    let colorForName: (String) -> Color
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
@@ -636,6 +666,7 @@ private struct PersonPickerRow: View {
             HStack(spacing: 6) {
                 ForEach(options, id: \.self) { option in
                     let active = selection == option
+                    let accent = colorForName(option)
                     Button {
                         withAnimation(AppTheme.Animation.quick) {
                             selection = option
@@ -643,24 +674,24 @@ private struct PersonPickerRow: View {
                     } label: {
                         HStack(spacing: 4) {
                             Circle()
-                                .fill(Person.color(for: option))
+                                .fill(accent)
                                 .frame(width: 7, height: 7)
                             Text(option)
                                 .font(AppTheme.Typography.caption2)
-                                .foregroundColor(active ? Person.color(for: option) : AppTheme.Colors.muted)
+                                .foregroundColor(active ? accent : AppTheme.Colors.muted)
                         }
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(
                             active
-                                ? Person.color(for: option).opacity(0.12)
+                                ? accent.opacity(0.12)
                                 : AppTheme.Colors.surfaceAlt
                         )
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
                                 .strokeBorder(
-                                    active ? Person.color(for: option).opacity(0.35) : Color.clear,
+                                    active ? accent.opacity(0.35) : Color.clear,
                                     lineWidth: 1
                                 )
                         )
