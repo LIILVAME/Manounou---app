@@ -31,6 +31,8 @@ public struct OnboardingView: View {
     @State private var isCreatingAccount = false
     @State private var accountError: String? = nil
     @State private var isCompletingOnboarding = false
+    /// Nonce brut courant pour Sign in with Apple (transmis ensuite à Supabase).
+    @State private var currentNonce: String? = nil
 
     // Step 0
     @State private var email: String = ""
@@ -245,19 +247,23 @@ public struct OnboardingView: View {
 
                 // Apple Sign In
                 SignInWithAppleButton(.signIn) { request in
+                    let nonce = AppleSignIn.randomNonceString()
+                    currentNonce = nonce
                     request.requestedScopes = [.email, .fullName]
+                    request.nonce = AppleSignIn.sha256(nonce)
                 } onCompletion: { result in
                     switch result {
                     case .success(let authorization):
                         guard
                             let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
                             let idTokenData = credential.identityToken,
-                            let idToken = String(data: idTokenData, encoding: .utf8)
+                            let idToken = String(data: idTokenData, encoding: .utf8),
+                            let nonce = currentNonce
                         else { return }
                         Task {
                             isCreatingAccount = true
                             accountError = nil
-                            await authViewModel.signInWithApple(idToken: idToken)
+                            await authViewModel.signInWithApple(idToken: idToken, nonce: nonce)
                             isCreatingAccount = false
                             if authViewModel.errorMessage == nil {
                                 withAnimation(AppTheme.Animation.standard) { step = 1 }

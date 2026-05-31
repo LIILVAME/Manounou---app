@@ -18,6 +18,7 @@
 		66F4B4F1A8E580602B676CCD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCB8E6B73FE0AF6E3B3C3623 /* OnboardingView.swift */; };
 		740587052FA7410FB24A7E1C /* DocumentsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAECDFBF276149AB9F9721D9 /* DocumentsService.swift */; };
 		8A4E4F98F2243549F8D69676 /* ProfileEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */; };
+		0BEA0000000000000000B001 /* OverlaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BEA0000000000000000A001 /* OverlaysView.swift */; };
 		9AA203C3B66C5006556B8C9D /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8416F13EB001C3DD89677E /* MessagesView.swift */; };
 		9AC23C1599CB4C42A03957F9 /* DateFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697B6B89AEA94E46A045168A /* DateFormatters.swift */; };
 		A1234567890123456789012A /* ManounouApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012B /* ManounouApp.swift */; };
@@ -69,6 +70,7 @@
 		697B6B89AEA94E46A045168A /* DateFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/DateFormatters.swift; sourceTree = "<group>"; };
 		6A8416F13EB001C3DD89677E /* MessagesView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MessagesView.swift; path = Views/Messages/MessagesView.swift; sourceTree = "<group>"; };
 		6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileEditSheet.swift; path = Views/Sheets/ProfileEditSheet.swift; sourceTree = "<group>"; };
+		0BEA0000000000000000A001 /* OverlaysView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OverlaysView.swift; path = Views/Sheets/OverlaysView.swift; sourceTree = "<group>"; };
 		7685EB3A06F041A691227F0F /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Models/Event.swift; sourceTree = "<group>"; };
 		773CBC209D7A49F0BE33951D /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Core/AppContainer.swift; sourceTree = "<group>"; };
 		88988B6FC9EC4D41BB7F24B2 /* FilterTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Models/FilterTypes.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				6A8416F13EB001C3DD89677E /* MessagesView.swift */,
 				2D6B814D18679E4184484CD1 /* ModernDocumentsView.swift */,
 				6FE778C15A17FF3D7D98A8AA /* ProfileEditSheet.swift */,
+				0BEA0000000000000000A001 /* OverlaysView.swift */,
 				DD01000000000000000000B1 /* HomeView.swift */,
 				DD02000000000000000000B2 /* PajemploiView.swift */,
 				DD03000000000000000000B3 /* PajemploiDeclaration.swift */,
@@ -319,6 +322,7 @@
 				9AA203C3B66C5006556B8C9D /* MessagesView.swift in Sources */,
 				E944AC1E9A2029DE2504B9AB /* ModernDocumentsView.swift in Sources */,
 				8A4E4F98F2243549F8D69676 /* ProfileEditSheet.swift in Sources */,
+				0BEA0000000000000000B001 /* OverlaysView.swift in Sources */,
 				DD01000000000000000000A1 /* HomeView.swift in Sources */,
 				DD02000000000000000000A2 /* PajemploiView.swift in Sources */,
 				DD03000000000000000000A3 /* PajemploiDeclaration.swift in Sources */,
