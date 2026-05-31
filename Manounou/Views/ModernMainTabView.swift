@@ -78,6 +78,8 @@ struct ProfilFoyerView: View {
     @EnvironmentObject var childrenViewModel: ChildrenViewModel
     @State private var showingSignOutAlert = false
     @State private var showingEditProfile  = false
+    @State private var showingAddChild     = false
+    @State private var showingAbout        = false
 
     var body: some View {
         NavigationStack {
@@ -104,6 +106,13 @@ struct ProfilFoyerView: View {
         .sheet(isPresented: $showingEditProfile) {
             ProfileEditSheet()
                 .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showingAddChild) {
+            AddChildSheet()
+                .environmentObject(childrenViewModel)
+        }
+        .sheet(isPresented: $showingAbout) {
+            AboutSheet()
         }
         .alert("Déconnexion", isPresented: $showingSignOutAlert) {
             Button("Se déconnecter", role: .destructive) { Task { await authViewModel.signOut() } }
@@ -208,7 +217,7 @@ struct ProfilFoyerView: View {
                                   subtitle: child.ageText)
                 }
                 PFSettingsRow(icon: "person.badge.plus", iconColor: AppTheme.Colors.green,
-                              title: "Ajouter un enfant")
+                              title: "Ajouter un enfant") { showingAddChild = true }
             }
 
             // Garde section
@@ -228,7 +237,7 @@ struct ProfilFoyerView: View {
                 PFSettingsRow(icon: "questionmark.circle.fill", iconColor: AppTheme.Colors.blue,
                               title: "Aide et support")
                 PFSettingsRow(icon: "info.circle.fill", iconColor: AppTheme.Colors.muted,
-                              title: "À propos")
+                              title: "À propos") { showingAbout = true }
             }
 
             // Sign out
@@ -301,8 +310,21 @@ private struct PFSettingsRow: View {
     var iconColor: Color = AppTheme.Colors.muted
     let title: String
     var subtitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
+        VStack(spacing: 0) {
+            if let action {
+                Button(action: action) { rowContent }
+                    .buttonStyle(.plain)
+            } else {
+                rowContent
+            }
+            Divider().padding(.leading, 60)
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15))
@@ -329,7 +351,6 @@ private struct PFSettingsRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
         .contentShape(Rectangle())
-        Divider().padding(.leading, 60)
     }
 }
 

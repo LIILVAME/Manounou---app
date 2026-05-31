@@ -21,24 +21,30 @@ struct ProfileEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Informations personnelles") {
+                Section {
                     TextField("Prénom", text: $firstName)
                         .textContentType(.givenName)
-                    
+
                     TextField("Nom", text: $lastName)
                         .textContentType(.familyName)
-                    
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+
+                    HStack {
+                        Text("Email")
+                        Spacer()
+                        Text(email.isEmpty ? "—" : email)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Informations personnelles")
+                } footer: {
+                    Text("L'adresse e-mail ne peut pas être modifiée pour le moment.")
                 }
-                
+
                 Section {
                     Button("Sauvegarder") {
                         saveProfile()
                     }
-                    .disabled(isLoading || firstName.isEmpty || lastName.isEmpty || email.isEmpty)
+                    .disabled(isLoading || firstName.isEmpty || lastName.isEmpty)
                     
                     Button("Se déconnecter", role: .destructive) {
                         Task {
@@ -76,30 +82,18 @@ struct ProfileEditSheet: View {
     }
     
     private func saveProfile() {
-        isLoading = true
-        
-        Task {
-            do {
-                // Simuler la sauvegarde du profil
-                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 seconde
-                
-                await MainActor.run {
-                    alertMessage = "Profil mis à jour avec succès"
-                    showingAlert = true
-                    isLoading = false
-                }
-                
-                // Fermer après un délai
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconde
-                await MainActor.run {
-                    dismiss()
-                }
-            } catch {
-                await MainActor.run {
-                    alertMessage = "Erreur lors de la mise à jour du profil"
-                    showingAlert = true
-                    isLoading = false
-                }
+        Task { @MainActor in
+            isLoading = true
+
+            await authViewModel.updateProfile(firstName: firstName, lastName: lastName)
+
+            isLoading = false
+
+            if let error = authViewModel.errorMessage {
+                alertMessage = error
+                showingAlert = true
+            } else {
+                dismiss()
             }
         }
     }
