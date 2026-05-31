@@ -1,0 +1,11 @@
+-- M0 — Sécurité : retirer l'EXECUTE public sur la fonction event-trigger
+-- public.rls_auto_enable(). C'est un helper interne (auto-active la RLS sur toute
+-- nouvelle table de public) déclenché par event trigger ; il n'a aucune raison
+-- d'être appelable via /rest/v1/rpc par anon/authenticated. Révoquer l'EXECUTE
+-- lève les advisors 0028/0029 sans casser le comportement (les event triggers
+-- s'exécutent indépendamment des grants EXECUTE de la fonction).
+--
+-- NB : cette première révocation retire les grants EXPLICITES anon/authenticated
+-- mais pas le grant implicite à PUBLIC — complété par la migration suivante
+-- (20260531101305_secure_rls_auto_enable_revoke_public).
+revoke execute on function public.rls_auto_enable() from anon, authenticated;

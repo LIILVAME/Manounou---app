@@ -22,7 +22,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocuments() async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .execute()
                 .value
@@ -44,7 +44,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
         do {
             let documentDTO = DocumentDTO.from(document)
             let response: DocumentDTO = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .insert(documentDTO)
                 .select()
                 .single()
@@ -61,7 +61,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
         do {
             let documentDTO = DocumentDTO.from(document)
             let response: DocumentDTO = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .update(documentDTO)
                 .eq("id", value: document.id)
                 .select()
@@ -78,7 +78,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func deleteDocument(id: UUID) async throws {
         do {
             try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .delete()
                 .eq("id", value: id)
                 .execute()
@@ -90,7 +90,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocumentsForChild(childId: UUID) async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .eq("child_id", value: childId)
                 .execute()
@@ -105,7 +105,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func fetchDocumentsByType(_ type: DocumentType) async throws -> [Document] {
         do {
             let response: [DocumentDTO] = try await supabaseClient
-                .from("documents")
+                .from(Config.Tables.documents)
                 .select()
                 .eq("document_type", value: type.rawValue)
                 .execute()
@@ -129,7 +129,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
             let path = "\(uid)/\(UUID().uuidString)_\(fileName)"
 
             try await supabaseClient.storage
-                .from("documents")
+                .from(Config.Storage.documentsBucket)
                 .upload(path, data: data)
 
             return path
@@ -142,7 +142,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func signedURL(path: String, expiresIn: Int = 3600) async throws -> URL {
         do {
             return try await supabaseClient.storage
-                .from("documents")
+                .from(Config.Storage.documentsBucket)
                 .createSignedURL(path: path, expiresIn: expiresIn)
         } catch {
             throw ServiceError.networkError("Impossible de générer le lien du fichier: \(error.localizedDescription)")
@@ -153,7 +153,7 @@ class DocumentsService: DocumentsServiceProtocol, ObservableObject {
     func deleteFile(url: String) async throws {
         do {
             try await supabaseClient.storage
-                .from("documents")
+                .from(Config.Storage.documentsBucket)
                 .remove(paths: [url])
         } catch {
             throw ServiceError.networkError("Impossible de supprimer le fichier: \(error.localizedDescription)")
