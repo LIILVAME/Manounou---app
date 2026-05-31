@@ -262,11 +262,11 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
-    func signInWithApple(idToken: String) async {
+    func signInWithApple(idToken: String, nonce: String?) async {
         isLoading = true
         errorMessage = nil
         do {
-            let user = try await authService.signInWithApple(idToken: idToken)
+            let user = try await authService.signInWithApple(idToken: idToken, nonce: nonce)
             currentUser = user
             isAuthenticated = true
             userProfile = UserProfile(

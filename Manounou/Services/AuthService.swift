@@ -72,10 +72,10 @@ class AuthService: AuthServiceProtocol, ObservableObject {
         }
     }
     
-    func signInWithApple(idToken: String) async throws -> User {
+    func signInWithApple(idToken: String, nonce: String?) async throws -> User {
         do {
             let session = try await supabaseClient.auth.signInWithIdToken(
-                credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken)
+                credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce)
             )
             let supabaseUser = session.user
             let customUser = User(
@@ -209,7 +209,7 @@ class MockAuthService: AuthServiceProtocol, ObservableObject {
         return currentUser
     }
 
-    func signInWithApple(idToken: String) async throws -> User {
+    func signInWithApple(idToken: String, nonce: String?) async throws -> User {
         if shouldFailAuth {
             throw ServiceError.authenticationError("Mock Apple authentication failure")
         }

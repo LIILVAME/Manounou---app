@@ -15,7 +15,7 @@ protocol AuthServiceProtocol {
     
     func signIn(email: String, password: String) async throws -> User
     func signUp(email: String, password: String) async throws -> User
-    func signInWithApple(idToken: String) async throws -> User
+    func signInWithApple(idToken: String, nonce: String?) async throws -> User
     func signOut() async throws
     func resetPassword(email: String) async throws
     func getCurrentUser() async throws -> User?
