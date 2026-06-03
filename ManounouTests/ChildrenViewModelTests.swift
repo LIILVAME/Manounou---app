@@ -2,207 +2,88 @@
 //  ChildrenViewModelTests.swift
 //  ManounouTests
 //
-//  Created by Assistant on 17/08/2025.
+//  Tests du `ChildrenViewModel` via le mock embarqué `MockChildrenService`
+//  (injecté par protocole). Le mock est pré-rempli avec 3 enfants
+//  d'exemple et simule un délai réseau.
+//
+//  NOTE : version modernisée. L'ancien fichier ciblait le module disparu
+//  `ManounouApp` et une API de ViewModel (search/filter/sort) qui n'existe
+//  plus ; il n'est donc pas réintroduit tel quel.
 //
 
 import XCTest
-@testable import ManounouApp
+@testable import Manounou
 
 @MainActor
-class ChildrenViewModelTests: XCTestCase {
-    
-    var viewModel: ChildrenViewModel!
-    var mockService: MockChildrenService!
-    
-    override func setUp() {
-        super.setUp()
-        mockService = MockChildrenService()
-        viewModel = ChildrenViewModel(childrenService: mockService)
+final class ChildrenViewModelTests: XCTestCase {
+
+    private func makeViewModel(shouldFail: Bool = false) -> ChildrenViewModel {
+        ChildrenViewModel(childrenService: MockChildrenService(shouldFailRequests: shouldFail))
     }
-    
-    override func tearDown() {
-        viewModel = nil
-        mockService = nil
-        super.tearDown()
-    }
-    
-    // MARK: - Initialization Tests
-    
+
+    // MARK: - État initial
+
     func testInitialState() {
+        let viewModel = makeViewModel()
         XCTAssertTrue(viewModel.children.isEmpty)
         XCTAssertFalse(viewModel.isLoading)
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(viewModel.childrenCount, 0)
-        XCTAssertFalse(viewModel.hasChildren)
     }
-    
-    // MARK: - Load Children Tests
-    
+
+    // MARK: - Chargement
+
     func testLoadChildrenSuccess() async {
-        // Given
-        let expectedChildren = Child.sampleChildren
-        mockService.mockChildren = expectedChildren
-        
-        // When
+        let viewModel = makeViewModel()
         await viewModel.loadChildren()
-        
-        // Then
-        XCTAssertEqual(viewModel.children.count, expectedChildren.count)
+        XCTAssertEqual(viewModel.children.count, 3) // mock pré-rempli
         XCTAssertFalse(viewModel.isLoading)
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertTrue(viewModel.hasChildren)
     }
-    
-    func testLoadChildrenFailure() async {
-        // Given
-        mockService.shouldFail = true
-        
-        // When
+
+    func testLoadChildrenFailureSetsErrorMessage() async {
+        let viewModel = makeViewModel(shouldFail: true)
         await viewModel.loadChildren()
-        
-        // Then
         XCTAssertTrue(viewModel.children.isEmpty)
         XCTAssertFalse(viewModel.isLoading)
         XCTAssertNotNil(viewModel.errorMessage)
-        XCTAssertFalse(viewModel.hasChildren)
     }
-    
-    // MARK: - Create Child Tests
-    
-    func testCreateChildSuccess() async {
-        // Given
-        let newChild = Child.sampleChildren.first!
-        
-        // When
+
+    // MARK: - Création
+
+    func testCreateChildReloadsList() async {
+        let viewModel = makeViewModel()
+        let newChild = Child(
+            firstName: "Noé",
+            lastName: "Durand",
+            birthDate: Date(),
+            gender: .male
+        )
         await viewModel.createChild(newChild)
-        
-        // Then
-        XCTAssertEqual(viewModel.children.count, 1)
-        XCTAssertEqual(viewModel.children.first?.id, newChild.id)
+        XCTAssertEqual(viewModel.children.count, 4) // 3 + 1
         XCTAssertNil(viewModel.errorMessage)
     }
-    
-    // MARK: - Search and Filter Tests
-    
-    func testSearchChildren() {
-        // Given
-        viewModel.children = Child.sampleChildren
-        
-        // When
-        let results = viewModel.searchChildren(query: "Emma")
-        
-        // Then
-        XCTAssertFalse(results.isEmpty)
-        XCTAssertTrue(results.allSatisfy { $0.fullName.localizedCaseInsensitiveContains("Emma") })
+
+    func testCreateChildFailureSetsErrorMessage() async {
+        let viewModel = makeViewModel(shouldFail: true)
+        let newChild = Child(firstName: "Noé", lastName: "Durand", birthDate: Date(), gender: .male)
+        await viewModel.createChild(newChild)
+        XCTAssertNotNil(viewModel.errorMessage)
     }
-    
-    func testFilterChildrenByGender() {
-        // Given
-        viewModel.children = Child.sampleChildren
-        
-        // When
-        let femaleChildren = viewModel.filterChildren(by: .female)
-        
-        // Then
-        XCTAssertTrue(femaleChildren.allSatisfy { $0.gender == .female })
-    }
-    
-    // MARK: - Sorting Tests
-    
-    func testChildrenByName() {
-        // Given
-        viewModel.children = Child.sampleChildren
-        
-        // When
-        let sortedChildren = viewModel.childrenByName()
-        
-        // Then
-        for i in 0..<(sortedChildren.count - 1) {
-            let current = sortedChildren[i].firstName
-            let next = sortedChildren[i + 1].firstName
-            XCTAssertTrue(current.localizedCaseInsensitiveCompare(next) != .orderedDescending)
-        }
-    }
-    
-    func testChildrenByAge() {
-        // Given
-        viewModel.children = Child.sampleChildren
-        
-        // When
-        let sortedChildren = viewModel.childrenByAge()
-        
-        // Then
-        for i in 0..<(sortedChildren.count - 1) {
-            let current = sortedChildren[i].birthDate
-            let next = sortedChildren[i + 1].birthDate
-            XCTAssertTrue(current >= next) // Plus jeunes en premier
-        }
-    }
-    
-    // MARK: - Error Handling Tests
-    
-    func testClearError() {
-        // Given
-        viewModel.errorMessage = "Test error"
-        
-        // When
-        viewModel.clearError()
-        
-        // Then
-        XCTAssertNil(viewModel.errorMessage)
-    }
-    
-    func testClearChildren() {
-        // Given
-        viewModel.children = Child.sampleChildren
-        
-        // When
+
+    // MARK: - Nettoyage
+
+    func testClearChildren() async {
+        let viewModel = makeViewModel()
+        await viewModel.loadChildren()
+        XCTAssertFalse(viewModel.children.isEmpty)
         viewModel.clearChildren()
-        
-        // Then
         XCTAssertTrue(viewModel.children.isEmpty)
-        XCTAssertEqual(viewModel.childrenCount, 0)
-        XCTAssertFalse(viewModel.hasChildren)
     }
-}
 
-// MARK: - Mock Service
-
-class MockChildrenService: ChildrenServiceProtocol {
-    var mockChildren: [Child] = []
-    var shouldFail = false
-    
-    func fetchChildren() async throws -> [Child] {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return mockChildren
-    }
-    
-    func createChild(_ child: Child) async throws -> Child {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return child
-    }
-    
-    func updateChild(_ child: Child) async throws -> Child {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return child
-    }
-    
-    func deleteChild(id: UUID) async throws {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-    }
-    
-    func fetchChild(id: UUID) async throws -> Child? {
-        if shouldFail {
-            throw ServiceError.networkError("Mock error")
-        }
-        return mockChildren.first { $0.id == id }
+    func testClearError() {
+        let viewModel = makeViewModel()
+        viewModel.errorMessage = "Erreur de test"
+        viewModel.clearError()
+        XCTAssertNil(viewModel.errorMessage)
     }
 }

@@ -10,6 +10,11 @@
 		01403D4ADB9942FC83FAEF53 /* ChildrenService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71F7E2C2D30421BA8D27153 /* ChildrenService.swift */; };
 		14DB14389705B87BAAF668B7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E62604755C7C54F51015EDD6 /* Foundation.framework */; };
 		1809A09D420325C2663496BB /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F58B399C76BAC459644DC5 /* SmokeTests.swift */; };
+		AA10000000000000000000C1 /* ChildModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10000000000000000000F1 /* ChildModelTests.swift */; };
+		AA20000000000000000000C2 /* PajemploiDeclarationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20000000000000000000F2 /* PajemploiDeclarationTests.swift */; };
+		AA30000000000000000000C3 /* EventModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30000000000000000000F3 /* EventModelTests.swift */; };
+		AA40000000000000000000C4 /* ChildrenViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA40000000000000000000F4 /* ChildrenViewModelTests.swift */; };
+		AA50000000000000000000C5 /* EventsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA50000000000000000000F5 /* EventsViewModelTests.swift */; };
 		184D22FF391641EF99ABE3BF /* FilterTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88988B6FC9EC4D41BB7F24B2 /* FilterTypes.swift */; };
 		4BDFBCE5DA754313AA01BD01 /* ModernMainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9535523DCC48A3AB5A1047 /* ModernMainTabView.swift */; };
 		4C886F1669F248A4AEF22CEC /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17EA7FAFA8146ABAFF2B109 /* User.swift */; };
@@ -97,6 +102,11 @@
 		EC538ACAB64D459FBAE0181C /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Services/CacheService.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F60718293A4B /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manounou/Utils/Logger.swift; sourceTree = "<group>"; };
 		F8F58B399C76BAC459644DC5 /* SmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SmokeTests.swift; path = ManounouTests/SmokeTests.swift; sourceTree = "<group>"; };
+		AA10000000000000000000F1 /* ChildModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChildModelTests.swift; path = ManounouTests/ChildModelTests.swift; sourceTree = "<group>"; };
+		AA20000000000000000000F2 /* PajemploiDeclarationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiDeclarationTests.swift; path = ManounouTests/PajemploiDeclarationTests.swift; sourceTree = "<group>"; };
+		AA30000000000000000000F3 /* EventModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EventModelTests.swift; path = ManounouTests/EventModelTests.swift; sourceTree = "<group>"; };
+		AA40000000000000000000F4 /* ChildrenViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChildrenViewModelTests.swift; path = ManounouTests/ChildrenViewModelTests.swift; sourceTree = "<group>"; };
+		AA50000000000000000000F5 /* EventsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EventsViewModelTests.swift; path = ManounouTests/EventsViewModelTests.swift; sourceTree = "<group>"; };
 		DD01000000000000000000B1 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = Views/Home/HomeView.swift; sourceTree = "<group>"; };
 		DD02000000000000000000B2 /* PajemploiView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiView.swift; path = Views/Pajemploi/PajemploiView.swift; sourceTree = "<group>"; };
 		DD03000000000000000000B3 /* PajemploiDeclaration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PajemploiDeclaration.swift; path = Models/PajemploiDeclaration.swift; sourceTree = "<group>"; };
@@ -131,6 +141,11 @@
 			isa = PBXGroup;
 			children = (
 				F8F58B399C76BAC459644DC5 /* SmokeTests.swift */,
+				AA10000000000000000000F1 /* ChildModelTests.swift */,
+				AA20000000000000000000F2 /* PajemploiDeclarationTests.swift */,
+				AA30000000000000000000F3 /* EventModelTests.swift */,
+				AA40000000000000000000F4 /* ChildrenViewModelTests.swift */,
+				AA50000000000000000000F5 /* EventsViewModelTests.swift */,
 			);
 			name = ManounouTests;
 			sourceTree = SOURCE_ROOT;
@@ -293,6 +308,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				1809A09D420325C2663496BB /* SmokeTests.swift in Sources */,
+				AA10000000000000000000C1 /* ChildModelTests.swift in Sources */,
+				AA20000000000000000000C2 /* PajemploiDeclarationTests.swift in Sources */,
+				AA30000000000000000000C3 /* EventModelTests.swift in Sources */,
+				AA40000000000000000000C4 /* ChildrenViewModelTests.swift in Sources */,
+				AA50000000000000000000C5 /* EventsViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

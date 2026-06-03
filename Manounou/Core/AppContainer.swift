@@ -406,13 +406,13 @@ class EventsViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let eventsService: EventsService
-    
+    private let eventsService: EventsServiceProtocol
+
     var todayEvents: [Event] {
         events.filter { Calendar.current.isDateInToday($0.startDate) }
     }
-    
-    init(eventsService: EventsService) {
+
+    init(eventsService: EventsServiceProtocol) {
         self.eventsService = eventsService
     }
     
@@ -471,9 +471,9 @@ class ChildrenViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let childrenService: ChildrenService
-    
-    init(childrenService: ChildrenService) {
+    private let childrenService: ChildrenServiceProtocol
+
+    init(childrenService: ChildrenServiceProtocol) {
         self.childrenService = childrenService
     }
     
