@@ -1,6 +1,8 @@
 # Spécifications Fonctionnelles — MVP Manounou
 
-Objectif: cadrer l’implémentation MVP autour des flows essentiels (Onboarding, Enfants, Calendrier, Documents), avec user stories et critères d’acceptation mesurables.
+Objectif: cadrer l’implémentation MVP autour de la core value de Manounou — **planning de garde + déclaration Pajemploi** — soutenue par les flows essentiels (Onboarding, Enfants, Calendrier, Documents), avec user stories et critères d’acceptation mesurables.
+
+> Core value : automatiser le couple **planning de garde ↔ déclaration Pajemploi** (cf. `AUDIT_CORE_VALUE.md`). Enfants / documents / calendrier sont au service de cette relation de garde.
 
 ## Contexte
 - Plateforme: iOS (SwiftUI), backend Supabase.

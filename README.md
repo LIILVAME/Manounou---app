@@ -9,7 +9,11 @@
 
 ## 📱 Description
 
-Ce dossier contient l'application iOS native **Manounou** développée en SwiftUI. L'application permet aux parents de gérer efficacement leurs enfants, événements familiaux et documents importants.
+**Manounou** (« ma nounou ») enlève la charge mentale d'employer une assistante maternelle : **planning de garde** et **déclaration Pajemploi mensuelle** calculés automatiquement et prêts à valider — pour le parent comme pour la nounou. La gestion des enfants, des documents et des événements est au service de cette relation de garde, pas une fin en soi.
+
+> Cœur de valeur : automatiser le couple **planning de garde ↔ déclaration Pajemploi**. Tout le reste (enfants, documents, calendrier) gravite autour. Voir [`Documentation/AUDIT_CORE_VALUE.md`](Documentation/AUDIT_CORE_VALUE.md).
+
+Application iOS native développée en SwiftUI, backend Supabase.
 
 ## 🚀 Démarrage Rapide
 
