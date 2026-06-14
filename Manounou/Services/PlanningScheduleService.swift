@@ -12,6 +12,15 @@ struct PlanningSchedule {
     var pickBy: String
     var carerName: String
 
+    // Taux Pajemploi du foyer — alimentent le calcul réel de la déclaration
+    // mensuelle (cf. PajemploiDeclaration.from). Valeurs par défaut alignées sur
+    // la migration `20260614220000_planning_pajemploi_rates.sql` (barème
+    // indicatif, ajustable). TODO(rates): lire/écrire ces colonnes via le DTO
+    // une fois l'éditeur de taux (et l'avenant nounou) branché.
+    var netHourlyRate: Double = 4.50   // €/h net
+    var upkeepPerDay:  Double = 3.50   // €/jour — indemnité d'entretien
+    var mealPerDay:    Double = 0.00   // €/jour — indemnité repas (optionnelle)
+
     static var `default`: PlanningSchedule {
         PlanningSchedule(
             scheduleMode: 0,

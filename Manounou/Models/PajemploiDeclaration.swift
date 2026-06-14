@@ -158,3 +158,55 @@ extension PajemploiDeclaration {
         )
     }
 }
+
+// MARK: - Calcul réel (depuis les créneaux de garde)
+
+extension PajemploiDeclaration {
+
+    /// Marqueur des créneaux de garde dans la table `events` (cf. `PlanningView`).
+    static let babysitterTag = "babysitter"
+
+    /// Construit la déclaration mensuelle **réelle** à partir des créneaux de
+    /// garde (`events` taggés « babysitter ») et des taux du foyer (`schedule`).
+    ///
+    /// - heures      = somme des durées des créneaux du mois ;
+    /// - jours       = nombre de jours calendaires distincts gardés ;
+    /// - salaire net = heures × taux horaire net ;
+    /// - entretien   = jours × (indemnité d'entretien + indemnité repas) ;
+    /// - net à payer = salaire net + entretien.
+    static func from(
+        month: Date,
+        events: [Event],
+        schedule: PlanningSchedule,
+        calendar: Calendar = .current
+    ) -> PajemploiDeclaration {
+        let slots = events.filter { event in
+            event.description == babysitterTag &&
+            calendar.isDate(event.startDate, equalTo: month, toGranularity: .month)
+        }
+
+        let totalHours = slots.reduce(0.0) { sum, event in
+            sum + max(0, event.endDate.timeIntervalSince(event.startDate)) / 3600.0
+        }
+        let distinctDays = Set(slots.map { calendar.startOfDay(for: $0.startDate) }).count
+
+        let netSalary = totalHours * schedule.netHourlyRate
+        let upkeep    = Double(distinctDays) * (schedule.upkeepPerDay + schedule.mealPerDay)
+        let netToPay  = netSalary + upkeep
+
+        return PajemploiDeclaration(
+            month: month,
+            nounouFirstName: schedule.carerName,
+            hours: round2(totalHours),
+            days: distinctDays,
+            netSalary: round2(netSalary),
+            upkeepAllowance: round2(upkeep),
+            netToPay: round2(netToPay)
+        )
+    }
+
+    /// Arrondi comptable à 2 décimales.
+    private static func round2(_ value: Double) -> Double {
+        (value * 100).rounded() / 100
+    }
+}

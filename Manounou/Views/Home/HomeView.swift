@@ -159,7 +159,7 @@ struct HomeView: View {
             MessagesView()
         }
         .sheet(isPresented: $showingDeclaration) {
-            PajemploiView(declaration: .sample)
+            PajemploiView(declaration: declaration)
         }
     }
 
@@ -241,8 +241,20 @@ struct HomeView: View {
 
     // MARK: - Déclaration Pajemploi (rappel)
 
+    /// Déclaration du mois courant, **calculée** depuis les créneaux de garde
+    /// réels (events taggés « babysitter ») et les taux du foyer. Repli sur
+    /// l'exemple de démonstration tant qu'aucun créneau n'est encore saisi
+    /// (vitrine à l'installation), pour ne pas afficher « 0 € » sur un compte vide.
+    private var declaration: PajemploiDeclaration {
+        let real = PajemploiDeclaration.from(
+            month: Date(),
+            events: eventsViewModel.events,
+            schedule: planningScheduleViewModel.currentSchedule
+        )
+        return real.hours > 0 ? real : .sample
+    }
+
     /// Rappel de déclaration mensuelle (cf. « Focus Accueil », carte ambre).
-    /// Montants représentatifs tant que le calcul Pajemploi réel n'est pas branché.
     private var declarationCard: some View {
         Button { showingDeclaration = true } label: {
             HStack(spacing: 11) {
@@ -258,7 +270,7 @@ struct HomeView: View {
                     Text("Déclaration \(Self.monthName(offset: 0)) à faire")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(AppTheme.Colors.ink)
-                    Text("86 h · 472,00 € — avant le 5 \(Self.monthName(offset: 1))")
+                    Text("\(declaration.formattedHours) · \(declaration.formattedNetToPay) — avant le 5 \(Self.monthName(offset: 1))")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(Color(hex: "B07D00"))
                 }
